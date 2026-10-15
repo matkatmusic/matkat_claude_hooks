@@ -32,4 +32,9 @@ export const HOOKS: HookEntry[] = [
   { event: "Stop", command: ["node", `${import.meta.dirname}/../nudge-task-list/nudge-task-list.ts`], enabled: false },
   // blocks when the reply names work still to build that is not on the task list
   { event: "Stop", command: ["node", `${import.meta.dirname}/../unlisted-items/unlisted-items.ts`], enabled: false },
+  // counts turns per conversation into the session state file's sittings list
+  { event: "SessionStart", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
+  { event: "Stop", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
+  { event: "StopFailure", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
+  { event: "SessionEnd", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
 ];
