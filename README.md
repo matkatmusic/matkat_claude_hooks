@@ -4,7 +4,7 @@ Hooks for Claude Code that make the agent follow your rules. The plugin name is 
 
 Each hook lives in its own folder with its own README. One dispatcher script runs the hooks you turn on.
 
-Repo: https://github.com/matkatmusic/claude_hooks
+Repo: https://github.com/matkatmusic/matkat_claude_hooks
 
 ## Requirements
 
@@ -17,7 +17,7 @@ Repo: https://github.com/matkatmusic/claude_hooks
 Run these steps once, in your clone.
 
 ```sh
-git clone https://github.com/matkatmusic/claude_hooks.git /path/to/claude_hooks
+git clone https://github.com/matkatmusic/matkat_claude_hooks.git /path/to/claude_hooks
 cd /path/to/claude_hooks
 bun install
 cp .env.example .env
