@@ -18,6 +18,8 @@ export const HOOKS: HookEntry[] = [
   { event: "SessionStart", command: ["node", "/path/to/your-session-start-hook.ts"], enabled: false },
   // a block decision keeps the agent working
   { event: "Stop", command: ["node", "/path/to/your-stop-hook.ts"], enabled: false },
+  // blocks file edits from the parent session; subagents may edit
+  { event: "PreToolUse", matcher: "Edit|Write|NotebookEdit|Bash", command: ["node", `${import.meta.dirname}/../block-parent-edits/block-parent-edits.ts`], enabled: false },
   // after a plan file is edited, reminds the agent to follow the planning guide
   { event: "PostToolUse", matcher: "Write|Edit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: false },
   // warns when the project has no CLAUDE_CODE_TASK_LIST_ID

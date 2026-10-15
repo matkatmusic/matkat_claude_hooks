@@ -1,0 +1,10 @@
+{"type":"permission-mode","permissionMode":"default","sessionId":"s-d"}
+{"type":"user","message":{"role":"user","content":"Please read the example history."}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"git log --oneline -5"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"abc123 first commit"}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"rg -o \"foo\" file.txt"}}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"grep -o foo file.txt"}}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t4","name":"Bash","input":{"command":"echo \"a > b\""}}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t5","name":"Bash","input":{"command":"sd 'old' 'new' src/d.ts"}}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":[{"type":"tool_use","id":"t6","name":"Bash","input":{"command":"cat src/d.ts | head -20"}}]}}
+{"type":"assistant","message":{"model":"claude-fable-5-1","role":"assistant","content":"Done."}}

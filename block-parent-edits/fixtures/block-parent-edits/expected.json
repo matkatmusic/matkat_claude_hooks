@@ -1,0 +1,48 @@
+{
+  "c5d54567-a795-488c-a958-baaeed41bf53": [
+    { "command": "node ~/.claude/hooks/turn-done.ts", "expected": "allow" },
+    { "command": "git status --short | head -30 && git log --oneline -1", "expected": "allow" },
+    { "command": "rg -n \"needle\" src --glob '!*.test.ts' | head -40", "expected": "allow" },
+    { "command": "node --test src/a.test.ts 2>&1 | grep -E '^(pass|fail)'", "expected": "allow" },
+    { "command": "sd 'old text' 'new text' src/a.ts", "expected": "deny" },
+    { "command": "sed -n 1,45p src/a.ts; echo =====; rg -n \"x\" src | head", "expected": "allow" },
+    { "command": "cat package.json | jq -r '.scripts.test'", "expected": "allow" },
+    { "command": "jq '.hooks += [1]' settings.json > settings.tmp", "expected": "deny" }
+  ],
+  "cdddc5fb-9d8f-4688-910a-3f611e28ed83": [
+    { "command": "cd /work/project; sd -F 'before' 'after' src/b.ts", "expected": "deny" },
+    { "command": "cd /work/project; python3 - <<'EOF'\np='src/b.ts'\nprint(p)\nEOF", "expected": "deny" },
+    { "command": "cd /work/project; cat >> src/b.test.ts <<'EOF'\n\ntest('x', () => {});\nEOF", "expected": "deny" },
+    { "command": "cd /work/project; git diff -- src > /tmp/work.diff", "expected": "deny" },
+    { "command": "cd /work/project; rg -ln 'needle' src tests", "expected": "allow" },
+    { "command": "git status --short", "expected": "allow" },
+    { "command": "ls | sd a b", "expected": "allow" }
+  ],
+  "dfad2438-0e3f-40f2-a42f-d71358af7d96": [
+    { "command": "echo \"done\" > ~/notes/out.done", "expected": "deny" },
+    { "command": "mkdir -p out/dir && cat > out/dir/x.ts <<'EOF'\ncontent\nEOF", "expected": "deny" },
+    { "command": "ln -s ../prompts out/prompts && sd \"a\" \"b\" out/index.md", "expected": "deny" },
+    { "command": "grep -n \"export function\" src/c.ts && python3 - <<'EOF'\nprint(1)\nEOF", "expected": "deny" },
+    { "command": "git status --short src > /tmp/before.txt 2>&1; node build.ts", "expected": "deny" },
+    { "command": "grep -rn \"needle\" src/ | head", "expected": "allow" },
+    { "command": "sd '^a$' 'b' docs/*.mmd", "expected": "deny" },
+    { "command": "node build.ts >/dev/null 2>&1", "expected": "allow" }
+  ],
+  "8c469179-f637-4f01-b26c-c439c67dfbea": [
+    { "command": "git log --oneline -5", "expected": "allow" },
+    { "command": "rg -o \"foo\" file.txt", "expected": "allow" },
+    { "command": "grep -o foo file.txt", "expected": "allow" },
+    { "command": "echo \"a > b\"", "expected": "allow" },
+    { "command": "sd 'old' 'new' src/d.ts", "expected": "deny" },
+    { "command": "cat src/d.ts | head -20", "expected": "allow" }
+  ],
+  "62c8d7f9-8c17-4b8f-9817-b5190d1eaa1c": [
+    { "command": "rm -f out.txt", "expected": "deny" },
+    { "command": "cp a.txt b.txt", "expected": "deny" },
+    { "command": "echo hi | tee f.txt", "expected": "deny" },
+    { "command": "sed -i 's/a/b/' f.txt", "expected": "deny" },
+    { "command": "curl -o out.bin http://example.com/x", "expected": "deny" },
+    { "command": "ls -la", "expected": "allow" },
+    { "command": "chmod +x run.sh && ls", "expected": "deny" }
+  ]
+}
