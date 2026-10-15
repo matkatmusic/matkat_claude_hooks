@@ -1,5 +1,6 @@
 {
-  "name": "claude-hooks",
+  "name": "matkat-hooks",
   "version": "0.1.0",
-  "description": "Hooks for Claude Code, sent through one dispatcher."
+  "description": "Hooks for Claude Code, sent through one dispatcher.",
+  "author": { "name": "matkatmusic" }
 }

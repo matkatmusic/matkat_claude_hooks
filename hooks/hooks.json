@@ -4,7 +4,7 @@
       {
         "matcher": "Edit|Write|NotebookEdit|Bash",
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 600 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 600 }
         ]
       }
     ],
@@ -12,49 +12,49 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 120 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 600 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 600 }
         ]
       }
     ],
     "SubagentStop": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 600 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 600 }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 120 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 120 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
     ],
     "StopFailure": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 120 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "node ${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts", "timeout": 120 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
     ]
