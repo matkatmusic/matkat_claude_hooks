@@ -90,7 +90,7 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
 })
 
 test('aborted state turn writes no file and the next prompt is not dropped', async ($, on) => {
-  // Steps: the chat goes idle and the state prompt is sent.  The state turn is aborted (ctrl-C). No file is written and no exit runs.  The next prompt is not dropped.
+  // Idle chat sends the state prompt; an aborted turn writes no file, and the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
@@ -129,7 +129,7 @@ test('aborted state turn writes no file and the next prompt is not dropped', asy
 })
 
 test('session end after a state write stops dropping prompts', async ($, on) => {
-  // Steps: the chat goes idle, the state file is written, and the chat exits.  The session ends. The next prompt is not dropped.
+  // Idle chat writes the state file and exits; after the session ends, the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
