@@ -1,0 +1,5 @@
+{
+  "name": "claude-hooks",
+  "version": "0.1.0",
+  "description": "Hooks for Claude Code, sent through one dispatcher."
+}

@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@types/node": "^26.5.0"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
