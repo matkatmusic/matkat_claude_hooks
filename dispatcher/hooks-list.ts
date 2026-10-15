@@ -18,6 +18,8 @@ export const HOOKS: HookEntry[] = [
   { event: "SessionStart", command: ["node", "/path/to/your-session-start-hook.ts"], enabled: false },
   // a block decision keeps the agent working
   { event: "Stop", command: ["node", "/path/to/your-stop-hook.ts"], enabled: false },
+  // blocks raw 'npm test' and runs a specific test command that reduces test output
+  { event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-npm-test/block-npm-test.ts`], timeout: 300, enabled: false },
   // blocks file edits from the parent session; subagents may edit
   { event: "PreToolUse", matcher: "Edit|Write|NotebookEdit|Bash", command: ["node", `${import.meta.dirname}/../block-parent-edits/block-parent-edits.ts`], enabled: false },
   // blocks Bash commands that write file content; use Edit/Write instead
