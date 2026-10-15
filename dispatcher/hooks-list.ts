@@ -18,4 +18,6 @@ export const HOOKS: HookEntry[] = [
   { event: "SessionStart", command: ["node", "/path/to/your-session-start-hook.ts"], enabled: false },
   // a block decision keeps the agent working
   { event: "Stop", command: ["node", "/path/to/your-stop-hook.ts"], enabled: false },
+  // after a plan file is edited, reminds the agent to follow the planning guide
+  { event: "PostToolUse", matcher: "Write|Edit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: false },
 ];
