@@ -51,4 +51,6 @@ export const HOOKS: HookEntry[] = [
   // runs eslint --fix on edited .ts files and blocks unless the style-debt total dropped this turn
   { event: "Stop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: false },
   { event: "SubagentStop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: false },
+  // hands the model the idle state files from the last 24 hours
+  { event: "SessionStart", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-reader.ts`], enabled: false },
 ];

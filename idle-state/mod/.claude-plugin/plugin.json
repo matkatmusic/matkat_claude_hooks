@@ -1,0 +1,5 @@
+{
+  "name": "idle-state",
+  "version": "0.1.0",
+  "description": "Writes a state file when a chat is idle for 55 minutes, then exits the chat"
+}

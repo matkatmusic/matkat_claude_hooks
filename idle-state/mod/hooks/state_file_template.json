@@ -1,0 +1,9 @@
+{
+  "work": ["what this chat worked on"],
+  "done": [{ "item": "what is done", "isCommitted": false }],
+  "not_done": ["what is not done"],
+  "files": { "thisChat": ["files this chat changed"], "otherChats": ["files other chats changed"] },
+  "runningPrograms": [{ "command": "the exact command line that started the program", "purpose": "what the program does" }],
+  "nextSteps": { "actions": ["the next actions"], "questions": ["open questions for the user"] },
+  "traps": { "rules": ["rules to follow"], "hooks": ["hooks that block or change work"], "mistakes": ["mistakes to avoid"] }
+}
