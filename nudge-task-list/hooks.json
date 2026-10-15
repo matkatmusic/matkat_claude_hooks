@@ -3,7 +3,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node /path/to/claude_hooks/nudge-task-list/nudge-task-list.ts" }
+          { "type": "command", "command": "node \"/path/to/claude_hooks/nudge-task-list/nudge-task-list.ts\"" }
         ]
       }
     ]

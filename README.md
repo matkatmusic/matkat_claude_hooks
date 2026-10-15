@@ -23,9 +23,13 @@ bun install
 cp .env.example .env
 ```
 
-Run `bun install` in the clone. The `debt-ratchet` hook needs eslint. A plugin install does not install packages.
+Run `bun install` in the clone. The `debt-ratchet` hook needs eslint. `--plugin-dir` does not install packages.
 
-Open `.env` and fill in every value. Replace each `/path/to/...` with a real folder on your computer. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
+In every example, `/path/to/claude_hooks` must be the real path of your clone. The folder must exist. Use the same path you gave to `git clone`.
+
+Open `.env` and fill in every value. Replace each `/path/to/...` with a real path on your computer. Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
+
+Warning: a `CLAUDE_HOOKS_*` value that is already set in the shell overrides the value in `.env`. `process.loadEnvFile` in `shared/env.ts` does not replace a value that is already set.
 
 ## Use the whole repo as one plugin
 
@@ -34,6 +38,10 @@ Start Claude with `--plugin-dir`:
 ```sh
 claude --plugin-dir /path/to/claude_hooks
 ```
+
+`--plugin-dir` is the way to load this repo as a plugin. No marketplace exists.
+
+A new `CLAUDE_CONFIG_DIR` starts signed out. Run `claude` once and sign in.
 
 The plugin file `hooks/hooks.json` sends these events to `dispatcher/dispatch.ts`: PreToolUse, PostToolUse, Stop, SubagentStop, SessionStart, SessionEnd, StopFailure, and UserPromptSubmit.
 
@@ -65,7 +73,9 @@ A value that is already set in the shell wins over the value in `.env`.
 
 ## Send every event to dispatch.ts from settings.json
 
-You can skip the plugin. Copy the `hooks` block from `hooks/hooks.json` into your `settings.json`. Replace `${CLAUDE_PLUGIN_ROOT}` with `/path/to/claude_hooks`. For example:
+You can skip the plugin. Paste into `~/.claude/settings.json` (all projects) or `<project>/.claude/settings.json` (one project). When `CLAUDE_CONFIG_DIR` is set, use the `settings.json` inside that folder. Every `settings.json` step below uses this rule.
+
+Copy the `hooks` block from `hooks/hooks.json` into your `settings.json`. Replace `${CLAUDE_PLUGIN_ROOT}` with `/path/to/claude_hooks`. For example:
 
 ```json
 {

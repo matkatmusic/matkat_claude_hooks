@@ -4,7 +4,7 @@
       {
         "matcher": "Edit|Write|NotebookEdit|Bash",
         "hooks": [
-          { "type": "command", "command": "node /path/to/claude_hooks/block-parent-edits/block-parent-edits.ts" }
+          { "type": "command", "command": "node \"/path/to/claude_hooks/block-parent-edits/block-parent-edits.ts\"" }
         ]
       }
     ]
