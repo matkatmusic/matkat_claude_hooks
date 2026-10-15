@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/ask-dont-dump-issues/ask-dont-dump-issues.ts\"" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/ask-dont-dump-issues/session-cleanup.ts\"" }
+        ]
+      }
+    ]
+  }
+}
