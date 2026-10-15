@@ -48,4 +48,7 @@ export const HOOKS: HookEntry[] = [
   // blocks the stop while tsc reports type errors, when a .ts file was edited this turn
   { event: "Stop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: false },
   { event: "SubagentStop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: false },
+  // runs eslint --fix on edited .ts files and blocks unless the style-debt total dropped this turn
+  { event: "Stop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: false },
+  { event: "SubagentStop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: false },
 ];

@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/debt-ratchet/debt-ratchet.ts\"", "timeout": 300 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/debt-ratchet/debt-ratchet.ts\"", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}
