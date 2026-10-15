@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { executeHooks, type HookEntry } from "./dispatch.ts";
+import { executeHooks, HOOKS, type HookEntry } from "./dispatch.ts";
 
 test("two Stop children both block: reasons join into one decision", () => {
   const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
@@ -136,4 +136,19 @@ test("Stop with nothing to say returns empty string", () => {
   const hooks: HookEntry[] = [{ event: "Stop", command: ["node", `${dir}/quiet.mjs`], enabled: true }];
   const result = executeHooks({ hook_event_name: "Stop", cwd: dir }, hooks);
   assert.equal(result, "");
+});
+
+test("every enabled HOOKS entry's .ts/.mjs script exists on disk", () => {
+  for (let i = 0; i < HOOKS.length; i++) {
+    const hook = HOOKS[i];
+    if (!hook.enabled)
+      continue;
+    const scriptPath = hook.command[1];
+    const isTsFile = scriptPath?.endsWith(".ts");
+    const isMjsFile = scriptPath?.endsWith(".mjs");
+    const isScript = isTsFile || isMjsFile;
+    if (!isScript)
+      continue;
+    assert.equal(existsSync(scriptPath), true, scriptPath);
+  }
 });

@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename } from "node:path";
-import { HOOKS, type HookEntry } from "./hooks-list.ts";
+import { basename, resolve } from "node:path";
+// import { HOOKS, type HookEntry } from "./hooks-list.ts";
+import type { HookEntry } from "./hooks-list.ts";
 import { buildHookOutput } from "./output.ts";
+import { readEnvValue } from "../shared/env.ts";
 // Runs the hooks in the list for one event and merges their outputs.
+
+const listPath = resolve(import.meta.dirname, "..", readEnvValue("CLAUDE_HOOKS_LIST"));
+const { HOOKS }: { HOOKS: HookEntry[] } = await import(listPath);
 
 export { HOOKS, type HookEntry, buildHookOutput };
 
