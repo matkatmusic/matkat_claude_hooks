@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node /path/to/claude_hooks/unlisted-items/unlisted-items.ts" }
+        ]
+      }
+    ]
+  }
+}

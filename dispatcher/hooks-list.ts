@@ -24,4 +24,6 @@ export const HOOKS: HookEntry[] = [
   { event: "SessionStart", command: ["node", `${import.meta.dirname}/../check-task-list-id/check-task-list-id.ts`], enabled: false },
   // when the reply says work is starting, blocks until the agent uses the task list
   { event: "Stop", command: ["node", `${import.meta.dirname}/../nudge-task-list/nudge-task-list.ts`], enabled: false },
+  // blocks when the reply names work still to build that is not on the task list
+  { event: "Stop", command: ["node", `${import.meta.dirname}/../unlisted-items/unlisted-items.ts`], enabled: false },
 ];
