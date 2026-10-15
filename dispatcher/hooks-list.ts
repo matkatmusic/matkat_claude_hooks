@@ -20,4 +20,6 @@ export const HOOKS: HookEntry[] = [
   { event: "Stop", command: ["node", "/path/to/your-stop-hook.ts"], enabled: false },
   // after a plan file is edited, reminds the agent to follow the planning guide
   { event: "PostToolUse", matcher: "Write|Edit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: false },
+  // warns when the project has no CLAUDE_CODE_TASK_LIST_ID
+  { event: "SessionStart", command: ["node", `${import.meta.dirname}/../check-task-list-id/check-task-list-id.ts`], enabled: false },
 ];

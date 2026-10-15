@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node /path/to/claude_hooks/check-task-list-id/check-task-list-id.ts" }
+        ]
+      }
+    ]
+  }
+}
