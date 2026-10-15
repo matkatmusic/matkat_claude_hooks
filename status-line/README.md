@@ -23,7 +23,7 @@ A forced break at the limit costs a lot of time. The status line lets you plan b
 5. `subagentStatusLine.ts` prints one line for each subagent: model, effort, name, task, run time, and tokens.
 6. The other `status*.ts` files hold the colors, the format code, the file reading code, and the model names.
 
-The session state file is in the `.dotfiles` folder inside the `.claude` folder in your home folder.
+The session state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`.
 
 ## .env values
 

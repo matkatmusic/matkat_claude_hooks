@@ -31,12 +31,12 @@ test("typed command full", () => {
 const runHook = (home: string, transcriptPath: string) =>
   execFileSync("node", [`${import.meta.dirname}/ponytail-ultra-nudge.ts`], {
     input: JSON.stringify({ transcript_path: transcriptPath }),
-    env: { ...process.env, HOME: home },
+    env: { ...process.env, HOME: home, CLAUDE_HOOKS_SESSION_STATE_DIR: `${home}/.claude/claude_hooks` },
   });
 
 test("state already marks ponytail ultra invoked: exits with no output, transcript is never read", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const dir = `${home}/.claude/.dotfiles`;
+  const dir = `${home}/.claude/claude_hooks`;
   mkdirSync(dir, { recursive: true });
   const transcriptPath = `${home}/no-such-transcript.jsonl`;
   writeFileSync(`${dir}/no-such-transcript.json`, JSON.stringify({ ponytailUltraInvoked: true }));
@@ -58,6 +58,6 @@ test("transcript shows the typed ultra command: writes the state key", () => {
   writeFileSync(transcriptPath, line);
 
   runHook(home, transcriptPath);
-  const state = JSON.parse(readFileSync(`${home}/.claude/.dotfiles/session-a.json`, "utf8"));
+  const state = JSON.parse(readFileSync(`${home}/.claude/claude_hooks/session-a.json`, "utf8"));
   assert.equal(state.ponytailUltraInvoked, true);
 });

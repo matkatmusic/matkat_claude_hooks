@@ -7,25 +7,25 @@ import { tmpdir } from "node:os";
 import { getSessionStatePath, readSessionState, writeSessionState } from "./session-state.ts";
 
 test("getSessionStatePath strips a transcript path's .jsonl extension", () => {
-  process.env.HOME = "/home/x";
-  assert.equal(getSessionStatePath("/some/dir/abc-123.jsonl"), "/home/x/.claude/.dotfiles/abc-123.json");
+  process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = "/home/x/.claude/claude_hooks";
+  assert.equal(getSessionStatePath("/some/dir/abc-123.jsonl"), "/home/x/.claude/claude_hooks/abc-123.json");
 });
 
 test("getSessionStatePath accepts a bare session id", () => {
-  process.env.HOME = "/home/x";
-  assert.equal(getSessionStatePath("abc-123"), "/home/x/.claude/.dotfiles/abc-123.json");
+  process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = "/home/x/.claude/claude_hooks";
+  assert.equal(getSessionStatePath("abc-123"), "/home/x/.claude/claude_hooks/abc-123.json");
 });
 
 test("readSessionState returns an empty object when no file exists yet", () => {
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
-  process.env.HOME = home;
+  process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = `${home}/state`;
   const path = getSessionStatePath("no-such-session");
   assert.deepEqual(readSessionState(path), {});
 });
 
 test("writeSessionState creates the folder and the state round-trips through readSessionState", () => {
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
-  process.env.HOME = home;
+  process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = `${home}/state`;
   const path = getSessionStatePath("some-session");
   writeSessionState(path, { done: 123 });
   assert.deepEqual(readSessionState(path), { done: 123 });
@@ -33,7 +33,7 @@ test("writeSessionState creates the folder and the state round-trips through rea
 
 test("writeSessionState leaves only the final json file behind, no leftover tmp file", () => {
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
-  process.env.HOME = home;
+  process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = `${home}/state`;
   const path = getSessionStatePath("atomic-session");
   writeSessionState(path, { done: 42 });
   assert.deepEqual(readdirSync(dirname(path)), ["atomic-session.json"]);

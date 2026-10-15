@@ -21,7 +21,7 @@ A reply that ends with a dump hands the work back to the user. A question with c
 ## How it works
 
 1. Claude stops its reply and runs the Stop hook.
-2. The hook reads the session state file in `~/.claude/.dotfiles/`. It holds two times: `reminded` and `done`.
+2. The hook reads the session state file in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`. It holds two times: `reminded` and `done`.
 3. The hook blocks if it did not remind Claude since the last user prompt.
 4. The hook blocks if the last reply has a phrase such as "if you want", "let me know", or "your call".
 5. The hook blocks if the last reply has a question mark and two or more list lines.

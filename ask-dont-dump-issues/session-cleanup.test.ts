@@ -8,12 +8,12 @@ import { tmpdir } from "node:os";
 const runHook = (home: string, sessionId: string) =>
   execFileSync("node", [`${import.meta.dirname}/session-cleanup.ts`], {
     input: JSON.stringify({ session_id: sessionId, hook_event_name: "SessionEnd" }),
-    env: { ...process.env, HOME: home },
+    env: { ...process.env, HOME: home, CLAUDE_HOOKS_SESSION_STATE_DIR: `${home}/.claude/claude_hooks` },
   });
 
 test("clears this session's done and reminded keys, leaves other sessions alone", () => {
   const home = mkdtempSync(`${tmpdir()}/session-cleanup-`);
-  const dir = `${home}/.claude/.dotfiles`;
+  const dir = `${home}/.claude/claude_hooks`;
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}/s1.json`, JSON.stringify({ done: 1, reminded: 1 }));
   writeFileSync(`${dir}/other.json`, JSON.stringify({ done: 1 }));
@@ -25,7 +25,7 @@ test("clears this session's done and reminded keys, leaves other sessions alone"
 
 test("clearing done and reminded keeps this session's other keys", () => {
   const home = mkdtempSync(`${tmpdir()}/session-cleanup-`);
-  const dir = `${home}/.claude/.dotfiles`;
+  const dir = `${home}/.claude/claude_hooks`;
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}/s1.json`, JSON.stringify({ done: 1, reminded: 1, sittings: [{ turns: 2 }] }));
 
@@ -35,14 +35,14 @@ test("clearing done and reminded keeps this session's other keys", () => {
 
 test("a session that never reached a Stop has no state file; nothing is created", () => {
   const home = mkdtempSync(`${tmpdir()}/session-cleanup-`);
-  const dir = `${home}/.claude/.dotfiles`;
+  const dir = `${home}/.claude/claude_hooks`;
   mkdirSync(dir, { recursive: true });
 
   runHook(home, "never-ran");
   assert.equal(existsSync(`${dir}/never-ran.json`), false);
 });
 
-test("no .dotfiles folder at all: no crash, no folder created", () => {
+test("no state folder at all: no crash, no folder created", () => {
   const home = mkdtempSync(`${tmpdir()}/session-cleanup-empty-`);
 
   runHook(home, "never-ran");

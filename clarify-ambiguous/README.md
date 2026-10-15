@@ -17,7 +17,7 @@ A short question at the start costs little. A wrong guess costs a lot. This hook
 5. A short prompt with no file name, no path, and no backtick counts as vague. Very short answers such as "option A" do not count.
 6. For a vague prompt, the hook adds a note to the prompt. The note tells Claude to read the code first. If the code does not settle the question, Claude asks with AskUserQuestion.
 7. The hook never fires on two prompts in a row. Your second prompt is the answer to the first question.
-8. The hook counts prompts in the session state file in `~/.claude/.dotfiles/`.
+8. The hook counts prompts in the session state file in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`.
 
 The check uses word matching only. It does not understand meaning. Some clear prompts can look vague.
 

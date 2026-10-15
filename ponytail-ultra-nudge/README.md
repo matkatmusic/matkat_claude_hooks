@@ -17,7 +17,7 @@ You want ultra mode in every session. The hook reminds the agent for you, so you
 1. You send a prompt and Claude runs the hook.
 2. The hook reads the session state file. If the file says ultra is done, the hook stops and prints nothing.
 3. If not, the hook reads the session transcript. It looks for the typed command `/ponytail:ponytail ultra` or a `Skill` tool call for `ponytail:ponytail` with `ultra` in the arguments.
-4. If it finds one, it writes `ponytailUltraInvoked: true` to the session state file. The state file is in `~/.claude/.dotfiles/`.
+4. If it finds one, it writes `ponytailUltraInvoked: true` to the session state file. The state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`.
 5. If it finds none, it prints a JSON object with a message. The message tells the agent to invoke the skill with `args: "ultra"`.
 
 The hook has no paths and no tunable numbers to set. It needs no `.env` value.
