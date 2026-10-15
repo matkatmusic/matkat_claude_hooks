@@ -9,6 +9,6 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["*.d.ts", "dispatcher/**/*.ts", "shared/**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
