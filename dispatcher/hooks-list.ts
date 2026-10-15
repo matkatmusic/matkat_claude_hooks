@@ -39,4 +39,6 @@ export const HOOKS: HookEntry[] = [
   { event: "SessionEnd", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
   // until ponytail ultra has been invoked this session, tells the agent to invoke it before replying
   { event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../ponytail-ultra-nudge/ponytail-ultra-nudge.ts`], enabled: false },
+  // flags ambiguous prompts and asks for one clarifying question; add "jdi" to opt out
+  { event: "UserPromptSubmit", command: ["bun", `${import.meta.dirname}/../clarify-ambiguous/clarify-ambiguous.ts`], enabled: false },
 ];

@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/clarify-ambiguous/clarify-ambiguous.ts\"" }
+        ]
+      }
+    ]
+  }
+}
