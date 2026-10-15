@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/ponytail-ultra-nudge/ponytail-ultra-nudge.ts\"" }
+        ]
+      }
+    ]
+  }
+}

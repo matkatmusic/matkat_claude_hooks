@@ -37,4 +37,6 @@ export const HOOKS: HookEntry[] = [
   { event: "Stop", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
   { event: "StopFailure", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
   { event: "SessionEnd", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: false },
+  // until ponytail ultra has been invoked this session, tells the agent to invoke it before replying
+  { event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../ponytail-ultra-nudge/ponytail-ultra-nudge.ts`], enabled: false },
 ];
