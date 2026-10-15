@@ -22,4 +22,6 @@ export const HOOKS: HookEntry[] = [
   { event: "PostToolUse", matcher: "Write|Edit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: false },
   // warns when the project has no CLAUDE_CODE_TASK_LIST_ID
   { event: "SessionStart", command: ["node", `${import.meta.dirname}/../check-task-list-id/check-task-list-id.ts`], enabled: false },
+  // when the reply says work is starting, blocks until the agent uses the task list
+  { event: "Stop", command: ["node", `${import.meta.dirname}/../nudge-task-list/nudge-task-list.ts`], enabled: false },
 ];
