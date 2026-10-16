@@ -35,7 +35,7 @@ To load `.env` into the shell, use bash: `set -a; source .env; set +a`. Other sh
 
 `CLAUDE_HOOKS_TASKS_DIR` must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
 
-Run `./install.sh` once. It installs the ponytail plugin, which the `ponytail-ultra-nudge` hook needs.
+Run `./install.sh` once. It installs the ponytail plugin, which the `ponytail-ultra-nudge` hook needs. It also installs the TypeScript language plugin (typescript-lsp). That plugin needs the `typescript-language-server` program on PATH (`npm install -g typescript-language-server typescript`).
 
 Some hooks need more in the project where Claude runs. `typecheck-on-stop` needs a `tsconfig.json` and a local `typescript` package. `block-npm-test` needs a `package.json`. `block-parent-edits` acts only when the main model is Fable or Opus 5.
 
