@@ -192,6 +192,7 @@ if (import.meta.main) {
     hook_event_name?: string;
     session_id?: string;
     transcript_path?: string;
+    stop_hook_active?: boolean;
   } = {};
   try {
     input = JSON.parse(readFileSync(0, "utf8"));
@@ -200,6 +201,9 @@ if (import.meta.main) {
     process.exit(0);
   }
   if (!input.session_id)
+    process.exit(0);
+  const isStopAfterStopHookBlock = input.hook_event_name === "Stop" && input.stop_hook_active === true;
+  if (isStopAfterStopHookBlock)
     process.exit(0);
 
   const path = getSessionStatePath(input.session_id);

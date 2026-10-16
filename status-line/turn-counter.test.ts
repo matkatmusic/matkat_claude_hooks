@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { tmpdir } from "node:os";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import type { Sitting } from "../shared/session-state.ts";
 
 process.env.CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT = "/private/tmp";
@@ -99,6 +101,22 @@ test("adds subagent files and dedupes ids shared with the parent", async () => {
   assert.deepEqual(await sumTranscriptTokens(parent), { in: 110, out: 42 });
   await unlink(sidecar);
   await unlink(parent);
+});
+
+test("a Stop that follows a Stop-hook block is not counted", () => {
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-state-`);
+  const sessionId = `sess-${Date.now()}`;
+  const runEvent = (input: object) =>
+    spawnSync("node", [`${import.meta.dirname}/turn-counter.ts`], {
+      input: JSON.stringify({ session_id: sessionId, ...input }),
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir },
+    });
+  runEvent({ hook_event_name: "SessionStart" });
+  runEvent({ hook_event_name: "Stop", stop_hook_active: false });
+  runEvent({ hook_event_name: "Stop", stop_hook_active: true });
+  const state = JSON.parse(readFileSync(`${stateDir}/${sessionId}.json`, "utf8"));
+  assert.equal(state.sittings[0].turns, 1);
 });
 
 test("no transcript path", async () => {

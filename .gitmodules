@@ -1,0 +1,3 @@
+[submodule "tests/external/tmux_lib"]
+	path = tests/external/tmux_lib
+	url = https://github.com/matkatmusic/tmux_lib.git
