@@ -46,6 +46,23 @@ test("findEditedFilePaths ignores tools that do not edit files", () => {
   assert.deepEqual(findEditedFilePaths(transcript).files, []);
 });
 
+test("findEditedFilePaths leaves out edits whose tool result is an error", () => {
+  const rejected = JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", id: "t1", name: "Write", input: { file_path: "/denied.ts" } }] } });
+  const accepted = JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", id: "t2", name: "Write", input: { file_path: "/ok.ts" } }] } });
+  const errorResult = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t1", is_error: true }] } });
+  const okResult = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t2" }] } });
+  const transcript = [userPrompt("T1"), rejected, errorResult, accepted, okResult].join("\n");
+  assert.deepEqual(findEditedFilePaths(transcript).files, ["/ok.ts"]);
+});
+
+test("findSubagentEditedFilePaths leaves out edits whose tool result is an error", () => {
+  const dir = mkdtempSync(`${tmpdir()}/debt-transcript-`);
+  const rejected = JSON.stringify({ type: "assistant", timestamp: "2026-01-02T00:00:00Z", message: { content: [{ type: "tool_use", id: "t1", name: "Write", input: { file_path: "/denied.ts" } }] } });
+  const errorResult = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t1", is_error: true }] } });
+  writeFileSync(join(dir, "agent-1.jsonl"), [rejected, errorResult].join("\n"));
+  assert.deepEqual(findSubagentEditedFilePaths(dir, "2026-01-01T00:00:00Z"), []);
+});
+
 test("findSubagentEditedFilePaths returns an empty list when the folder does not exist", () => {
   assert.deepEqual(findSubagentEditedFilePaths(join(tmpdir(), "no-such-subagents-dir"), "T1"), []);
 });

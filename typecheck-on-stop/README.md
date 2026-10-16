@@ -8,6 +8,10 @@ It runs when Claude stops its reply, or when a subagent stops. It checks if Clau
 
 Claude can edit a TypeScript file and stop while the project has type errors. The errors stay hidden until someone builds the project later.
 
+## What it needs
+
+The project needs a `tsconfig.json` and a local `typescript` package.
+
 ## Why it was made
 
 A type error is cheap to fix right after the edit. It costs much more later. The hook makes Claude fix every error before it stops, including errors in files it did not edit.

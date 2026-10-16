@@ -2,7 +2,31 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { findBashWrittenTsPaths } from "./debt-files.ts";
 
-type ToolUseBlock = { type?: string; name?: string; input?: { file_path?: string; command?: string } };
+type ToolUseBlock = { type?: string; id?: string; name?: string; input?: { file_path?: string; command?: string } };
+
+function findErroredToolUseIds(lines: string[]): Set<string> {
+  const erroredIds = new Set<string>();
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i])
+      continue;
+    const entry = JSON.parse(lines[i]);
+    const isUserLine = entry.type === "user";
+    const content = entry.message?.content;
+    const isContentArray = Array.isArray(content);
+    const isUserWithBlocks = isUserLine && isContentArray;
+    if (!isUserWithBlocks)
+      continue;
+    const blocks = content as { type?: string; tool_use_id?: string; is_error?: boolean }[];
+    for (let b = 0; b < blocks.length; b++) {
+      const isToolResult = blocks[b].type === "tool_result";
+      const isError = blocks[b].is_error === true;
+      const isErroredResult = isToolResult && isError;
+      if (isErroredResult)
+        erroredIds.add(blocks[b].tool_use_id as string);
+    }
+  }
+  return erroredIds;
+}
 
 function containsToolResultContent(content: unknown): boolean {
   const isArray = Array.isArray(content);
@@ -22,6 +46,7 @@ export type EditedTurn = { files: string[]; turnStartTimestamp: string | undefin
 
 export function findEditedFilePaths(transcript: string): EditedTurn {
   const lines = transcript.split("\n");
+  const erroredIds = findErroredToolUseIds(lines);
   const files: string[] = [];
   let reachedPromptBoundary = false;
   let turnStartTimestamp: string | undefined;
@@ -56,6 +81,9 @@ export function findEditedFilePaths(transcript: string): EditedTurn {
       const block = blocks[b];
       const isToolUse = block.type === "tool_use";
       if (!isToolUse)
+        continue;
+      const wasRejected = erroredIds.has(block.id as string);
+      if (wasRejected)
         continue;
       const isBashName = block.name === "Bash";
       if (isBashName) {
@@ -92,6 +120,7 @@ export function findSubagentEditedFilePaths(subagentsDir: string, turnStartTimes
       continue;
     const content = readFileSync(join(subagentsDir, name), "utf8");
     const lines = content.split("\n");
+    const erroredIds = findErroredToolUseIds(lines);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line)
@@ -112,6 +141,9 @@ export function findSubagentEditedFilePaths(subagentsDir: string, turnStartTimes
         const block = blocks[b];
         const isToolUse = block.type === "tool_use";
         if (!isToolUse)
+          continue;
+        const wasRejected = erroredIds.has(block.id as string);
+        if (wasRejected)
           continue;
         const isBashName = block.name === "Bash";
         if (isBashName) {

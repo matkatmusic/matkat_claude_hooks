@@ -10,6 +10,10 @@ It knows these test commands: `npm test`, `npm run test:*`, `yarn test`, `pnpm t
 
 A test run can take a long time. A Bash call that waits for it can hang the session or hit a time limit. A full test log can also fill the context of Claude with text it does not need.
 
+## What it needs
+
+The project needs a `package.json`.
+
 ## Why it was made
 
 The hook makes Claude start the tests in the background. Claude then waits with a small monitor command. The monitor prints the end of the run and the log path. A full-suite run prints only the failed tests, or the words "all passing".

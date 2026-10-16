@@ -12,6 +12,10 @@ The hook also blocks a subagent when the variable `CLAUDE_CODE_SUBAGENT_MODEL` n
 
 Big models cost more than small models. A big model that edits files itself wastes money on simple work. A small subagent does the same edit for less.
 
+## When it acts
+
+It acts only when the main model is Fable or Opus 5.
+
 ## Why it was made
 
 The rule "the main session must not edit" was only text in a prompt. The model forgot it. A hook enforces the rule every time.

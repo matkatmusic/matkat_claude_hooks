@@ -8,6 +8,10 @@ It runs each time you send a prompt. It checks if the agent has used the ponytai
 
 The ponytail skill makes the agent write less code. The ultra level is the strictest one. The agent forgets to use it, and you must remind it each session.
 
+## What it needs
+
+The ponytail plugin. Run `./install.sh` in the `claude_hooks` folder.
+
 ## Why it was made
 
 You want ultra mode in every session. The hook reminds the agent for you, so you do not type the same words again and again.

@@ -128,6 +128,46 @@ test('aborted state turn writes no file and the next prompt is not dropped', asy
   expect(result.drop).toBeUndefined()
 })
 
+test('user typing after the state prompt writes no file and does not parse the reply', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, {
+    HOME: '/home/u',
+    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
+    CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
+    CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
+    CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
+  })
+  const submitted: string[] = []
+  const written: { path: string; text: string }[] = []
+  on('session.root', () => ({ value: '/work/my-project' }))
+  on('session.id', () => ({ value: 'abcdef1234567890' }))
+  on('fs.write', ($, e) => {
+    written.push(e)
+    return { value: undefined }
+  })
+  on('command.run', () => ({ text: '' }))
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('session.messages', () => ({
+    value: [
+      { role: 'user', text: `The idle-state plugin sent a message:\n${submitted[0]}`, toolUses: [] },
+      { role: 'user', text: 'never mind, do this instead', toolUses: [] },
+      { role: 'assistant', text: 'You are right. Here is the answer.', toolUses: [] },
+    ],
+  }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => {
+    submitted.push(e.text)
+    return { text: e.text }
+  })
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  await $.turn.complete(ANSWER)
+  await clock.settle()
+  expect(written).toEqual([])
+})
+
 test('session end after a state write stops dropping prompts', async ($, on) => {
   // Idle chat writes the state file and exits; after the session ends, the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })

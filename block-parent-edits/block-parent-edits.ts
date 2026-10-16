@@ -63,15 +63,16 @@ const BASH_BLOCK_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, fileCo
 export function isBlockedParentModel(transcriptPath: string): boolean {
   const lines = readFileSync(transcriptPath, "utf8").split("\n");
   let model = "";
-  for (let i = lines.length - 1; i >= 0; i--) {
+  for (let i = 0; i < lines.length; i++) {
     if (!lines[i])
       continue;
     const entry = JSON.parse(lines[i]);
     const isAssistantWithModel = entry.type === "assistant" && entry.message?.model;
-    if (isAssistantWithModel) {
+    if (isAssistantWithModel)
       model = entry.message.model;
-      break;
-    }
+    const isModelAttachment = entry.type === "attachment" && entry.attachment?.type === "model" && entry.attachment.identity?.modelId;
+    if (isModelAttachment)
+      model = entry.attachment.identity.modelId;
   }
   const isFable = model.startsWith("claude-fable");
   const isOpus5 = model.startsWith("claude-opus-5");
@@ -99,7 +100,7 @@ if (import.meta.main) {
 
   const denyRules: { blocked: boolean; reason: string }[] = [
     { blocked: isFableSubagent, reason: "Fable subagents must not edit files. Fable should never edit code.  Change the CLAUDE_CODE_SUBAGENT_MODEL in the global .claude/settings.json environment variable to something other than a Fable model." },
-    { blocked: isBlockedParent, reason: "Parent session must not edit files. Delegate the edit to the `edit-worker` agent. If an `edit-worker` already edited these files this session, resume it with `SendMessage` instead of spawning a new one. When spawning it with the `Agent` tool, set `subagent_type` to `edit-worker`, and start the prompt with: \"First action: call the `Skill` tool with skill `ponytail:ponytail` and args `ultra`.\"" },
+    { blocked: isBlockedParent, reason: "Parent session must not edit files. Delegate the edit to a subagent." },
   ];
 
   let denyReason = "";

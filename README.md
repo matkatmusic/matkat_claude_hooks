@@ -29,7 +29,15 @@ In every example, `/path/to/claude_hooks` must be the real path of your clone. T
 
 Open `.env` and fill in every value. Replace each `/path/to/...` with a real path on your computer. Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
 
-Warning: a `CLAUDE_HOOKS_*` value that is already set in the shell overrides the value in `.env`. `process.loadEnvFile` in `shared/env.ts` does not replace a value that is already set.
+Warning: a `CLAUDE_HOOKS_*` value that is already set in the shell overrides the value in `.env`. `process.loadEnvFile` in `shared/env.ts` does not replace a value that is already set. Run `unset` on each `CLAUDE_HOOKS_*` value in the shell first.
+
+To load `.env` into the shell, use bash: `set -a; source .env; set +a`. Other shells can fail on the `#` comments after the values.
+
+`CLAUDE_HOOKS_TASKS_DIR` must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
+
+Run `./install.sh` once. It installs the ponytail plugin, which the `ponytail-ultra-nudge` hook needs.
+
+Some hooks need more in the project where Claude runs. `typecheck-on-stop` needs a `tsconfig.json` and a local `typescript` package. `block-npm-test` needs a `package.json`. `block-parent-edits` acts only when the main model is Fable or Opus 5.
 
 ## Use the whole repo as one plugin
 
@@ -54,6 +62,8 @@ The list is `dispatcher/hooks-list.ts`. Each entry has an `enabled` flag. Change
 ```ts
 { event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-bash-edits/block-bash-edits.ts`], enabled: true },
 ```
+
+The entries with `/path/to/...` paths in `dispatcher/hooks-list.ts` are examples. Leave them disabled.
 
 `true` turns the hook on. `false` turns it off. The next hook event picks up the change. You do not restart anything.
 

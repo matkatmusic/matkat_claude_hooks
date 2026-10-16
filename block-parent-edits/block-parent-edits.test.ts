@@ -146,6 +146,18 @@ test("main session on claude-fable-5-1, Edit tool: blocked tool_input is saved t
   assert.deepEqual(savedContents, tool_input);
 });
 
+test("main session: a model attachment after the last assistant entry decides the model", () => {
+  const dir = mkdtempSync(`${tmpdir()}/block-parent-edits-`);
+  const transcript_path = `${dir}/transcript.jsonl`;
+  const lines = [
+    JSON.stringify({ type: "assistant", message: { model: "claude-sonnet-5-5" } }),
+    JSON.stringify({ type: "attachment", attachment: { type: "model", identity: { modelId: "claude-opus-5-5" } } }),
+  ];
+  writeFileSync(transcript_path, `${lines.join("\n")}\n`);
+  const output = runHook({ session_id: "test-session", transcript_path, tool_name: "Edit", tool_input: {} });
+  assert.match(output, /"permissionDecision":"deny"/);
+});
+
 test("main session on claude-opus-4-7, Edit tool: allowed", () => {
   const transcript_path = writeTranscript("claude-opus-4-7");
   const output = runHook({ transcript_path, tool_name: "Edit", tool_input: {} });

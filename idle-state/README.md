@@ -36,7 +36,7 @@ The mod cannot read `.env`. It runs in a sandbox with no file system or Node. It
 CLAUDE_HOOKS_IDLE_STATE_IDLE_MS=3300000
 CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS=180000
 CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS=1000
-CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
+# CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
 ```
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.

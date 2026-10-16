@@ -60,6 +60,7 @@ export const register: Register = on => {
       const path = `${root}/${folderName}/${stamp}-${sessionId.slice(0, 8)}.json`;
       const messages = await $.session.messages();
       let stateText = '';
+      let userTookOver = false;
       for (let i = messages.length - 1; i >= 0; i--) {
         const message = messages[i]!;
         let isStatePrompt = false;
@@ -67,12 +68,18 @@ export const register: Register = on => {
           isStatePrompt = message.text.includes(statePrompt);
         if (isStatePrompt)
           break;
+        if (message.role === 'user') {
+          userTookOver = true;
+          break;
+        }
         let hasAnswerText = false;
         if (message.role === 'assistant')
           hasAnswerText = message.text !== '';
         if (hasAnswerText)
           stateText = message.text;
       }
+      if (userTookOver)
+        return next(e);
       if (stateText === '')
         throw new Error('idle-state: no assistant text after the state prompt');
       await $.fs.write(`${root}/${folderName}/.gitignore`, '*\n');
@@ -104,15 +111,15 @@ export const register: Register = on => {
         if (keyDelayText === undefined)
           throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS in the Claude process environment');
         /********
-        * if background programs are running in the session, the exit command spawns a "Background work is running" with choices for the user. 
+        * if background programs are running in the session, the exit command spawns a "Background work is running" with choices for the user.
         * we want to automatically select the second choice, which corresponds to continuing with background work and not killing those tasks, because we're killing this session because the cache expired and telling the user to start another session.
         * HOW: Wait 1 second before pushing the keys to ensure the background work prompt has appeared.
-        * python script: 
+        * python script:
         * import os, fcntl, termios
         * fd = os.open('/dev/tty', os.O_RDWR)
-        * for key in b'2\\r':    
+        * for key in b'2\\r':
         *   fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))
-        ********/ 
+        ********/
         $.clock.after(Number(keyDelayText), async () => {
           const pushed = await $.process.run(['python3', '-I', '-c', PUSH_KEYS_SCRIPT]);
           if (pushed.exitCode !== 0)

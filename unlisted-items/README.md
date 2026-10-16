@@ -29,7 +29,7 @@ CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH=5
 CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS=2
 ```
 
-- `CLAUDE_HOOKS_TASKS_DIR` is the folder that holds one task folder for each task list. Use a full path.
+- `CLAUDE_HOOKS_TASKS_DIR` is the folder that holds one task folder for each task list. Use a full path. It must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
 - `CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH` is how many letters a word needs to count.
 - `CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS` is how many counted words a line must share with a task.
 
