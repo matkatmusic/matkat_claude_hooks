@@ -30,7 +30,7 @@ test("existing ledger with a higher total: new lower total drops through, allowe
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
   writeFileSync(
     `${repo}/subject.ts`,
-    "export function getNums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
@@ -51,7 +51,7 @@ test("existing ledger with the same total: blocked", () => {
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
   writeFileSync(
     `${repo}/subject.ts`,
-    "export function getNums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
@@ -68,10 +68,10 @@ test("two runs, same session id, different files: debts merge into one total", (
   writeFileSync(ledgerPath, JSON.stringify({ files: {}, total: 100 }));
 
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
-  writeFileSync(`${repo}/fileA.ts`, "export function getA() {\n  return [1].map((n) => n);\n}\n");
+  writeFileSync(`${repo}/fileA.ts`, "function getSame(n: number): number {\n  return n;\n}\nexport function getA() {\n  return [1].map(getSame);\n}\n");
   writeFileSync(
     `${repo}/fileB.ts`,
-    "export function getB() {\n  return [1, 2].map((n) => n).filter((n) => n);\n}\n",
+    "function getSame(n: number): number {\n  return n;\n}\nexport function getB() {\n  return [1, 2].map(getSame).filter(getSame);\n}\n",
   );
   writeFileSync(`${repo}/fileA.test.ts`, "export const check = 1;\n");
   writeFileSync(`${repo}/fileB.test.ts`, "export const check = 1;\n");

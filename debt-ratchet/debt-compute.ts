@@ -57,7 +57,8 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   const testFileCandidates = [`${dir}/${baseName}.test.ts`, `${repoRoot}/tests/${baseName}.test.ts`, `${repoRoot}/tests/test-${baseName}.ts`];
   let hasTestFile = false;
   for (let i = 0; i < testFileCandidates.length; i++) {
-    if (existsSync(testFileCandidates[i]))
+    const candidateExists = existsSync(testFileCandidates[i]);
+    if (candidateExists)
       hasTestFile = true;
   }
   const isDeclarationFile = realFilePath.endsWith(".d.ts");

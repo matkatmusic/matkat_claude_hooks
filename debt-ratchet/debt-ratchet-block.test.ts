@@ -17,7 +17,7 @@ test("first sighting with debt: blocked, ledger not written", () => {
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
   writeFileSync(
     `${repo}/subject.ts`,
-    "export function getNums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
@@ -44,11 +44,11 @@ test("subagent edits are collected: only the edit at/after turn start is evaluat
 
   writeFileSync(
     `${repo}/subject.ts`,
-    "export function getNums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
   );
   writeFileSync(
     `${repo}/ignored.ts`,
-    "export function getOtherNums() {\n  return [4, 5, 6].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getOtherNums() {\n  return [4, 5, 6].map(addOne);\n}\n",
   );
 
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
@@ -103,7 +103,7 @@ test("SubagentStop: a fake agent transcript with one Edit tool_use yields that f
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
   writeFileSync(
     `${repo}/subject.ts`,
-    "export function getNums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n",
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-agent-transcript-`);
   const agent_transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);

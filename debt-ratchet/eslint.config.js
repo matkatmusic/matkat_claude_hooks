@@ -97,6 +97,10 @@ export default [
           selector: FUNCTION_NAME_SELECTOR,
           message: 'Function names need a verb from FUNCTION_VERBS in the eslint.config.js of the debt-ratchet folder.',
         },
+        {
+          selector: 'CallExpression > .arguments[type=/^(ArrowFunctionExpression|FunctionExpression)$/]',
+          message: 'Pass a named function, not an inline one.',
+        },
       ],
     },
   },
