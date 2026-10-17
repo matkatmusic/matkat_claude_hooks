@@ -3,6 +3,8 @@
 
 Needs tmux, bun, Python 3, and a signed-in Claude config folder.
 Usage: python3 tests/stranger_test.py --bed <new folder> --config <signed-in config folder>
+The test opens one tmux window named stranger-test. One pane shows PASS or FAIL. The other pane shows each Claude run.
+If you run it inside tmux already, it splits your current window.
 """
 import argparse
 import json
@@ -17,14 +19,16 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tests" / "external" / "tmux_lib"))
-from tmux_lib import (  # noqa: E402
+from tmux_lib import (  # noqa: E402  # pyright: ignore[reportMissingImports]
     tmux_capturePane,
     tmux_hasSession,
-    tmux_killSession,
-    tmux_newSession,
+    tmux_killPane,
+    # tmux_killSession,
+    # tmux_newSession,
     tmux_sendAndSubmit,
     tmux_sendEnter,
     tmux_sendKeys,
+    tmux_splitWorkerPane,
     tmux_waitForClaudeReadiness,
 )
 
@@ -176,35 +180,41 @@ def answer_dialog(pane, screen):
     return is_dialog
 
 
-def launch_session(name, model, bed, config):
+def launch_session(model, bed, config):
     project = bed / "project"
     clone = bed / "claude_hooks"
     projects_dir = config / "projects" / project_slug(project)
+    claude = shutil.which("claude")
+    if claude is None:
+        raise RuntimeError("claude is not on PATH")
     script = (
         "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; "
         f"set -a; source {shlex.quote(str(clone / '.env'))}; set +a; cd {shlex.quote(str(project))}; "
-        f"CLAUDE_CONFIG_DIR={shlex.quote(str(config))} exec {shlex.quote(shutil.which('claude'))} --model {model} "
+        f"CLAUDE_CONFIG_DIR={shlex.quote(str(config))} exec {shlex.quote(claude)} --model {model} "
         f"--plugin-dir {shlex.quote(str(clone))} --plugin-dir {shlex.quote(str(clone / 'idle-state' / 'mod'))}"
     )
+    pane = tmux_splitWorkerPane(os.environ["TMUX_PANE"], str(project), "bash -c " + shlex.quote(script))
+    if pane is None:
+        raise RuntimeError("tmux could not open a pane for Claude")
     session = {
-        "name": name,
+        "name": pane,
         "model": model,
         "projects_dir": projects_dir,
         "known": set(projects_dir.glob("*.jsonl")),
         "jsonl": None,
         "bed": bed,
     }
-    if tmux_hasSession(name) == 0:
-        tmux_killSession(name)
-    if tmux_newSession(name, "-x", "200", "-y", "50", "-c", str(project), "bash -c " + shlex.quote(script)) != 0:
-        raise RuntimeError(f"tmux could not start session {name}")
+    # if tmux_hasSession(name) == 0:
+    #     tmux_killSession(name)
+    # if tmux_newSession(name, "-x", "200", "-y", "50", "-c", str(project), "bash -c " + shlex.quote(script)) != 0:
+    #     raise RuntimeError(f"tmux could not start session {name}")
     is_ready = False
     for _ in range(120):
-        screen = tmux_capturePane(name)
+        screen = tmux_capturePane(pane)
         lowered = screen.lower()
         if "login method" in lowered or "/login" in lowered:
             raise RuntimeError(f"The config folder {config} is signed out. Run: CLAUDE_CONFIG_DIR={config} claude, sign in once, then run this test again.")
-        if answer_dialog(name, screen):
+        if answer_dialog(pane, screen):
             time.sleep(2)
             continue
         if "❯" in screen:
@@ -212,9 +222,9 @@ def launch_session(name, model, bed, config):
             break
         time.sleep(1)
     if not is_ready:
-        raise RuntimeError(f"Claude did not show a prompt in session {name}:\n{tmux_capturePane(name)}")
-    if tmux_waitForClaudeReadiness(name, 30) != 0:
-        raise RuntimeError(f"Claude is not ready in session {name}")
+        raise RuntimeError(f"Claude did not show a prompt in pane {pane}:\n{tmux_capturePane(pane)}")
+    if tmux_waitForClaudeReadiness(pane, 30) != 0:
+        raise RuntimeError(f"Claude is not ready in pane {pane}")
     time.sleep(6)
     return session
 
@@ -358,7 +368,7 @@ def pane_turns(name):
 
 
 def run_first_session(rows, bed, config):
-    session = launch_session("stranger-1", SONNET, bed, config)
+    session = launch_session(SONNET, bed, config)
     name = session["name"]
     turns_before = pane_turns(name)
     records, _ = run_turn(session, "say hi")
@@ -383,7 +393,7 @@ def run_first_session(rows, bed, config):
 
 def run_second_session(rows, bed, config):
     project = bed / "project"
-    session = launch_session("stranger-2", SONNET, bed, config)
+    session = launch_session(SONNET, bed, config)
     records, _ = run_turn(session, "hello")
     check_session_model(session, "claude-sonnet-5")
     add_hook_row(rows, session, 10, "ponytail-ultra-nudge", records, "Ponytail ultra has not been invoked yet", "UserPromptSubmit")
@@ -417,7 +427,7 @@ def wait_for_idle_exit(session):
 
 
 def run_third_session(rows, bed, config, second, state_files, has_exited):
-    session = launch_session("stranger-3", OPUS, bed, config)
+    session = launch_session(OPUS, bed, config)
     records, _ = run_turn(session, "Create a file note.txt that says hi.")
     model = check_session_model(session, "claude-opus-5")
     found = find_evidence(records, "Parent session must not edit files")
@@ -431,6 +441,9 @@ def run_third_session(rows, bed, config, second, state_files, has_exited):
 
 
 def main():
+    if "TMUX_PANE" not in os.environ:
+        command = shlex.join([sys.executable, os.path.abspath(sys.argv[0]), *sys.argv[1:]]) + "; read"
+        os.execvp("tmux", ["tmux", "new-session", "-s", "stranger-test", "-x", "200", "-y", "60", command])
     parser = argparse.ArgumentParser()
     parser.add_argument("--bed", required=True, help="new folder for the test bed")
     parser.add_argument("--config", required=True, help="signed-in Claude config folder")
@@ -438,19 +451,20 @@ def main():
     bed = Path(args.bed).resolve()
     config = Path(args.config).resolve()
     rows = []
-    names = ["stranger-1", "stranger-2", "stranger-3"]
+    # names = ["stranger-1", "stranger-2", "stranger-3"]
     try:
         build_bed(bed, config)
         first = run_first_session(rows, bed, config)
-        tmux_killSession(first["name"])
+        tmux_killPane(first["name"])
         second = run_second_session(rows, bed, config)
         has_exited = wait_for_idle_exit(second)
         state_files = list((bed / "project" / ".idleState").glob("*.json"))
         run_third_session(rows, bed, config, second, state_files, has_exited)
     finally:
-        for name in names:
-            if tmux_hasSession(name) == 0:
-                tmux_killSession(name)
+        # for name in names:
+        #     if tmux_hasSession(name) == 0:
+        #         tmux_killSession(name)
+        subprocess.run(["tmux", "kill-pane", "-a", "-t", os.environ["TMUX_PANE"]], check=False)
         print_table(rows)
     all_passed = True
     for row in rows:

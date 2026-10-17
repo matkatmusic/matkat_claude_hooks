@@ -482,6 +482,7 @@ function executeMain(): void {
       argumentWords.push(wrapShellWord(argument));
     }
     const command = ["BUN_JSC_useTailCalls=0", wrapShellWord(process.execPath), wrapShellWord(import.meta.filename), ...argumentWords].join(" ") + "; read";
+    // const result = spawnSync("tmux", ["new-session", "-s", "stranger-test", "-x", "200", "-y", "60", command, ";", "set-option", "-w", "window-size", "manual"], { stdio: "inherit" });
     const result = spawnSync("tmux", ["new-session", "-s", "stranger-test", "-x", "200", "-y", "60", command], { stdio: "inherit" });
     process.exit(result.status ?? 1);
   }
