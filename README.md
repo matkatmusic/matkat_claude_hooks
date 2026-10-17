@@ -83,7 +83,7 @@ A value that is already set in the shell wins over the value in `.env`.
 
 ## Where a hook reads its values
 
-Every hook reads its values from `.env` in the repo root. The dispatcher loads `.env` on every hook event. A change in `.env` takes effect on the next event. You do not restart anything.
+Every hook reads its values from `.env` in the repo root. The dispatcher loads `.env` on every hook event. A value already set in the shell wins over `.env`, so a `.env` change is not live when the shell set that value at launch. An `env` value in a list entry wins over both, and it is live on the next event.
 
 An entry in your list file can carry an `env` object. Those values win over `.env` for that one hook only:
 
