@@ -8,8 +8,8 @@ Repo: https://github.com/matkatmusic/matkat_claude_hooks
 
 ## Requirements
 
-- Node 22.18 or newer. It runs the `.ts` files directly.
-- Bun. The `clarify-ambiguous` hook runs under `bun`, and this README uses `bun install`.
+- Node 24.2 or newer. It runs the `.ts` files directly.
+- npm. This README uses `npm install`.
 - Claude Code.
 
 ## Set up
@@ -19,11 +19,11 @@ Run these steps once, in your clone.
 ```sh
 git clone https://github.com/matkatmusic/matkat_claude_hooks.git /path/to/claude_hooks
 cd /path/to/claude_hooks
-bun install
+npm install
 cp .env.example .env
 ```
 
-Run `bun install` in the clone. The `debt-ratchet` hook needs eslint. `--plugin-dir` does not install packages.
+Run `npm install` in the clone. The `debt-ratchet` hook needs eslint. `--plugin-dir` does not install packages.
 
 In every example, `/path/to/claude_hooks` must be the real path of your clone. The folder must exist. Use the same path you gave to `git clone`.
 

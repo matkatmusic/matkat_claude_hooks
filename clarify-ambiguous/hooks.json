@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "bun \"/path/to/claude_hooks/clarify-ambiguous/clarify-ambiguous.ts\"" }
+          { "type": "command", "command": "node \"/path/to/claude_hooks/clarify-ambiguous/clarify-ambiguous.ts\"" }
         ]
       }
     ]

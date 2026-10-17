@@ -31,13 +31,13 @@ CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS=15
 - `CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS` is the longest prompt, in words, that counts as vague when it names no file.
 
 ## Turn it on alone
-Paste the block from `hooks.json` into your `settings.json`. Replace `/path/to/claude_hooks` with the real path on your computer. The hook needs `bun`.
+Paste the block from `hooks.json` into your `settings.json`. Replace `/path/to/claude_hooks` with the real path on your computer.
 
 ## Turn it on through the dispatcher list
 Add this entry to the list that `CLAUDE_HOOKS_LIST` points to. Set `enabled` to `true`.
 
 ```ts
-{ event: "UserPromptSubmit", command: ["bun", `${import.meta.dirname}/../clarify-ambiguous/clarify-ambiguous.ts`], enabled: true },
+{ event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../clarify-ambiguous/clarify-ambiguous.ts`], enabled: true },
 ```
 
 Do not use both ways at the same time. Claude would get the note twice.

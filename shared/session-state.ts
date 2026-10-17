@@ -18,6 +18,7 @@ export type SessionState = {
   sittings?: Sitting[];
   ambiguity?: { count: number; lastFired: number };
   ponytailUltraInvoked?: boolean;
+  idleStateFiles?: string[];
 };
 
 export function getSessionStatePath(transcriptPathOrSessionId: string): string {

@@ -126,7 +126,7 @@ def make_project(project):
     tsconfig = {"compilerOptions": {"strict": True, "noEmit": True, "target": "es2022", "module": "nodenext"}, "include": ["*.ts"]}
     (project / "tsconfig.json").write_text(json.dumps(tsconfig, indent=2) + "\n")
     (project / ".gitignore").write_text("node_modules\n")
-    run(["bun", "add", "-d", "typescript"], cwd=project)
+    run(["npm", "install", "-D", "typescript"], cwd=project)
     run(["git", "add", "."], cwd=project)
     run(["git", "-c", "user.name=stranger", "-c", "user.email=stranger@example.com", "commit", "-q", "-m", "init"], cwd=project)
 
@@ -153,7 +153,7 @@ def build_bed(bed, config):
     clone = bed / "claude_hooks"
     bed.mkdir(parents=True, exist_ok=True)
     run(["git", "clone", "-q", str(REPO), str(clone)])
-    run(["bun", "install"], cwd=clone)
+    run(["npm", "install"], cwd=clone)
     (bed / "planning.md").write_text("A plan has a goal, steps, and a test for each step.\n")
     write_env(clone, bed, config)
     enable_hooks(clone)

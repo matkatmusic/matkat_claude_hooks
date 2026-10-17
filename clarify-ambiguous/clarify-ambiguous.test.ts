@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 

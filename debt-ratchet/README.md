@@ -25,7 +25,7 @@ The hook makes the style debt go down and not up. It saves the debt total of eac
 7. If eslint reformatted a file, the hook tells Claude not to undo it.
 8. Ledger files older than the age limit are removed.
 
-`eslint.config.js` has the rules and the `FUNCTION_VERBS` list. A function name must start with one of those verbs. The hook runs eslint from `claude_hooks/node_modules`. Run `bun install` in the `claude_hooks` folder first.
+`eslint.config.js` has the rules and the `FUNCTION_VERBS` list. A function name must start with one of those verbs. The hook runs eslint from `claude_hooks/node_modules`. Run `npm install` in the `claude_hooks` folder first.
 
 ## .env values
 

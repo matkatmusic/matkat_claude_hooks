@@ -173,7 +173,7 @@ function createProject(project: string): void {
   const tsconfig = { compilerOptions: { strict: true, noEmit: true, target: "es2022", module: "nodenext" }, include: ["*.ts"] };
   writeFileSync(path.join(project, "tsconfig.json"), JSON.stringify(tsconfig, null, 2) + "\n");
   writeFileSync(path.join(project, ".gitignore"), "node_modules\n");
-  executeCommand(["bun", "add", "-d", "typescript"], project);
+  executeCommand(["npm", "install", "-D", "typescript"], project);
   executeCommand(["git", "add", "."], project);
   executeCommand(["git", "-c", "user.name=stranger", "-c", "user.email=stranger@example.com", "commit", "-q", "-m", "init"], project);
 }
@@ -207,7 +207,7 @@ function buildBed(bed: string, config: string): void {
   const clone = path.join(bed, "claude_hooks");
   mkdirSync(bed, { recursive: true });
   executeCommand(["git", "clone", "-q", REPO, clone]);
-  executeCommand(["bun", "install"], clone);
+  executeCommand(["npm", "install"], clone);
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
   writeEnv(clone, bed, config);
   enableHooks(clone);

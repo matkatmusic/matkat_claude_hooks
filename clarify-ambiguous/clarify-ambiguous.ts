@@ -1,5 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // / <reference path="./hooks-globals.d.ts" /> UserPromptSubmit gate: flags ambiguous prompts. Tune knobs below; add "jdi" to opt out.
+import { readFileSync } from "node:fs";
 import { readEnvValue } from "../shared/env.ts";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
 
@@ -69,7 +70,8 @@ type Marker = { count: number; lastFired: number };
 // }
 
 if (import.meta.main) {
-  const raw = await Bun.stdin.text();
+  // const raw = await Bun.stdin.text();
+  const raw = readFileSync(0, "utf8");
   let input: { prompt?: string; session_id?: string; transcript_path?: string } = {};
   try {
     input = JSON.parse(raw);
