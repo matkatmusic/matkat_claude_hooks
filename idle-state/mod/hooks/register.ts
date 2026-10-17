@@ -1,4 +1,4 @@
-import type { Register, Hook } from 'claude-code';
+import type { Register, Hook, EngineInterface } from 'claude-code';
 
 const MS_PER_MINUTE = 60 * 1000;
 const IDLE_MINUTES = 55;
@@ -29,6 +29,25 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = ($, e, next) => {
     return next(e);
   return { drop: `The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFilePath}` };
 };
+
+async function sendStatePrompt($: EngineInterface) {
+  const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
+  statePrompt = `This chat is idle, and its cache expires soon.
+Reply with only a JSON object that describes the state of this chat for a fresh chat.
+Use the shape of this JSON template:
+
+${template}
+
+Rules for populating the template:
+- Do not use any tools.
+- Do not put the JSON in a code fence.
+- Replace each example value with real values.
+- Use an empty array when there is nothing to report for that key.
+- For \`runningPrograms\`, give the exact command line that started each program.
+- Keep each section under 150 words.`;
+  isWritingState = true;
+  void $.prompt.submit({ text: statePrompt });
+}
 
 const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) => {
   if (e.agentId !== undefined)
@@ -112,30 +131,26 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
     return next(e);
   }
   lastAnswerAt = await $.clock.now();
-  async function sendStatePrompt() {
+  async function sendStatePromptUnlessLate() {
     const lateMs = (await $.clock.now()) - lastAnswerAt - IDLE_MINUTES * MS_PER_MINUTE;
     if (lateMs > LATE_LIMIT_MINUTES * MS_PER_MINUTE)
       // computer went to sleep
       return;
-    const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
-    statePrompt = `This chat is idle, and its cache expires soon.
-Reply with only a JSON object that describes the state of this chat for a fresh chat.
-Use the shape of this JSON template:
-
-${template}
-
-Rules for populating the template:
-- Do not use any tools.
-- Do not put the JSON in a code fence.
-- Replace each example value with real values.
-- Use an empty array when there is nothing to report for that key.
-- For \`runningPrograms\`, give the exact command line that started each program.
-- Keep each section under 150 words.`;
-    isWritingState = true;
-    void $.prompt.submit({ text: statePrompt });
+    await sendStatePrompt($);
   }
-  idleTimer = $.clock.after(IDLE_MINUTES * MS_PER_MINUTE, sendStatePrompt);
+  idleTimer = $.clock.after(IDLE_MINUTES * MS_PER_MINUTE, sendStatePromptUnlessLate);
   return next(e);
+};
+
+const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
+  if (stateFilePath !== undefined)
+    return next(e);
+  idleTimer?.cancel();
+  function sendStatePromptNow() {
+    return sendStatePrompt($);
+  }
+  $.clock.after(0, sendStatePromptNow);
+  return { text: 'Writing the idle-state file before exit.' };
 };
 
 export const register: Register = on => {
@@ -149,4 +164,5 @@ export const register: Register = on => {
   on('session.end', clearState);
   on('prompt.submit', blockPromptAfterStateSaved);
   on('turn.complete', updateIdleStateOnTurnComplete);
+  on('command.run', { command: 'exit' }, writeIdleStateBeforeExit);
 };

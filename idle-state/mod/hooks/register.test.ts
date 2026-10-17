@@ -90,6 +90,49 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
   expect(result.drop).toContain(stateFile?.path)
 })
 
+test('typing exit writes the state file first, then exits', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  const submitted: string[] = []
+  const written: { path: string; text: string }[] = []
+  const commands: string[] = []
+  on('session.root', () => ({ value: '/work/my-project' }))
+  on('session.id', () => ({ value: 'abcdef1234567890' }))
+  on('fs.write', ($, e) => {
+    written.push(e)
+    return { value: undefined }
+  })
+  on('command.run', ($, e) => {
+    commands.push(e.command)
+    return { text: '' }
+  })
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('session.messages', () => ({
+    value: [
+      { role: 'user', text: `The idle-state plugin sent a message:\n${submitted[0]}`, toolUses: [] },
+      { role: 'assistant', text: JSON.stringify(STATE_OBJECT), toolUses: [] },
+    ],
+  }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => {
+    submitted.push(e.text)
+    return { text: e.text }
+  })
+
+  await $.command.run({ command: 'exit', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  await clock.settle()
+  expect(submitted).toHaveLength(1)
+  expect(submitted[0]).toContain(TEMPLATE_TEXT)
+  expect(commands).toEqual([])
+
+  await $.turn.complete(ANSWER)
+  await clock.settle()
+  expect(written).toHaveLength(2)
+  expect(written[1]?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/)
+  expect(commands).toEqual(['exit'])
+})
+
 test('aborted state turn writes no file and the next prompt is not dropped', async ($, on) => {
   // Idle chat sends the state prompt; an aborted turn writes no file, and the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
