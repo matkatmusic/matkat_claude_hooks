@@ -50,7 +50,6 @@ SESSION_ONE_ROWS = [
     (6, "plan-file-reminder", "Write a file plans/test-plan.md that says: step 1.", "Conform the plan you're editing to", "PostToolUse"),
     (7, "nudge-task-list", 'Reply with one sentence that has the words "starting on" in it, then stop.', "You are starting work on a task", "Stop"),
     (8, "unlisted-items", 'Reply with one line only: "next step: build the login page". Do not make any task.', "These items are not on the task list", "Stop"),
-    (9, "ask-dont-dump-issues", "Say hi. End your reply with: let me know if you want more.", "use AskUserQuestion to resolve them now", "Stop"),
 ]
 SESSION_TWO_ROWS = [
     (12, "typecheck-on-stop", 'Use the Write tool to create bad.ts with this one line: const x: number = "hello";', "error TS2322", "Stop"),

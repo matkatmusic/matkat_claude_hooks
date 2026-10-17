@@ -13,8 +13,6 @@ export type Sitting = {
 };
 
 export type SessionState = {
-  done?: number;
-  reminded?: number;
   sittings?: Sitting[];
   ambiguity?: { count: number; lastFired: number };
   ponytailUltraInvoked?: boolean;
@@ -28,12 +26,13 @@ export function getSessionStatePath(transcriptPathOrSessionId: string): string {
 }
 
 export function readSessionState(path: string): SessionState {
-  if (!existsSync(path))
+  const stateFileExists = existsSync(path);
+  if (!stateFileExists)
     return {};
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-// ponytail: no lock; hooks run one by one. A same-instant turn-done.ts write can lose one update.
+// ponytail: no lock; hooks run one by one.
 export function writeSessionState(path: string, state: SessionState): void {
   mkdirSync(dirname(path), { recursive: true });
   const temporaryPath = `${path}.${process.pid}.tmp`;

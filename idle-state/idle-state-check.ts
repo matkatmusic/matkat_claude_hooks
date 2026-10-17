@@ -2,7 +2,7 @@
 // Stop hook: on the first turn, blocks until the model read and named each idle-state file.
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { isPromptLine } from "../ask-dont-dump-issues/ask-dont-dump-issues.ts";
+import { isPromptLine } from "../shared/prompt-line.ts";
 import { readEnvValue } from "../shared/env.ts";
 import { getSessionStatePath, readSessionState } from "../shared/session-state.ts";
 import type { HookEntry } from "../dispatcher/hooks-list.ts";

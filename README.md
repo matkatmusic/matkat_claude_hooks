@@ -10,7 +10,6 @@ Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce
 
 | Folder | What it does |
 | --- | --- |
-| [ask-dont-dump-issues](ask-dont-dump-issues/README.md) | Blocks the stop once per reply. Claude must ask you about each open item. |
 | [block-bash-edits](block-bash-edits/README.md) | Stops Bash commands that write file content. Claude must use Edit or Write. |
 | [block-npm-test](block-npm-test/README.md) | Blocks test commands. Runs the tests in the background and points Claude to the result. |
 | [block-parent-edits](block-parent-edits/README.md) | Blocks file edits from the main session. A subagent must make them. |

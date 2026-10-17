@@ -42,10 +42,6 @@ export const HOOKS: HookEntry[] = [
   { event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../ponytail-ultra-nudge/ponytail-ultra-nudge.ts`], enabled: false },
   // flags ambiguous prompts and asks for one clarifying question; add "jdi" to opt out
   { event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../clarify-ambiguous/clarify-ambiguous.ts`], enabled: false },
-  // once per reply, blocks the stop until open items are resolved with AskUserQuestion or turn-done is run
-  { event: "Stop", command: ["node", `${import.meta.dirname}/../ask-dont-dump-issues/ask-dont-dump-issues.ts`], enabled: false },
-  // clears this session's done and reminded keys in its session state file
-  { event: "SessionEnd", command: ["node", `${import.meta.dirname}/../ask-dont-dump-issues/session-cleanup.ts`], enabled: false },
   // blocks the stop while tsc reports type errors, when a .ts file was edited this turn
   { event: "Stop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: false },
   { event: "SubagentStop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: false },

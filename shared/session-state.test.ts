@@ -27,15 +27,15 @@ test("writeSessionState creates the folder and the state round-trips through rea
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
   process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = `${home}/state`;
   const path = getSessionStatePath("some-session");
-  writeSessionState(path, { done: 123 });
-  assert.deepEqual(readSessionState(path), { done: 123 });
+  writeSessionState(path, { ponytailUltraInvoked: true });
+  assert.deepEqual(readSessionState(path), { ponytailUltraInvoked: true });
 });
 
 test("writeSessionState leaves only the final json file behind, no leftover tmp file", () => {
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
   process.env.CLAUDE_HOOKS_SESSION_STATE_DIR = `${home}/state`;
   const path = getSessionStatePath("atomic-session");
-  writeSessionState(path, { done: 42 });
+  writeSessionState(path, { ponytailUltraInvoked: true });
   assert.deepEqual(readdirSync(dirname(path)), ["atomic-session.json"]);
-  assert.deepEqual(readSessionState(path), { done: 42 });
+  assert.deepEqual(readSessionState(path), { ponytailUltraInvoked: true });
 });
