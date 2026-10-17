@@ -188,6 +188,8 @@ BUN_JSC_useTailCalls=0 bun tests/run_stranger.ts --bed /path/to/new-bed --config
 
 The test opens one tmux window named stranger-test. One pane shows PASS or FAIL, and the other pane shows each Claude run. If you run it inside tmux already, it splits your current window.
 
+Keep the tmux window at least 140 columns wide during the run. In a narrower window, Claude Code cuts the subagent status line short, and row 3 fails.
+
 The run takes about 15 minutes. It waits 1 minute for the idle-state row.
 
 ## License
