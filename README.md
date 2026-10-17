@@ -6,6 +6,29 @@ Repo: https://github.com/matkatmusic/matkat_claude_hooks
 
 Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce those rules in code, so Claude cannot skip them.
 
+## The hooks
+
+| Folder | What it does |
+| --- | --- |
+| [ask-dont-dump-issues](ask-dont-dump-issues/README.md) | Blocks the stop once per reply. Claude must ask you about each open item. |
+| [block-bash-edits](block-bash-edits/README.md) | Stops Bash commands that write file content. Claude must use Edit or Write. |
+| [block-npm-test](block-npm-test/README.md) | Blocks test commands. Runs the tests in the background and points Claude to the result. |
+| [block-parent-edits](block-parent-edits/README.md) | Blocks file edits from the main session. A subagent must make them. |
+| [check-task-list-id](check-task-list-id/README.md) | Warns at session start when `CLAUDE_CODE_TASK_LIST_ID` is not set. |
+| [clarify-ambiguous](clarify-ambiguous/README.md) | Makes Claude ask one question when your prompt is vague. |
+| [debt-ratchet](debt-ratchet/README.md) | Runs eslint on edited `.ts` files. Blocks the stop unless the style debt dropped. |
+| [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files at session start. |
+| [nudge-task-list](nudge-task-list/README.md) | Blocks the stop when work starts without a task list. |
+| [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
+| [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |
+| [status-line](status-line/README.md) | Shows model, context, turns, tokens, and usage limits under the prompt. |
+| [typecheck-on-stop](typecheck-on-stop/README.md) | Blocks the stop while the TypeScript checker reports errors. |
+| [unlisted-items](unlisted-items/README.md) | Blocks the stop when named work is not on the task list. |
+
+Each hook lives in its own folder with its own README. One dispatcher script runs the hooks you turn on.
+
+Other folders: `dispatcher/` holds the dispatcher and the hook list. `shared/` holds code that the hooks use. `hooks/` holds the plugin `hooks.json`.
+
 ## Install
 
 Requirements:
@@ -40,29 +63,6 @@ The file `hooks/hooks.json` (or a `hooks` block in `settings.json`) sends every 
 This lets you turn single hooks on and off. It also lets you edit a hook script while Claude runs. The list and the scripts load again on every event, so you do not restart Claude.
 
 ## More details
-
-### The hooks
-
-| Folder | What it does |
-| --- | --- |
-| [ask-dont-dump-issues](ask-dont-dump-issues/README.md) | Blocks the stop once per reply. Claude must ask you about each open item. |
-| [block-bash-edits](block-bash-edits/README.md) | Stops Bash commands that write file content. Claude must use Edit or Write. |
-| [block-npm-test](block-npm-test/README.md) | Blocks test commands. Runs the tests in the background and points Claude to the result. |
-| [block-parent-edits](block-parent-edits/README.md) | Blocks file edits from the main session. A subagent must make them. |
-| [check-task-list-id](check-task-list-id/README.md) | Warns at session start when `CLAUDE_CODE_TASK_LIST_ID` is not set. |
-| [clarify-ambiguous](clarify-ambiguous/README.md) | Makes Claude ask one question when your prompt is vague. |
-| [debt-ratchet](debt-ratchet/README.md) | Runs eslint on edited `.ts` files. Blocks the stop unless the style debt dropped. |
-| [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files at session start. |
-| [nudge-task-list](nudge-task-list/README.md) | Blocks the stop when work starts without a task list. |
-| [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
-| [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |
-| [status-line](status-line/README.md) | Shows model, context, turns, tokens, and usage limits under the prompt. |
-| [typecheck-on-stop](typecheck-on-stop/README.md) | Blocks the stop while the TypeScript checker reports errors. |
-| [unlisted-items](unlisted-items/README.md) | Blocks the stop when named work is not on the task list. |
-
-Each hook lives in its own folder with its own README. One dispatcher script runs the hooks you turn on.
-
-Other folders: `dispatcher/` holds the dispatcher and the hook list. `shared/` holds code that the hooks use. `hooks/` holds the plugin `hooks.json`.
 
 ### Setup notes
 
