@@ -81,6 +81,18 @@ A relative path is read from the repo root, not from your current folder. `dispa
 
 A value that is already set in the shell wins over the value in `.env`.
 
+## Where a hook reads its values
+
+Every hook reads its values from `.env` in the repo root. The dispatcher loads `.env` on every hook event. A change in `.env` takes effect on the next event. You do not restart anything.
+
+An entry in your list file can carry an `env` object. Those values win over `.env` for that one hook only:
+
+```ts
+{ event: "Stop", command: ["node", "/path/to/typecheck-on-stop.ts"], env: { CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "40" }, enabled: true },
+```
+
+The idle-state mod reads the Claude process env. Claude sets that env when it starts. The mod does not pick up `.env` changes live.
+
 ## Send every event to dispatch.ts from settings.json
 
 You can skip the plugin. Paste into `~/.claude/settings.json` (all projects) or `<project>/.claude/settings.json` (one project). When `CLAUDE_CONFIG_DIR` is set, use the `settings.json` inside that folder. Every `settings.json` step below uses this rule.
