@@ -4,9 +4,20 @@ import { getSessionStatePath, readSessionState, writeSessionState } from "../sha
 // Stop gate: sends the reminder once per reply, then blocks until the agent writes "done <epoch>" after it.
 
 export const REMINDER =
-  'If you reported issues, open decisions, open TaskList items, asked a question (?) and gave choices, or wrote "say the word"-style items at the end of your turn, use AskUserQuestion to resolve them now. ' +
-  'A line like "Task #20 is still open." at the end of your turn drops an issue in front of the user and ends your turn. Do not write it. ' +
-  `If you left no open items, run: \`node "${import.meta.dirname}/turn-done.ts"\` and then end your turn. Do not repeat what you just wrote prior to running the command.`;
+  'If you reported any of the following to the user at the end of your turn:' +
+  '\n- issues' +
+  '\n- open decisions' +
+  '\n- open TaskList items' +
+  '\n- asked a question (?) (and gave choices)' +
+  '\n- wrote "say the word"-style items' +
+  '\n- wrote "not checked" or similar prose' +
+  '\nuse AskUserQuestion to resolve them now.' +
+  '\nExamples of a dropped issue at the end of your turn:' +
+  '\n- "Task #20 is still open."' + 
+  '\n- "Not checked: the context-exit warning"' +
+  //uses ` instead of ' to correctly unwrap the real turn-done.ts path. 
+  `\nIf you left no open items, run: \`node "${import.meta.dirname}/turn-done.ts"\` and then end your turn.` +
+  '\nDo not repeat what you just wrote prior to, or after, running the command.';
 
 // jfred's isGenuineUserPrompt: hook feedback (isMeta) and tool results are not prompts.
 export function isPromptLine(entry: {
