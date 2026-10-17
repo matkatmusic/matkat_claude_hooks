@@ -1,4 +1,5 @@
-import { readEnvValue } from "../shared/env.ts";
+// import { readEnvValue } from "../shared/env.ts";
+import { ANNOYANCE_ANCHORS } from "./status_line_config.ts";
 
 // Six steps of "how much will a forced break sting": hue falls, saturation rises
 export const ANNOYANCE_COLORS = [
@@ -10,13 +11,7 @@ export const ANNOYANCE_COLORS = [
   "\x1b[38;5;196m",
 ];
 
-// Usage % at which levels 2-6 begin, per minutes until reset. Longer wait, lower bar.
-function readAnnoyanceAnchors(): [number, number[]][] {
-  return JSON.parse(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_ANNOYANCE_ANCHORS"));
-}
-
 function computeAnnoyanceThresholds(minutes: number): number[] {
-  const ANNOYANCE_ANCHORS = readAnnoyanceAnchors();
   const longestWaitMinutes = ANNOYANCE_ANCHORS[ANNOYANCE_ANCHORS.length - 1][0];
   const clamped = Math.min(Math.max(minutes, 0), longestWaitMinutes);
   // const upper = ANNOYANCE_ANCHORS.findIndex(([at]) => at >= clamped);

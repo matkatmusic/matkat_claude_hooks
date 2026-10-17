@@ -130,6 +130,16 @@ test("exit 1 with stderr shows up in systemMessage", () => {
   assert.deepEqual(JSON.parse(result), { systemMessage: "[hook oops.mjs failed, exit 1] oops" });
 });
 
+test("entry env wins for that hook", () => {
+  const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
+  writeFileSync(`${dir}/env.mjs`, `console.log(JSON.stringify({ systemMessage: process.env.CLAUDE_HOOKS_TEST_VALUE }));`);
+  const hooks: HookEntry[] = [
+    { event: "Stop", command: ["node", `${dir}/env.mjs`], env: { CLAUDE_HOOKS_TEST_VALUE: "from-entry" }, enabled: true },
+  ];
+  const result = executeHooks({ hook_event_name: "Stop", cwd: dir }, hooks);
+  assert.deepEqual(JSON.parse(result), { systemMessage: "from-entry" });
+});
+
 test("Stop with nothing to say returns empty string", () => {
   const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
   writeFileSync(`${dir}/quiet.mjs`, `process.exit(0);`);

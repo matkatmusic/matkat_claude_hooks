@@ -3,6 +3,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { readEnvValue } from "../shared/env.ts";
 
+const IDLE_STATE_FOLDER_NAME = ".idleState";
+
 export function buildStateContext(folder: string, nowMs: number): string {
   const windowMs = Number(readEnvValue("CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS"));
   const hasFolder = existsSync(folder);
@@ -28,7 +30,8 @@ export function buildStateContext(folder: string, nowMs: number): string {
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  const context = buildStateContext(`${input.cwd}/${readEnvValue("CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME")}`, Date.now());
+  // const context = buildStateContext(`${input.cwd}/${readEnvValue("CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME")}`, Date.now());
+  const context = buildStateContext(`${input.cwd}/${IDLE_STATE_FOLDER_NAME}`, Date.now());
   if (context !== "")
     console.log(context);
 }

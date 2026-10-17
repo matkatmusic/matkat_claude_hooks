@@ -158,6 +158,13 @@ test("main session: a model attachment after the last assistant entry decides th
   assert.match(output, /"permissionDecision":"deny"/);
 });
 
+test("main session on claude-fable-5-1, Write to a .idleState folder: allowed", () => {
+  const transcript_path = writeTranscript("claude-fable-5-1");
+  const file_path = `${tmpdir()}/.idleState/x.json`;
+  const output = runHook({ session_id: "test-session", transcript_path, tool_name: "Write", tool_input: { file_path, content: "{}" } });
+  assert.equal(output, "");
+});
+
 test("main session on claude-opus-4-7, Edit tool: allowed", () => {
   const transcript_path = writeTranscript("claude-opus-4-7");
   const output = runHook({ transcript_path, tool_name: "Edit", tool_input: {} });

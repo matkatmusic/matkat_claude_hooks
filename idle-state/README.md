@@ -15,7 +15,7 @@ A fresh chat should continue the old work without loss. The state file keeps the
 ## How it works
 1. After each reply, the mod starts a timer. A new prompt cancels the timer.
 2. If the timer ends, the mod checks that it is not very late. A late timer means the computer slept and the cache is already gone. The mod does nothing in that case.
-3. The mod sends a prompt. The prompt asks for a JSON object that follows `mod/hooks/state_file_template.json`.
+3. The mod sends a prompt. The prompt asks for a JSON object that follows `shared/idle-state-template.json`.
 4. The mod saves the answer in the state folder of the project. It writes a `.gitignore` there so git ignores the files.
 5. The mod checks which listed programs still run, and adds the process numbers to the file.
 6. The mod runs `exit`. If programs still run, Claude asks what to do with them. The mod pushes the key for "continue" after a short delay. This uses `python3` and the terminal device, so it works on macOS and Linux only.
@@ -27,23 +27,11 @@ Add these lines to `.env`. A missing value makes the reader throw an error.
 
 ```
 CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS=86400000
-CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
-```
-
-The mod cannot read `.env`. It runs in a sandbox with no file system or Node. It reads these values from the environment of the Claude process. Set them in your shell, or in the `env` block of `settings.json`, before you start Claude. A missing value makes the mod throw an error.
-
-```
-CLAUDE_HOOKS_IDLE_STATE_IDLE_MS=3300000
-CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS=180000
-CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS=1000
-# CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
 ```
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.
-- `CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME`: the folder in the project that holds the state files. The reader and the mod must use the same name.
-- `CLAUDE_HOOKS_IDLE_STATE_IDLE_MS`: how long the chat must sit idle before the mod writes the state file.
-- `CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS`: a timer later than this means the computer slept, so the mod does nothing.
-- `CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS`: the wait before the mod pushes the key that answers the background work question.
+The constant `IDLE_STATE_FOLDER_NAME` (`.idleState`) at the top of `idle-state-reader.ts` and `mod/hooks/register.ts` names the state folder. Both files must use the same name.
+The constants `IDLE_MS`, `LATE_LIMIT_MS`, and `EXIT_KEY_DELAY_MS` at the top of `mod/hooks/register.ts` set the idle time, the sleep limit, and the key delay.
 
 ## Turn it on
 Turn on the reader alone: paste the block from `hooks.json` into your `settings.json`. Replace `/path/to/claude_hooks` with the real path on your computer.

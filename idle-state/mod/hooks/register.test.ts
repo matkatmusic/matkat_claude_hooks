@@ -1,6 +1,7 @@
 import { test, expect, mock } from 'claude-code/testing'
 
-const IDLE_MS = 2 * 60 * 1000
+// const IDLE_MS = 2 * 60 * 1000
+const IDLE_MS = 3300000
 const STATE_OBJECT = {
   work: ['built the idle-state mod'],
   done: ['tests pass; not committed'],
@@ -20,10 +21,10 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
+    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
+    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
+    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
+    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const submitted: string[] = []
   const written: { path: string; text: string }[] = []
@@ -94,10 +95,10 @@ test('aborted state turn writes no file and the next prompt is not dropped', asy
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
+    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
+    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
+    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
+    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const written: { path: string; text: string }[] = []
   const commands: string[] = []
@@ -132,10 +133,10 @@ test('user typing after the state prompt writes no file and does not parse the r
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
+    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
+    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
+    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
+    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const submitted: string[] = []
   const written: { path: string; text: string }[] = []
@@ -173,10 +174,10 @@ test('session end after a state write stops dropping prompts', async ($, on) => 
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
+    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
+    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
+    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
+    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   on('session.root', () => ({ value: '/work/my-project' }))
   on('session.id', () => ({ value: 'abcdef1234567890' }))

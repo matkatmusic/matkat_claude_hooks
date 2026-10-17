@@ -3,6 +3,7 @@ export type HookEntry = {
   matcher?: string;
   command: string[];
   timeout?: number;
+  env?: Record<string, string>;
   enabled: boolean;
 };
 

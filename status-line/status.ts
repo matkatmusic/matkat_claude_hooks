@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Claude Code status line. Docs: code.claude.com/docs/en/statusline
 import { existsSync, readFileSync } from "node:fs";
-import { readEnvValue } from "../shared/env.ts";
+// import { readEnvValue } from "../shared/env.ts";
 import { EFFORT_ABBREVIATION, formatShortModelName } from "./statusShared.ts";
 import { CYAN, DASH, GREEN, RED, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
 import { resetColor } from "./statusAnnoyance.ts";
 import { computeWeeklyBudget, computeDayOfWeek, formatBar, formatCountdown, formatTokens, computeSecondsUntilNextDay, computeSecondsUntilReset, formatWeeklyResetSuffix } from "./statusFormat.ts";
 import { countTurns, getGitBranch, getSessionTokens, readSittings } from "./statusRead.ts";
 import type { StatusInput } from "./statusRead.ts";
+import { CONTEXT_ORANGE_AT, CONTEXT_RED_AT, CONTEXT_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT, DAY_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT, FIVE_HOUR_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT, TOKENS_YELLOW_AT, TURNS_ORANGE_AT, TURNS_RED_AT, TURNS_YELLOW_AT } from "./status_line_config.ts";
 
 export { CYAN, DASH, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
 export { ANNOYANCE_COLORS, computeAnnoyanceLevel, resetColor } from "./statusAnnoyance.ts";
@@ -69,12 +70,12 @@ if (import.meta.main) {
     weekBudget === undefined
       ? DASH
       : formatOrDash(sevenDay, (used) => `${selectWeeklyUsageColor(used, weekBudget)}${Math.floor(used)}%${RESET}`);
-  const formatTokenText = (n: number) => `${selectColor(n, Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TOKENS_YELLOW_AT")), Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TOKENS_ORANGE_AT")), Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TOKENS_RED_AT")))}${formatTokens(n)}${RESET}`;
+  const formatTokenText = (n: number) => `${selectColor(n, TOKENS_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT)}${formatTokens(n)}${RESET}`;
   const barColor = selectColor(
     pct,
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_CONTEXT_YELLOW_AT")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_CONTEXT_ORANGE_AT")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_CONTEXT_RED_AT")),
+    CONTEXT_YELLOW_AT,
+    CONTEXT_ORANGE_AT,
+    CONTEXT_RED_AT,
   );
   const branchName = getGitBranch(projectDir);
 
@@ -87,18 +88,15 @@ if (import.meta.main) {
   const branch = branchName ? `🌿 ${branchName}` : "";
   const turnsColor = selectColor(
     turnCount,
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TURNS_YELLOW_AT")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TURNS_ORANGE_AT")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_TURNS_RED_AT")),
+    TURNS_YELLOW_AT,
+    TURNS_ORANGE_AT,
+    TURNS_RED_AT,
   );
   const turns = `🔄 ${turnsColor}${turnCount} turns${RESET}`;
   const contextBar = `${barColor}${formatBar(pct)}${RESET} ${barColor}${pct}%${RESET}`;
   const weekUsage = `Week:${spentOfWeek} (${formatOrDash(weekBudget, (budget) => `${selectBudgetColor(sevenDay, budget)}${Math.round(budget)}%${RESET}`)})`;
-  const dayYellowAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_DAY_YELLOW_AT"));
-  const dayOrangeAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_DAY_ORANGE_AT"));
-  const dayRedAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_DAY_RED_AT"));
   const dayCount =
-    `Day:${formatOrDash(weekDay, (day) => `${selectColor(day, dayYellowAt, dayOrangeAt, dayRedAt)}${day}${RESET}`)}/${GREEN}7${RESET}` +
+    `Day:${formatOrDash(weekDay, (day) => `${selectColor(day, DAY_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT)}${day}${RESET}`)}/${GREEN}7${RESET}` +
     nextDaySuffix +
     (weekDay === undefined ? "" : formatWeeklyResetSuffix(weekDay, weeklySecondsLeft));
   const tokensInfo = `Tokens In:${formatOrDash(tokensIn, formatTokenText)} Out:${formatOrDash(tokensOut, formatTokenText)}`;
@@ -107,11 +105,8 @@ if (import.meta.main) {
   const cacheTimer = cacheWarm
     ? `Prompt cache [resets in: ${GREEN}${formatCountdown(cacheSecondsLeft)}${RESET}]`
     : `Prompt cache [${RED}Expired${RESET}]`;
-  const fiveHourYellowAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_FIVE_HOUR_YELLOW_AT"));
-  const fiveHourOrangeAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_FIVE_HOUR_ORANGE_AT"));
-  const fiveHourRedAt = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_FIVE_HOUR_RED_AT"));
   const fiveHrUsage =
-    `5hr:${formatOrDash(fiveHour, (used) => `${selectColor(used, fiveHourYellowAt, fiveHourOrangeAt, fiveHourRedAt)}${Math.floor(used)}%${RESET}`)} ` +
+    `5hr:${formatOrDash(fiveHour, (used) => `${selectColor(used, FIVE_HOUR_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT)}${Math.floor(used)}%${RESET}`)} ` +
     `(Resets in: ${formatOrDash(untilReset, (s) => `${resetColor(Math.floor(s / 60), fiveHour ?? 0)}${formatCountdown(s)}${RESET}`)})`;
 
   console.log(joinLine(model, folder, branch));

@@ -1,5 +1,9 @@
 import type { Register } from 'claude-code';
 
+const IDLE_MS = 3300000;
+const LATE_LIMIT_MS = 3480000;
+const EXIT_KEY_DELAY_MS = 1000;
+const IDLE_STATE_FOLDER_NAME = '.idleState';
 const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/tty', os.O_RDWR)\nfor key in b'2\\r':\n    fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))";
 
 /*
@@ -49,9 +53,10 @@ export const register: Register = on => {
       const d = new Date(await $.clock.now());
       const stamp = `${d.getFullYear()}-${formatTwoDigits(d.getMonth() + 1)}-${formatTwoDigits(d.getDate())}-${formatTwoDigits(d.getHours())}${formatTwoDigits(d.getMinutes())}`;
       const root = await $.session.root();
-      const folderName = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME');
-      if (folderName === undefined)
-        throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME in the Claude process environment');
+      // const folderName = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME');
+      // if (folderName === undefined)
+      //   throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME in the Claude process environment');
+      const folderName = IDLE_STATE_FOLDER_NAME;
       // const projectName = root.split('/').at(-1);
       const sessionId = await $.session.id();
       // stateFilePath = `${await $.env.get('HOME')}/.claude/session-states/${projectName}/${stamp}-${sessionId.slice(0, 8)}.md`;
@@ -107,9 +112,6 @@ export const register: Register = on => {
       stateFilePath = path;
       void $.command.run({ command: 'exit' });
       if (programsAreRunning) {
-        const keyDelayText = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS');
-        if (keyDelayText === undefined)
-          throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS in the Claude process environment');
         /********
         * if background programs are running in the session, the exit command spawns a "Background work is running" with choices for the user.
         * we want to automatically select the second choice, which corresponds to continuing with background work and not killing those tasks, because we're killing this session because the cache expired and telling the user to start another session.
@@ -120,7 +122,7 @@ export const register: Register = on => {
         * for key in b'2\\r':
         *   fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))
         ********/
-        $.clock.after(Number(keyDelayText), async () => {
+        $.clock.after(EXIT_KEY_DELAY_MS, async () => {
           const pushed = await $.process.run(['python3', '-I', '-c', PUSH_KEYS_SCRIPT]);
           if (pushed.exitCode !== 0)
             throw new Error(`idle-state: key push failed: ${pushed.stderr}`);
@@ -128,19 +130,12 @@ export const register: Register = on => {
       }
       return next(e);
     }
-    const idleMsText = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_IDLE_MS');
-    if (idleMsText === undefined)
-      throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_IDLE_MS in the Claude process environment');
-    const idleMs = Number(idleMsText);
     lastAnswerAt = await $.clock.now();
-    idleTimer = $.clock.after(idleMs, async () => {
-      const lateLimitText = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS');
-      if (lateLimitText === undefined)
-        throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS in the Claude process environment');
-      const lateMs = (await $.clock.now()) - lastAnswerAt - idleMs;
-      if (lateMs > Number(lateLimitText))
+    idleTimer = $.clock.after(IDLE_MS, async () => {
+      const lateMs = (await $.clock.now()) - lastAnswerAt - IDLE_MS;
+      if (lateMs > LATE_LIMIT_MS)
         return;
-      const template = await $.fs.read(`${$.plugin.root}/hooks/state_file_template.json`);
+      const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
       statePrompt = `This chat is idle, and its cache expires soon. Reply with only a JSON object that describes the state of this chat for a fresh chat. Do not use any tools. Do not put the JSON in a code fence.
 Use the shape of this template: ${template}
 Replace each example value with real values. Use an empty array when there is nothing. For runningPrograms, give the exact command line that started each program. Keep each section under 150 words.`;

@@ -118,6 +118,9 @@ if (import.meta.main) {
   let blocked = toolName === "Edit" || toolName === "Write" || toolName === "NotebookEdit";
   if (toolName === "Bash")
     blocked = isBashCommandBlocked(input.tool_input?.command ?? "");
+  const isIdleStateFile = (toolName === "Write" || toolName === "Edit") && String(input.tool_input?.file_path ?? "").includes("/.idleState/");
+  if (isIdleStateFile)
+    blocked = false;
 
   if (blocked) {
     let finalDenyReason = denyReason;

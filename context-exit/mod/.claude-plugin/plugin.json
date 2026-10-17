@@ -1,0 +1,5 @@
+{
+  "name": "context-exit",
+  "version": "0.1.0",
+  "description": "Shows a message once when context use reaches a set percent"
+}

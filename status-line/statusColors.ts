@@ -1,4 +1,5 @@
-import { readEnvValue } from "../shared/env.ts";
+// import { readEnvValue } from "../shared/env.ts";
+import { WEEKLY_ORANGE_POINTS_LEFT, WEEKLY_RED_POINTS_LEFT, WEEKLY_YELLOW_POINTS_LEFT } from "./status_line_config.ts";
 
 export const CYAN ="\x1b[36m";
 export const GREEN = "\x1b[32m";
@@ -27,11 +28,11 @@ export function selectColor(value: number, yellowAt: number, orangeAt: number, r
 // Loudness tracks the points left before the day's budget, not the fraction of it spent
 export function selectWeeklyUsageColor(usedPercent: number, budgetPercent: number): string {
   const pointsLeft = budgetPercent - usedPercent;
-  if (pointsLeft < Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RED_POINTS_LEFT")))
+  if (pointsLeft < WEEKLY_RED_POINTS_LEFT)
     return RED;
-  if (pointsLeft < Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_ORANGE_POINTS_LEFT")))
+  if (pointsLeft < WEEKLY_ORANGE_POINTS_LEFT)
     return ORANGE;
-  if (pointsLeft < Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_YELLOW_POINTS_LEFT")))
+  if (pointsLeft < WEEKLY_YELLOW_POINTS_LEFT)
     return YELLOW;
   return GREEN;
 }

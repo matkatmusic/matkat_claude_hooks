@@ -55,7 +55,7 @@ export function executeHooks(input: any, hooks: HookEntry[]): string {
       input: JSON.stringify(currentInput),
       encoding: "utf8",
       timeout: timeoutSeconds * 1000,
-      env: process.env,
+      env: { ...process.env, ...hook.env },
       cwd,
     });
     if (result.error) {
