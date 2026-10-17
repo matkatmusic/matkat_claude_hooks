@@ -27,17 +27,10 @@ Add these lines to `.env`. A missing value makes the reader throw an error.
 
 ```
 CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS=86400000
-CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
-```
-
-The mod cannot read `.env`. It runs in a sandbox with no file system or Node. It reads these values from the environment of the Claude process. Set them in your shell, or in the `env` block of `settings.json`, before you start Claude. A missing value makes the mod throw an error.
-
-```
-# CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
 ```
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.
-- `CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME`: the folder in the project that holds the state files. The reader and the mod must use the same name.
+The constant `IDLE_STATE_FOLDER_NAME` (`.idleState`) at the top of `idle-state-reader.ts` and `mod/hooks/register.ts` names the state folder. Both files must use the same name.
 The constants `IDLE_MS`, `LATE_LIMIT_MS`, and `EXIT_KEY_DELAY_MS` at the top of `mod/hooks/register.ts` set the idle time, the sleep limit, and the key delay.
 
 ## Turn it on

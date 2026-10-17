@@ -3,6 +3,7 @@ import type { Register } from 'claude-code';
 const IDLE_MS = 3300000;
 const LATE_LIMIT_MS = 3480000;
 const EXIT_KEY_DELAY_MS = 1000;
+const IDLE_STATE_FOLDER_NAME = '.idleState';
 const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/tty', os.O_RDWR)\nfor key in b'2\\r':\n    fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))";
 
 /*
@@ -52,9 +53,10 @@ export const register: Register = on => {
       const d = new Date(await $.clock.now());
       const stamp = `${d.getFullYear()}-${formatTwoDigits(d.getMonth() + 1)}-${formatTwoDigits(d.getDate())}-${formatTwoDigits(d.getHours())}${formatTwoDigits(d.getMinutes())}`;
       const root = await $.session.root();
-      const folderName = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME');
-      if (folderName === undefined)
-        throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME in the Claude process environment');
+      // const folderName = await $.env.get('CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME');
+      // if (folderName === undefined)
+      //   throw new Error('idle-state: set CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME in the Claude process environment');
+      const folderName = IDLE_STATE_FOLDER_NAME;
       // const projectName = root.split('/').at(-1);
       const sessionId = await $.session.id();
       // stateFilePath = `${await $.env.get('HOME')}/.claude/session-states/${projectName}/${stamp}-${sessionId.slice(0, 8)}.md`;
