@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import { strict as assert } from "node:assert";
 
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RED_POINTS_LEFT = "2";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_ORANGE_POINTS_LEFT = "5";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_YELLOW_POINTS_LEFT = "8";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_SHOW_HOURS = "12";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_YELLOW_MINUTES = "180";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_ORANGE_MINUTES = "360";
-process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_RED_MINUTES = "540";
-process.env.CLAUDE_HOOKS_STATUS_LINE_ANNOYANCE_ANCHORS = "[[0,[95,99,102,102,102]],[20,[85,95,98,102,102]],[45,[70,74,78,82,90]],[80,[66,72,78,82,90]],[150,[58,64,70,74,82]]]";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RED_POINTS_LEFT = "2";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_ORANGE_POINTS_LEFT = "5";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_YELLOW_POINTS_LEFT = "8";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_SHOW_HOURS = "12";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_YELLOW_MINUTES = "180";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_ORANGE_MINUTES = "360";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_RED_MINUTES = "540";
+// process.env.CLAUDE_HOOKS_STATUS_LINE_ANNOYANCE_ANCHORS = "[[0,[95,99,102,102,102]],[20,[85,95,98,102,102]],[45,[70,74,78,82,90]],[80,[66,72,78,82,90]],[150,[58,64,70,74,82]]]";
 const { ANNOYANCE_COLORS, DASH, computeAnnoyanceLevel, formatBar, selectBudgetColor, formatCountdown, countTurns, computeDayOfWeek, formatTokens, formatOrDash, selectColor, resetColor, computeSecondsUntilNextDay, computeSecondsUntilReset, getSessionTokens, computeWeeklyBudget, formatWeeklyResetSuffix, selectWeeklyUsageColor } = await import("./status.ts");
 
 const GREEN = "\x1b[32m", YELLOW = "\x1b[33m", ORANGE = "\x1b[38;5;208m", RED = "\x1b[31m";

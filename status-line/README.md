@@ -31,15 +31,7 @@ The session state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR
 | --- | --- |
 | `CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT` | The folder where workflow agents write their files. |
 | `CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS` | Days to keep a session state file. |
-| `CLAUDE_HOOKS_STATUS_LINE_CONTEXT_YELLOW_AT`, `_ORANGE_AT`, `_RED_AT` | Context percents where the color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_TURNS_YELLOW_AT`, `_ORANGE_AT`, `_RED_AT` | Turn counts where the color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_TOKENS_YELLOW_AT`, `_ORANGE_AT`, `_RED_AT` | Token counts where the color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_FIVE_HOUR_YELLOW_AT`, `_ORANGE_AT`, `_RED_AT` | Five hour limit percents where the color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_DAY_YELLOW_AT`, `_ORANGE_AT`, `_RED_AT` | Day numbers where the color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_WEEKLY_YELLOW_POINTS_LEFT`, `_ORANGE_POINTS_LEFT`, `_RED_POINTS_LEFT` | Points left in the day budget where the week color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_SHOW_HOURS` | On day 7, show the reset timer when less than this many hours remain. |
-| `CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_YELLOW_MINUTES`, `_ORANGE_MINUTES`, `_RED_MINUTES` | Minutes to the week reset where the timer color changes. |
-| `CLAUDE_HOOKS_STATUS_LINE_ANNOYANCE_ANCHORS` | JSON table for the five hour reset timer color. |
+The color thresholds are constants in `status_line_config.ts`.
 
 Every name needs a value in `.env`. A missing name makes the hook stop with an error.
 

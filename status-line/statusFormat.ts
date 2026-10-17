@@ -1,5 +1,6 @@
 import { RESET, selectColor } from "./statusColors.ts";
-import { readEnvValue } from "../shared/env.ts";
+// import { readEnvValue } from "../shared/env.ts";
+import { WEEKLY_RESET_ORANGE_MINUTES, WEEKLY_RESET_RED_MINUTES, WEEKLY_RESET_SHOW_HOURS, WEEKLY_RESET_YELLOW_MINUTES } from "./status_line_config.ts";
 
 export function formatTokens(n: number): string {
   if (n >= 1e6)
@@ -51,13 +52,13 @@ export function formatWeeklyResetSuffix(day: number, secondsLeft: number): strin
     return "";
   if (secondsLeft <= 0)
     return "";
-  if (secondsLeft > Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_SHOW_HOURS")) * 3600)
+  if (secondsLeft > WEEKLY_RESET_SHOW_HOURS * 3600)
     return "";
   const color = selectColor(
     Math.floor(secondsLeft / 60),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_YELLOW_MINUTES")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_ORANGE_MINUTES")),
-    Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_WEEKLY_RESET_RED_MINUTES")),
+    WEEKLY_RESET_YELLOW_MINUTES,
+    WEEKLY_RESET_ORANGE_MINUTES,
+    WEEKLY_RESET_RED_MINUTES,
   );
   return ` (Resets in: ${color}${formatCountdown(secondsLeft)}${RESET})`;
 }
