@@ -140,7 +140,7 @@ export const register: Register = on => {
       const lateMs = (await $.clock.now()) - lastAnswerAt - idleMs;
       if (lateMs > Number(lateLimitText))
         return;
-      const template = await $.fs.read(`${$.plugin.root}/hooks/state_file_template.json`);
+      const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
       statePrompt = `This chat is idle, and its cache expires soon. Reply with only a JSON object that describes the state of this chat for a fresh chat. Do not use any tools. Do not put the JSON in a code fence.
 Use the shape of this template: ${template}
 Replace each example value with real values. Use an empty array when there is nothing. For runningPrograms, give the exact command line that started each program. Keep each section under 150 words.`;

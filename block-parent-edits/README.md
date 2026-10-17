@@ -6,6 +6,8 @@ It runs before every Edit, Write, NotebookEdit, and Bash tool call. If the main 
 
 For Bash, the hook blocks only commands that change files. It blocks redirects to a file, heredocs, `cp`, `mv`, `rm`, `mkdir`, `touch`, `chmod`, `sd`, `sed -i`, `tee`, and `-o <file>` flags. It lets `ls`, `rg -o`, `grep -o`, and `>/dev/null` pass.
 
+Writes under a `.idleState/` folder always pass, so the handoff-state skill can save its file.
+
 The hook also blocks a subagent when the variable `CLAUDE_CODE_SUBAGENT_MODEL` names a Fable model.
 
 ## The problem it solves

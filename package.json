@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test \"!(tests|node_modules|idle-state)/**/*.test.ts\"",
-    "test:mods": "~/.local/bin/claude plugin test idle-state/mod"
+    "test": "node --test \"!(tests|node_modules|idle-state|context-exit)/**/*.test.ts\"",
+    "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod"
   }
 }

@@ -15,7 +15,7 @@ A fresh chat should continue the old work without loss. The state file keeps the
 ## How it works
 1. After each reply, the mod starts a timer. A new prompt cancels the timer.
 2. If the timer ends, the mod checks that it is not very late. A late timer means the computer slept and the cache is already gone. The mod does nothing in that case.
-3. The mod sends a prompt. The prompt asks for a JSON object that follows `mod/hooks/state_file_template.json`.
+3. The mod sends a prompt. The prompt asks for a JSON object that follows `shared/idle-state-template.json`.
 4. The mod saves the answer in the state folder of the project. It writes a `.gitignore` there so git ignores the files.
 5. The mod checks which listed programs still run, and adds the process numbers to the file.
 6. The mod runs `exit`. If programs still run, Claude asks what to do with them. The mod pushes the key for "continue" after a short delay. This uses `python3` and the terminal device, so it works on macOS and Linux only.
