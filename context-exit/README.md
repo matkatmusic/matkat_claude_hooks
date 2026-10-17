@@ -6,13 +6,7 @@ The mod watches how full the context is. After each reply, it checks the percent
 The mod does not exit the chat. You decide.
 
 ## Set the value
-The mod cannot read `.env`. It reads the environment of the Claude process. Set the value in your shell, or in the `env` block of `settings.json`, before you start Claude. A missing value makes the mod throw an error.
-
-```
-CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT=30
-```
-
-- `CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT`: the context percent where the mod shows the message.
+The constant `LIMIT_PERCENT` at the top of `mod/hooks/register.ts` sets the context percent where the mod shows the message.
 
 ## Turn it on
 Start Claude with `--plugin-dir /path/to/claude_hooks/context-exit/mod`. The dispatcher does not run the mod.

@@ -33,17 +33,12 @@ CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
 The mod cannot read `.env`. It runs in a sandbox with no file system or Node. It reads these values from the environment of the Claude process. Set them in your shell, or in the `env` block of `settings.json`, before you start Claude. A missing value makes the mod throw an error.
 
 ```
-CLAUDE_HOOKS_IDLE_STATE_IDLE_MS=3300000
-CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS=180000
-CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS=1000
 # CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME=.idleState
 ```
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.
 - `CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME`: the folder in the project that holds the state files. The reader and the mod must use the same name.
-- `CLAUDE_HOOKS_IDLE_STATE_IDLE_MS`: how long the chat must sit idle before the mod writes the state file.
-- `CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS`: a timer later than this means the computer slept, so the mod does nothing.
-- `CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS`: the wait before the mod pushes the key that answers the background work question.
+The constants `IDLE_MS`, `LATE_LIMIT_MS`, and `EXIT_KEY_DELAY_MS` at the top of `mod/hooks/register.ts` set the idle time, the sleep limit, and the key delay.
 
 ## Turn it on
 Turn on the reader alone: paste the block from `hooks.json` into your `settings.json`. Replace `/path/to/claude_hooks` with the real path on your computer.

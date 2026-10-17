@@ -1,5 +1,7 @@
 import type { Register } from 'claude-code';
 
+const LIMIT_PERCENT = 30;
+
 let warned = false;
 
 export const register: Register = on => {
@@ -8,17 +10,13 @@ export const register: Register = on => {
     const percent = usage.context.percent;
     if (percent === undefined)
       return next(e);
-    const limitText = await $.env.get('CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT');
-    if (limitText === undefined)
-      throw new Error('context-exit: set CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT in the Claude process environment');
-    const limit = Number(limitText);
-    const isOverLimit = percent >= limit;
+    const isOverLimit = percent >= LIMIT_PERCENT;
     if (!isOverLimit)
       return next(e);
     if (warned)
       return next(e);
     warned = true;
-    $.ui.toast(`Performance degrades after context goes above ${limit}%. Consider exiting the session and starting a new one. Run /matkat-hooks:handoff-state to hand off.`);
+    $.ui.toast(`Performance degrades after context goes above ${LIMIT_PERCENT}%. Consider exiting the session and starting a new one. Run /matkat-hooks:handoff-state to hand off.`);
     return next(e);
   });
 };

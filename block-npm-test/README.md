@@ -36,8 +36,8 @@ The hook makes Claude start the tests in the background. Claude then waits with 
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS` | Seconds before the timer kills a test run. |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS` | The time limit for one test, in milliseconds. |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS` | The age at which old logs are removed, in milliseconds. |
-| `CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_WAIT_SECONDS` | How long the monitor waits before it says "still in progress". |
-| `CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_POLL_SECONDS` | Seconds between two checks for the `.done` file. |
+
+The constants `MONITOR_WAIT_SECONDS` and `MONITOR_POLL_SECONDS` at the top of `monitor-test-run.ts` set the monitor wait and the check interval.
 
 ## Turn it on alone
 

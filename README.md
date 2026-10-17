@@ -91,6 +91,8 @@ An entry in your list file can carry an `env` object. Those values win over `.en
 { event: "Stop", command: ["node", "/path/to/typecheck-on-stop.ts"], env: { CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "40" }, enabled: true },
 ```
 
+Fixed numbers that no machine needs to change live as constants at the top of each script. `.env` holds only paths and names.
+
 The idle-state mod reads the Claude process env. Claude sets that env when it starts. The mod does not pick up `.env` changes live.
 
 ## Send every event to dispatch.ts from settings.json
