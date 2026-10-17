@@ -7,6 +7,6 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test \"!(tests|node_modules)/**/*.test.ts\""
   }
 }

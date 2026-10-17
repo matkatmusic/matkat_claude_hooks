@@ -175,16 +175,18 @@ node --test
 
 ## Automated stranger test
 
-`tests/stranger_test.py` runs the 15-row manual checklist with no human. It builds a test bed, starts Claude in tmux three times, and prints PASS or FAIL for each hook with one line of proof. It exits with 1 if any row fails.
+`tests/run_stranger.ts` runs the 15-row manual checklist with no human. It builds a test bed, starts Claude in tmux three times, and prints PASS or FAIL for each hook with one line of proof. It exits with 1 if any row fails.
 
-It needs tmux, bun, Python 3, and a Claude config folder that is already signed in. A script cannot sign in. Run `CLAUDE_CONFIG_DIR=<config> claude` once and sign in. The test stops with an error if the config is signed out.
+It needs tmux, bun, and a Claude config folder that is already signed in. A script cannot sign in. Run `CLAUDE_CONFIG_DIR=<config> claude` once and sign in. The test stops with an error if the config is signed out.
 
 Load the `tmux_lib` submodule once, then run the test with a new folder for the bed:
 
 ```sh
 git submodule update --init
-python3 tests/stranger_test.py --bed /path/to/new-bed --config /path/to/signed-in-config
+BUN_JSC_useTailCalls=0 bun tests/run_stranger.ts --bed /path/to/new-bed --config /path/to/signed-in-config
 ```
+
+The test opens one tmux window named stranger-test. One pane shows PASS or FAIL, and the other pane shows each Claude run. If you run it inside tmux already, it splits your current window.
 
 The run takes about 15 minutes. It waits 1 minute for the idle-state row.
 

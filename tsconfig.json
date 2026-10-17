@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "idle-state/mod"]
+  "exclude": ["node_modules", "idle-state/mod", "tests/external"]
 }
