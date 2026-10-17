@@ -1,15 +1,37 @@
 # unlisted-items
 
-## What it does
-When Claude ends a turn, this hook reads the last reply. If the reply says work is still to do, the hook checks the task list. If that work is not on the list, the hook blocks the stop. Claude must add the work to the task list first.
+It blocks the end of a reply that names work still to do when that work is not on the task list, so Claude adds it first.
 
-## The problem it solves
-Claude often says "this still needs to be written" and then stops. The work is lost. Nobody tracks it.
+A task list only helps when it holds all the work.
 
-## Why it was made
-A task list only helps when it holds all the work. This hook makes Claude put every named piece of work on the list.
+## Install
+
+1. Add these lines to `.env`:
+
+```sh
+CLAUDE_HOOKS_TASKS_DIR=/Users/you/.claude/tasks
+CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH=5
+CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS=2
+```
+
+2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+
+```ts
+{ event: "Stop", command: ["node", `${import.meta.dirname}/../unlisted-items/unlisted-items.ts`], enabled: true },
+```
 
 ## How it works
+
+When Claude stops, the hook looks in the last reply for phrases such as "still needs", "todo:", and "next step:". It compares each matching line with the open tasks of the session by shared long words. For each line that is not on the list, it blocks the stop and tells Claude to add the work with TaskCreate.
+
+## More details
+
+### The problem it solves
+
+Claude often says "this still needs to be written" and then stops. The work is lost. Nobody tracks it.
+
+### Steps
+
 1. The hook runs when Claude stops.
 2. It reads the last reply and looks for phrases such as "still needs", "todo:", and "next step:".
 3. If it finds no phrase, it does nothing.
@@ -20,27 +42,16 @@ A task list only helps when it holds all the work. This hook makes Claude put ev
 
 The match counts shared words only. It does not check meaning. A task with different words can look unlisted.
 
-## Set the values
-Add these lines to `.env`. A missing value makes the hook throw an error.
+### The .env values
 
-```
-CLAUDE_HOOKS_TASKS_DIR=/Users/you/.claude/tasks
-CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH=5
-CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS=2
-```
+A missing value makes the hook throw an error.
 
 - `CLAUDE_HOOKS_TASKS_DIR` is the folder that holds one task folder for each task list. Use a full path. It must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
 - `CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH` is how many letters a word needs to count.
 - `CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS` is how many counted words a line must share with a task.
 
-## Turn it on alone
+### Turn it on alone
+
 Paste the block from `hooks.json` into your `settings.json`. Replace `/path/to/claude_hooks` with the real path on your computer.
-
-## Turn it on through the dispatcher list
-Add this entry to the list that `CLAUDE_HOOKS_LIST` points to. Set `enabled` to `true`.
-
-```ts
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../unlisted-items/unlisted-items.ts`], enabled: true },
-```
 
 Do not use both ways at the same time. Claude would be blocked twice.

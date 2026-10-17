@@ -1,22 +1,39 @@
 # typecheck-on-stop
 
-## What it does
+It blocks the end of a reply, or of a subagent run, while the TypeScript checker reports errors after Claude edited a `.ts` file.
 
-It runs when Claude stops its reply, or when a subagent stops. It checks if Claude edited a `.ts` file in this turn. If so, it runs the TypeScript checker on the project. If the checker finds errors, the hook blocks the stop. It tells Claude to fix them.
+A type error is cheap to fix right after the edit and costs much more later.
 
-## The problem it solves
+## Install
+
+1. Add this line to `.env`:
+
+```sh
+CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES=20
+```
+
+2. Set `enabled: true` on these two entries in `dispatcher/hooks-list.ts`:
+
+```ts
+{ event: "Stop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: true },
+{ event: "SubagentStop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: true },
+```
+
+## How it works
+
+When Claude stops, the hook reads the transcript and collects the files that were edited in this turn. If one ends in `.ts`, it runs the TypeScript checker on the project. If the checker finds errors, the hook blocks the stop and lists the error lines in the reason. The reason tells Claude to fix every error, including errors in files it did not edit.
+
+## More details
+
+### The problem it solves
 
 Claude can edit a TypeScript file and stop while the project has type errors. The errors stay hidden until someone builds the project later.
 
-## What it needs
+### What it needs
 
 The project needs a `tsconfig.json` and a local `typescript` package.
 
-## Why it was made
-
-A type error is cheap to fix right after the edit. It costs much more later. The hook makes Claude fix every error before it stops, including errors in files it did not edit.
-
-## How it works
+### Steps
 
 1. Claude stops and runs the hook.
 2. If the stop is a repeat caused by this hook, the hook exits. This prevents a loop.
@@ -29,31 +46,16 @@ A type error is cheap to fix right after the edit. It costs much more later. The
 
 The hook imports `debt-transcript.ts` from `shared/`.
 
-## The .env value
+### The .env value
 
-Add this line to the `.env` file in the `claude_hooks` folder:
+`CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES` goes in the `.env` file in the `claude_hooks` folder. It sets the most error lines that the hook puts in the reason.
 
-```
-CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES=20
-```
-
-It sets the most error lines that the hook puts in the reason.
-
-## Turn it on alone
+### Turn it on alone
 
 Copy the block from `hooks.json` into your `settings.json`. Change `/path/to/claude_hooks` to the real folder on your computer.
 
-## Turn it on through the dispatcher
-
-Add these entries to the list file that `CLAUDE_HOOKS_LIST` points to:
-
-```ts
-{ event: "Stop", command: ["node", "/path/to/claude_hooks/typecheck-on-stop/typecheck-on-stop.ts"], timeout: 300, enabled: true },
-{ event: "SubagentStop", command: ["node", "/path/to/claude_hooks/typecheck-on-stop/typecheck-on-stop.ts"], timeout: 300, enabled: true },
-```
-
 Do not use both ways at the same time. The hook would run twice.
 
-## Test
+### Test
 
 Run `node --test typecheck-on-stop/typecheck-on-stop.test.ts` from the `claude_hooks` folder.

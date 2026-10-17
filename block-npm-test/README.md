@@ -1,24 +1,45 @@
 # block-npm-test
 
-## What it does
+It blocks test commands in a node project, runs the tests in the background, and tells Claude where to read the result.
 
-It runs before every Bash command in a node project. It looks for a test command. If it finds one, it blocks the command and runs the tests in the background. It tells Claude where to read the result.
+A test run can take a long time and can fill the context of Claude with a long log.
 
-It knows these test commands: `npm test`, `npm run test:*`, `yarn test`, `pnpm test`, `bun test`, `node --test`, `tsx --test`, `jest`, `vitest`, and `mocha`. It skips `npm run test:baseline`.
+## Install
 
-## The problem it solves
+1. Set these four values in `.env`:
+
+```sh
+CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR=/path/to/test-logs
+CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS=...
+CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS=...
+CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS=...
+```
+
+2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+
+```ts
+{ event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-npm-test/block-npm-test.ts`], timeout: 300, enabled: true },
+```
+
+## How it works
+
+The hook runs before every Bash command in a project that has a `package.json`. It finds a test command, blocks it, and starts the tests in a background script with a kill timer. The block message gives Claude a short monitor command. The monitor waits for the run to end and prints the result and the log path. A full-suite run prints only the failed tests, or the words "all passing".
+
+## More details
+
+### The problem it solves
 
 A test run can take a long time. A Bash call that waits for it can hang the session or hit a time limit. A full test log can also fill the context of Claude with text it does not need.
 
-## What it needs
+### What it needs
 
 The project needs a `package.json`.
 
-## Why it was made
+### Test commands it knows
 
-The hook makes Claude start the tests in the background. Claude then waits with a small monitor command. The monitor prints the end of the run and the log path. A full-suite run prints only the failed tests, or the words "all passing".
+It knows these test commands: `npm test`, `npm t`, `npm run test:*`, `yarn test`, `pnpm test`, `bun test`, `node --test`, `tsx --test`, `jest`, `vitest`, and `mocha`. It also knows `npx` with `jest`, `vitest`, or `mocha`. It skips `npm run test:baseline`.
 
-## How it works
+### Steps
 
 1. The hook checks for a `package.json` in the folder or in a folder above it. If there is none, it does nothing.
 2. `block-npm-test-split.ts` cuts the Bash line into simple commands. `block-npm-test-find.ts` finds the first test command, its file, its `cd` folder, and its `VAR=value` words.
@@ -28,7 +49,7 @@ The hook makes Claude start the tests in the background. Claude then waits with 
 6. The hook starts the script in the background. It blocks the original command. Its message gives the command `monitor-test-run.ts <log>`.
 7. `monitor-test-run.ts` waits for the `.done` file. It prints the result, or it says the run is still in progress.
 
-## .env values
+### .env values
 
 | Name | What it sets |
 | --- | --- |
@@ -39,20 +60,12 @@ The hook makes Claude start the tests in the background. Claude then waits with 
 
 The constants `MONITOR_WAIT_SECONDS` and `MONITOR_POLL_SECONDS` at the top of `monitor-test-run.ts` set the monitor wait and the check interval.
 
-## Turn it on alone
+### Turn it on alone
 
 Copy the block from `hooks.json` into your `settings.json`. Change `/path/to/claude_hooks` to the real folder on your computer.
 
-## Turn it on through the dispatcher
-
-Add this entry to the list file that `CLAUDE_HOOKS_LIST` points to:
-
-```ts
-{ event: "PreToolUse", matcher: "Bash", command: ["node", "/path/to/claude_hooks/block-npm-test/block-npm-test.ts"], timeout: 300, enabled: true },
-```
-
 Do not use both ways at the same time. The hook would run twice.
 
-## Test
+### Test
 
 Run each file from the `claude_hooks` folder, for example `node --test block-npm-test/block-npm-test.test.ts`.
