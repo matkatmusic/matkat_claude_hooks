@@ -1,0 +1,5 @@
+{
+  "name": "ask-dont-dump",
+  "version": "0.1.0",
+  "description": "Checks each final reply for loose ends before the turn stops"
+}

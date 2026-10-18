@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "idle-state/mod", "context-exit/mod","tests/external"]
+  "exclude": ["node_modules", "idle-state/mod", "context-exit/mod", "ask-dont-dump/mod","tests/external"]
 }

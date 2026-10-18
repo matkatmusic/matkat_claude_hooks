@@ -1,0 +1,15 @@
+{
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "prompt",
+          "timeout": 30,
+          "model": "claude-haiku-5-5",
+          "statusMessage": "ask-don't-dump-issues checker",
+          "prompt": "@ask-dont-dump-prompt.md"
+        }
+      ]
+    }
+  ]
+}
