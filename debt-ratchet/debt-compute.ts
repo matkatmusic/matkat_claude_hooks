@@ -93,6 +93,7 @@ export function blockReason(
   if (!isStyleDebtStuck)
     return reasonLines.join("\n");
   const target = isFirstSighting ? newTotal : savedTotal;
+  const requiredTotal = Math.max(target - 1, DEBT_TARGET);
   const hasReformattedFiles = reformattedFiles.length > 0;
   if (hasReformattedFiles)
     reasonLines.push(
@@ -105,7 +106,7 @@ export function blockReason(
   // }
   // if (hasStyleFindings)
   reasonLines.push(
-    `Style debt is ${newTotal} and must drop below ${target}. Spawn a subagent to fix up to ${FIX_BATCH_SIZE} flagged spots. Rewrite array calls as a \`for()\` loop with named booleans. Rename functions to include a verb from \`FUNCTION_VERBS\` in \`${ESLINT_CONFIG}\`. If you already spawned a subagent that edited the flagged file, relaunch that same subagent with \`SendMessage\`. Then stop again.`,
+    `Style debt is ${newTotal} and must drop to ${requiredTotal} or fewer. Spawn a subagent to fix up to ${FIX_BATCH_SIZE} flagged spots. Rewrite array calls as a \`for()\` loop with named booleans. Rename functions to include a verb from \`FUNCTION_VERBS\` in \`${ESLINT_CONFIG}\`. If you already spawned a subagent that edited the flagged file, relaunch that same subagent with \`SendMessage\`. Then stop again.`,
   );
   const filesWithoutTest: string[] = [];
   for (let i = 0; i < debts.length; i++) {

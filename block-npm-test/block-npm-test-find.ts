@@ -45,19 +45,51 @@ export function isRunner(words: string[]): boolean {
   return RUNNERS.has(first ?? "");
 }
 
-// The first test-runner command: its file, cwd from an earlier cd, leading VAR=value words, and node --test's own flags.
-export function findTestRun(command: string): { file?: string; cwd?: string; env: Record<string, string>; extraArgs?: string[]; isBunTest?: boolean } | undefined {
-  const commands = splitSimpleCommands(command);
-  let index = -1;
+type TestRun = { file?: string; cwd?: string; env: Record<string, string>; extraArgs?: string[]; isBunTest?: boolean; runnerWords?: string[] };
+
+const SHELLS = new Set(["bash", "sh", "zsh"]);
+
+// bash -c "a && b" becomes the simple commands of "a && b", in place.
+function parseShellScripts(commands: string[][]): string[][] {
+  const result: string[][] = [];
+  for (const words of commands) {
+    const isShell = SHELLS.has(words[0]);
+    const flag = words[1] ?? "";
+    const startsWithDash = flag.startsWith("-");
+    const isLongFlag = flag.startsWith("--");
+    const hasCommandLetter = flag.includes("c");
+    const isDashFlagWithC = startsWithDash && hasCommandLetter;
+    const isCommandFlag = isDashFlagWithC && !isLongFlag;
+    const isShellScript = isShell && isCommandFlag;
+    if (isShellScript) {
+      const script = words.slice(2).join(" ");
+      result.push(...parseShellScripts(splitSimpleCommands(script)));
+    }
+    else
+      result.push(words);
+  }
+  return result;
+}
+
+// Every test-runner command in the line, in order.
+export function findTestRuns(command: string): TestRun[] {
+  const commands = parseShellScripts(splitSimpleCommands(command));
+  const runs: TestRun[] = [];
   for (let i = 0; i < commands.length; i++) {
     const isTestRunner = isRunner(commands[i]);
-    if (isTestRunner) {
-      index = i;
-      break;
-    }
+    if (isTestRunner)
+      runs.push(buildTestRun(commands, i));
   }
-  if (index < 0)
-    return undefined;
+  return runs;
+}
+
+// The first test-runner command in the line.
+export function findTestRun(command: string): TestRun | undefined {
+  return findTestRuns(command)[0];
+}
+
+// Builds one test run: file, cwd, env, extra flags, and the typed runner.
+function buildTestRun(commands: string[][], index: number): TestRun {
   const words = commands[index];
   const env: Record<string, string> = {};
   let wordIndex = 0;
@@ -83,22 +115,26 @@ export function findTestRun(command: string): { file?: string; cwd?: string; env
   const coreWords = words.slice(wordIndex);
   const isNodeTestCommand = (coreWords[0] === "node" || coreWords[0] === "tsx") && coreWords[1] === "--test";
   const isBunTestCommand = coreWords[0] === "bun" && coreWords[1] === "test";
+  const wordsWithoutRedirects: string[] = [];
+  let skipNext = false;
+  for (const word of coreWords) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
+    const isRedirect = /[<>]/.test(word);
+    if (isRedirect) {
+      skipNext = /[<>]$/.test(word);
+      continue;
+    }
+    wordsWithoutRedirects.push(word);
+  }
   let extraArgs: string[] | undefined;
   const takesExtraArgs = isNodeTestCommand || isBunTestCommand;
   if (takesExtraArgs) {
     const rest: string[] = [];
-    const argWords = coreWords.slice(2);
-    let skipNext = false;
+    const argWords = wordsWithoutRedirects.slice(2);
     for (const word of argWords) {
-      if (skipNext) {
-        skipNext = false;
-        continue;
-      }
-      const isRedirect = /[<>]/.test(word);
-      if (isRedirect) {
-        skipNext = /[<>]$/.test(word);
-        continue;
-      }
       const isTestFile = /\.(test|spec)\./.test(word);
       if (!isTestFile)
         rest.push(word);
@@ -106,6 +142,7 @@ export function findTestRun(command: string): { file?: string; cwd?: string; env
     if (rest.length > 0)
       extraArgs = rest;
   }
+  const keepsTypedRunner = file !== undefined && !takesExtraArgs;
 
   let cwd: string | undefined;
   for (let i = 0; i < index; i++) {
@@ -128,5 +165,5 @@ export function findTestRun(command: string): { file?: string; cwd?: string; env
     else
       cwd = join(cwd ?? "", target);
   }
-  return { file, cwd, env, ...(extraArgs ? { extraArgs } : {}), ...(isBunTestCommand ? { isBunTest: true } : {}) };
+  return { file, cwd, env, ...(extraArgs ? { extraArgs } : {}), ...(isBunTestCommand ? { isBunTest: true } : {}), ...(keepsTypedRunner ? { runnerWords: wordsWithoutRedirects } : {}) };
 }

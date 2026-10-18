@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -11,7 +11,7 @@ import { ARRAY_DEBT_DIR, setDebtRatchetEnv, setUpRepo, writeTranscript, runHook 
 setDebtRatchetEnv();
 const { blockReason } = await import("./debt-compute.ts");
 
-test("first sighting with debt: blocked, ledger not written", () => {
+test("first sighting with debt: blocked, ledger written with the total", () => {
   const sessionId = randomUUID();
   const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
@@ -23,8 +23,47 @@ test("first sighting with debt: blocked, ledger not written", () => {
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
   const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
-  assert.match(output, /Style debt is 1 and must drop below 1/);
-  assert.equal(existsSync(ledgerPath), false);
+  assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
+  assert.equal(JSON.parse(readFileSync(ledgerPath, "utf8")).total, 1);
+});
+
+function setUpDebtTranscript(): string {
+  const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
+  writeFileSync(
+    `${repo}/subject.ts`,
+    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
+  );
+  const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
+  return writeTranscript(transcriptDir, `${repo}/subject.ts`);
+}
+
+test("reentrant stop with the same debt: blocked again", () => {
+  const sessionId = randomUUID();
+  const transcript_path = setUpDebtTranscript();
+  const first = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  assert.match(first, /"decision":"block"/);
+  const second = runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+  assert.match(second, /"decision":"block"/);
+});
+
+test("reentrant stops stop blocking after the chain limit", () => {
+  const sessionId = randomUUID();
+  const transcript_path = setUpDebtTranscript();
+  runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  let output = "";
+  for (let i = 0; i < 5; i++)
+    output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+  assert.equal(output, "");
+});
+
+test("a new chain starts again after the limit", () => {
+  const sessionId = randomUUID();
+  const transcript_path = setUpDebtTranscript();
+  runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  for (let i = 0; i < 5; i++)
+    runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+  const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  assert.match(output, /"decision":"block"/);
 });
 
 // test("HEAD has 1 violation, working copy has the same 1: allowed", () => {
@@ -76,7 +115,7 @@ test("subagent edits are collected: only the edit at/after turn start is evaluat
 
   const output = runHook({ transcript_path, session_id: randomUUID(), stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
-  assert.match(output, /Style debt is 1 and must drop below 1/);
+  assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
   assert.match(output, /subject\.ts/);
   assert.doesNotMatch(output, /ignored\.ts/);
 });

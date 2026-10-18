@@ -17,7 +17,8 @@ Usage limits and context size change while you work, and you do not see them unl
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\""
+    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
+    "refreshInterval": 3
   }
 }
 ```

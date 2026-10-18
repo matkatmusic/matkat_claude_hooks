@@ -40,7 +40,7 @@ Claude often says "this still needs to be written" and then stops. The work is l
 6. For each line that is not listed, the hook blocks the stop. It tells Claude to add each one with TaskCreate.
 7. If the hook already blocked once in this turn, it does nothing. This prevents an endless loop.
 
-The match counts shared words only. It does not check meaning. A task with different words can look unlisted.
+The match cuts words to their stems, skips common filler words, and needs at least half of the line's words to appear in one task. It does not check meaning. A task with truly different words can still look unlisted. The hook reads the reply from `last_assistant_message` and skips phrases inside quotes or backticks.
 
 ### The .env values
 

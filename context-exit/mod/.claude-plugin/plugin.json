@@ -1,5 +1,6 @@
 {
   "name": "context-exit",
   "version": "0.1.0",
-  "description": "Shows a message once when context use reaches a set percent"
+  "description": "Shows a message when context use reaches each set percent",
+  "types": "./types/index.d.ts"
 }

@@ -5,6 +5,7 @@ const IDLE_MINUTES = 55;
 const LATE_LIMIT_MINUTES = 58;
 const EXIT_KEY_DELAY_MINUTES = 1 / 60;
 const IDLE_STATE_FOLDER_NAME = '.idleState';
+const REGEX_SPECIAL_CHARACTERS = '\\^$.|?*+()[]{}';
 const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/tty', os.O_RDWR)\nfor key in b'2\\r':\n    fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))";
 
 function formatTwoDigits(n: number): string {
@@ -25,10 +26,31 @@ function clearState<E, R>(_$: unknown, e: E, next: (e: E) => R): R {
 
 const blockPromptAfterStateSaved: Hook<'prompt.submit'> = ($, e, next) => {
   idleTimer?.cancel();
-  if (stateFilePath === undefined)
+  if (stateFilePath === undefined) {
+    const isUserPromptDuringStateWrite = isWritingState && !e.text.includes(statePrompt);
+    if (isUserPromptDuringStateWrite)
+      isWritingState = false;
     return next(e);
+  }
   return { drop: `The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFilePath}` };
 };
+
+const denyToolsWhileStatePromptPending: Hook<'tool.call'> = ($, e, next) => {
+  if (!isWritingState)
+    return next(e);
+  return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
+};
+
+function encodeRegexCharacters(text: string): string {
+  let escaped = '';
+  for (const character of text) {
+    const isSpecial = REGEX_SPECIAL_CHARACTERS.includes(character);
+    if (isSpecial)
+      escaped += '\\';
+    escaped += character;
+  }
+  return escaped;
+}
 
 async function sendStatePrompt($: EngineInterface) {
   const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
@@ -88,10 +110,14 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
     if (stateText === '')
       throw new Error('idle-state: no assistant text after the state prompt');
     await $.fs.write(`${root}/${folderName}/.gitignore`, '*\n');
-    const state = JSON.parse(stateText);
+    const trimmedStateText = stateText.trim();
+    const isBareJsonObject = trimmedStateText.startsWith('{') && trimmedStateText.endsWith('}');
+    if (!isBareJsonObject)
+      throw new Error(`idle-state: the reply is not a bare JSON object. It was: ${stateText}`);
+    const state = JSON.parse(trimmedStateText);
     let programsAreRunning = false;
     for (const program of state.runningPrograms) {
-      const found = await $.process.run(['pgrep', '-f', program.command]); // ponytail: -f takes a regex; a command with regex characters may not match
+      const found = await $.process.run(['pgrep', '-f', encodeRegexCharacters(program.command)]);
       const isPgrepError = found.exitCode > 1;
       if (isPgrepError)
         throw new Error(`idle-state: pgrep failed: ${found.stderr}`);
@@ -164,5 +190,6 @@ export const register: Register = on => {
   on('session.end', clearState);
   on('prompt.submit', blockPromptAfterStateSaved);
   on('turn.complete', updateIdleStateOnTurnComplete);
+  on('tool.call', denyToolsWhileStatePromptPending);
   on('command.run', { command: 'exit' }, writeIdleStateBeforeExit);
 };

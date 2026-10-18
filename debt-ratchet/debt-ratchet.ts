@@ -9,6 +9,7 @@ import { computeDebt, blockReason, type FileDebt } from "./debt-compute.ts";
 
 const LEDGER_DIR = readEnvValue("CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR");
 const LEDGER_MAX_AGE_MS = Number(readEnvValue("CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS"));
+const MAX_CHAIN_BLOCKS = 3;
 
 // Deletes ledger files older than LEDGER_MAX_AGE_MS from dir.
 export function removeOldLedgers(dir: string, now: number): void {
@@ -24,7 +25,15 @@ export function removeOldLedgers(dir: string, now: number): void {
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   const isReentrant = input.stop_hook_active === true;
-  if (isReentrant)
+  mkdirSync(LEDGER_DIR, { recursive: true });
+  const blocksPath = `${LEDGER_DIR}/${input.session_id}.blocks`;
+  let chainBlocks = 0;
+  const hasBlocksFile = existsSync(blocksPath);
+  const shouldReadBlocks = isReentrant && hasBlocksFile;
+  if (shouldReadBlocks)
+    chainBlocks = Number(readFileSync(blocksPath, "utf8"));
+  const isChainExhausted = chainBlocks >= MAX_CHAIN_BLOCKS;
+  if (isChainExhausted)
     process.exit(0);
   const isSubagentTranscript = typeof input.agent_transcript_path === "string";
   let files: string[];
@@ -74,7 +83,6 @@ if (import.meta.main) {
     debts.push({ file: testFiles[i], current: 0, lines: [], reformatted: false, lineCount, missingTest: false });
   }
 
-  mkdirSync(LEDGER_DIR, { recursive: true });
   removeOldLedgers(LEDGER_DIR, Date.now());
   const ledgerPath = `${LEDGER_DIR}/${input.session_id}.json`;
   const ledgerExists = existsSync(ledgerPath);
@@ -102,13 +110,14 @@ if (import.meta.main) {
   }
 
   const reason = blockReason(debts, newTotal, savedTotal, reformattedFiles);
+  const hasDebt = newTotal > 0;
+  if (hasDebt)
+    writeFileSync(ledgerPath, JSON.stringify({ files: ledgerFiles, total: newTotal }));
   if (reason) {
+    writeFileSync(blocksPath, String(chainBlocks + 1));
     console.log(JSON.stringify({ decision: "block", reason }));
   }
   else {
-    const hasDebt = newTotal > 0;
-    if (hasDebt)
-      writeFileSync(ledgerPath, JSON.stringify({ files: ledgerFiles, total: newTotal }));
     const hasReformattedFiles = reformattedFiles.length > 0;
     if (hasReformattedFiles) {
       const additionalContext = `This hook reformatted these files to the house layout: ${reformattedFiles.join(", ")}. Do not revert that reformatting.`;

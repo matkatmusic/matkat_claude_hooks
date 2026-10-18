@@ -14,7 +14,7 @@ claude --plugin-dir /path/to/claude_hooks/context-exit/mod
 
 ## How it works
 
-The mod watches how full the context is. After each reply, it checks the percent of the context in use. When the percent reaches the limit, it shows one message for the session. The message tells you to start a new chat and to run the `handoff-state` skill.
+The mod watches how full the context is. After each reply, it checks the percent of the context in use. When the percent reaches 30, 50, or 80, it shows one message for that level in each session. The message tells you to start a new chat and to run the `handoff-state` skill.
 
 ## More details
 
@@ -24,7 +24,7 @@ The mod does not exit the chat. You decide.
 
 ### Set the value
 
-The constant `LIMIT_PERCENT` at the top of `mod/hooks/register.ts` sets the context percent where the mod shows the message.
+The constant `WARNING_PERCENTS` at the top of `mod/hooks/register.ts` sets the context percents where the mod shows a message.
 
 ### The handoff skill
 
@@ -36,4 +36,4 @@ The message names the skill `/matkat-hooks:handoff-state`. That skill comes from
 
 ### Limit
 
-The message is a toast. It stays on screen for a few seconds.
+The message is a toast that stays on screen for 60 seconds. The same text also stays in the status line until the next message.

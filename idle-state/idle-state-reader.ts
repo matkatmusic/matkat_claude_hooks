@@ -1,10 +1,28 @@
 #!/usr/bin/env node
 // SessionStart hook: hands the model the .idleState state files from the last window of time.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 import { readEnvValue } from "../shared/env.ts";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
 
 const IDLE_STATE_FOLDER_NAME = ".idleState";
+
+export function findIdleStateFolder(cwd: string): string {
+  let dir = cwd;
+  while (true) {
+    const candidate = `${dir}/${IDLE_STATE_FOLDER_NAME}`;
+    const hasCandidate = existsSync(candidate);
+    if (hasCandidate)
+      return candidate;
+    const isRepoRoot = existsSync(`${dir}/.git`);
+    const parent = dirname(dir);
+    const isFilesystemRoot = parent === dir;
+    const isSearchEnd = isRepoRoot || isFilesystemRoot;
+    if (isSearchEnd)
+      return `${cwd}/${IDLE_STATE_FOLDER_NAME}`;
+    dir = parent;
+  }
+}
 
 export function findRecentStateFiles(folder: string, nowMs: number): string[] {
   const windowMs = Number(readEnvValue("CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS"));
@@ -37,7 +55,7 @@ export function buildStateContext(folder: string, nowMs: number): string {
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   // const context = buildStateContext(`${input.cwd}/${readEnvValue("CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME")}`, Date.now());
-  const folder = `${input.cwd}/${IDLE_STATE_FOLDER_NAME}`;
+  const folder = findIdleStateFolder(input.cwd);
   const paths = findRecentStateFiles(folder, Date.now());
   const statePath = getSessionStatePath(input.transcript_path);
   const state = readSessionState(statePath);

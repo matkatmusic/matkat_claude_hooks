@@ -1,18 +1,55 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
-import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
-// UserPromptSubmit hook: nudges the agent to invoke ponytail ultra, once per session, until it does.
+import { getSessionStatePath, readSessionState, writeSessionState, type SessionState } from "../shared/session-state.ts";
+// UserPromptSubmit and PostToolUse(Skill) hook: nudges the agent on every prompt until ponytail ultra is invoked.
 
-const SKILL_NAME = "ponytail:ponytail";
+const SKILL_NAMES = ["ponytail:ponytail", "ponytail"];
+const COMMAND_NAMES = ["/ponytail:ponytail", "/ponytail"];
 
-export function ponytailUltraInvoked(transcript: string): boolean {
+type NudgeState = SessionState & { ponytailTranscriptOffset?: number };
+
+function isUltraArgs(args: unknown): boolean {
+  if (typeof args !== "string")
+    return false;
+  return args.trim().toLowerCase() === "ultra";
+}
+
+export function isPonytailUltraSkillCall(toolName: string, toolInput: any): boolean {
+  if (toolName !== "Skill")
+    return false;
+  const isPonytailSkill = SKILL_NAMES.includes(toolInput?.skill);
+  if (!isPonytailSkill)
+    return false;
+  return isUltraArgs(toolInput?.args);
+}
+
+export function isPonytailUltraTypedPrompt(prompt: string): boolean {
+  const trimmedPrompt = prompt.trim();
+  const firstSpace = trimmedPrompt.search(/\s/);
+  const hasArgs = firstSpace !== -1;
+  if (!hasArgs)
+    return false;
+  const commandName = trimmedPrompt.slice(0, firstSpace);
+  const isPonytailCommand = COMMAND_NAMES.includes(commandName);
+  if (!isPonytailCommand)
+    return false;
+  return isUltraArgs(trimmedPrompt.slice(firstSpace));
+}
+
+export function isPonytailUltraInTranscript(transcript: string): boolean {
   for (const line of transcript.split("\n")) {
     if (!line)
       continue;
-    const isTypedPonytailCommand = line.includes("<command-name>/ponytail:ponytail</command-name>");
-    if (isTypedPonytailCommand) {
-      const isUltraCommandArgs = /<command-args>[^<]*ultra/i.test(line);
-      if (isUltraCommandArgs)
+    for (const commandName of COMMAND_NAMES) {
+      const isTypedPonytailCommand = line.includes(`<command-name>${commandName}</command-name>`);
+      if (!isTypedPonytailCommand)
+        continue;
+      const argsMatch = line.match(/<command-args>([^<]*)<\/command-args>/);
+      const hasArgs = argsMatch !== null;
+      if (!hasArgs)
+        continue;
+      const isUltraCommand = isUltraArgs(argsMatch[1]);
+      if (isUltraCommand)
         return true;
     }
     const mightBeSkillCall = line.includes('"name":"Skill"');
@@ -22,14 +59,11 @@ export function ponytailUltraInvoked(transcript: string): boolean {
     const blocks = Array.isArray(entry.message?.content) ? entry.message.content : [];
     let invoked = false;
     for (const block of blocks) {
-      const isSkillToolUse = block.type === "tool_use" && block.name === "Skill";
-      if (!isSkillToolUse)
+      const isToolUse = block.type === "tool_use";
+      if (!isToolUse)
         continue;
-      const isPonytailSkill = block.input?.skill === SKILL_NAME;
-      if (!isPonytailSkill)
-        continue;
-      const isUltraArgs = /ultra/i.test(block.input?.args ?? "");
-      if (isUltraArgs)
+      const isUltraSkillCall = isPonytailUltraSkillCall(block.name, block.input);
+      if (isUltraSkillCall)
         invoked = true;
     }
     if (invoked)
@@ -41,18 +75,35 @@ export function ponytailUltraInvoked(transcript: string): boolean {
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   const path = getSessionStatePath(input.transcript_path);
-  const state = readSessionState(path);
+  const state: NudgeState = readSessionState(path);
   if (state.ponytailUltraInvoked)
     process.exit(0);
 
-  const transcriptExists = existsSync(input.transcript_path);
-  const transcript = transcriptExists ? readFileSync(input.transcript_path, "utf8") : "";
-  const isPonytailUltraInvoked = ponytailUltraInvoked(transcript);
-  if (isPonytailUltraInvoked) {
-    state.ponytailUltraInvoked = true;
-    writeSessionState(path, state);
+  const isPostToolUse = input.hook_event_name === "PostToolUse";
+  if (isPostToolUse) {
+    const isUltraSkillRun = isPonytailUltraSkillCall(input.tool_name, input.tool_input);
+    if (isUltraSkillRun) {
+      state.ponytailUltraInvoked = true;
+      writeSessionState(path, state);
+    }
+    process.exit(0);
   }
-  else {
+
+  let isPonytailUltraInvoked = isPonytailUltraTypedPrompt(input.prompt ?? "");
+  if (!isPonytailUltraInvoked) {
+    const transcriptExists = existsSync(input.transcript_path);
+    const transcriptBytes = transcriptExists ? readFileSync(input.transcript_path) : Buffer.alloc(0);
+    const offset = state.ponytailTranscriptOffset ?? 0;
+    const newBytes = transcriptBytes.subarray(offset);
+    const lastNewline = newBytes.lastIndexOf(10);
+    const completeBytes = newBytes.subarray(0, lastNewline + 1);
+    isPonytailUltraInvoked = isPonytailUltraInTranscript(completeBytes.toString("utf8"));
+    state.ponytailTranscriptOffset = offset + completeBytes.length;
+  }
+  if (isPonytailUltraInvoked)
+    state.ponytailUltraInvoked = true;
+  writeSessionState(path, state);
+  if (!isPonytailUltraInvoked) {
     console.log(
       JSON.stringify({
         hookSpecificOutput: {

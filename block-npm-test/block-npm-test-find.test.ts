@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { homedir } from "node:os";
-import { findTestRun } from "./block-npm-test-find.ts";
+import { findTestRun, findTestRuns } from "./block-npm-test-find.ts";
 
 test("findTestRun: suite forms in context", () => {
   assert.deepEqual(findTestRun("cd /x && npm test 2>&1 | tail -50"), { file: undefined, cwd: "/x", env: {} });
@@ -13,10 +13,34 @@ test("findTestRun: suite forms in context", () => {
 });
 
 test("findTestRun: one named file", () => {
-  assert.deepEqual(findTestRun("npm test -- tests/a.test.ts"), { file: "tests/a.test.ts", cwd: undefined, env: {} });
-  assert.deepEqual(findTestRun("npx jest src/b.spec.js"), { file: "src/b.spec.js", cwd: undefined, env: {} });
+  assert.deepEqual(findTestRun("npm test -- tests/a.test.ts"), { file: "tests/a.test.ts", cwd: undefined, env: {}, runnerWords: ["npm", "test", "--", "tests/a.test.ts"] });
+  assert.deepEqual(findTestRun("npx jest src/b.spec.js"), { file: "src/b.spec.js", cwd: undefined, env: {}, runnerWords: ["npx", "jest", "src/b.spec.js"] });
   assert.deepEqual(findTestRun('node --test "tests/c.test.ts"'), { file: "tests/c.test.ts", cwd: undefined, env: {} });
   assert.deepEqual(findTestRun("cd /x && bun test tests/r.test.ts 2>&1 | tail -4"), { file: "tests/r.test.ts", cwd: "/x", env: {}, isBunTest: true });
+});
+
+test("findTestRun: a named file keeps the runner Claude typed, without shell redirects", () => {
+  assert.deepEqual(findTestRun("jest math.test.ts 2>&1 | tail -5")?.runnerWords, ["jest", "math.test.ts"]);
+  assert.deepEqual(findTestRun("CI=1 vitest run src/x.spec.ts")?.runnerWords, ["vitest", "run", "src/x.spec.ts"]);
+  assert.equal(findTestRun("node --test a.test.ts")?.runnerWords, undefined, "node --test is run by the hook itself");
+});
+
+test("findTestRuns: every test command in the line counts, each with its own cd folder", () => {
+  const runs = findTestRuns("cd /a && npm test; cd /b && npm run test:e2e");
+  assert.equal(runs.length, 2);
+  assert.equal(runs[0].cwd, "/a");
+  assert.equal(runs[1].cwd, "/b");
+  const mixedRuns = findTestRuns("npm test && jest a.test.ts");
+  assert.equal(mixedRuns[0].file, undefined);
+  assert.equal(mixedRuns[1].file, "a.test.ts");
+});
+
+test("findTestRuns: a test command inside bash -c quotes counts", () => {
+  assert.equal(findTestRuns('bash -c "npm test"').length, 1);
+  assert.equal(findTestRuns("sh -c 'cd /x && npm test'")[0].cwd, "/x");
+  assert.equal(findTestRuns("bash -lc 'jest a.test.ts'")[0].file, "a.test.ts");
+  assert.equal(findTestRuns('bash -c "echo hi"').length, 0);
+  assert.equal(findTestRuns("bash script.sh").length, 0);
 });
 
 test("findTestRun: bun test with a folder keeps the folder as an extra arg", () => {

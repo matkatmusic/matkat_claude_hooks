@@ -21,7 +21,7 @@ CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES=20
 
 ## How it works
 
-When Claude stops, the hook reads the transcript and collects the files that were edited in this turn. If one ends in `.ts`, it runs the TypeScript checker on the project. If the checker finds errors, the hook blocks the stop and lists the error lines in the reason. The reason tells Claude to fix every error, including errors in files it did not edit.
+When Claude stops, the hook reads the transcript and collects the files that were edited in this turn. If one ends in `.ts`, `.tsx`, `.mts` or `.cts`, it runs the TypeScript checker on the project. The hook blocks the stop only for errors in the files Claude edited. It lists errors in other files as a note. The reason has a line with the error counts. If the checker fails to start, the hook blocks and shows the checker output. The hook blocks at most 3 times in a row for one session, then it lets the stop pass.
 
 ## More details
 

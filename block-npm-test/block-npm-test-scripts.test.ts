@@ -18,6 +18,62 @@ test("buildInitialPass: embeds the log path in the tee line and the awk message"
   assert.match(script, /see \/tmp\/tasktools-npm-test\/123\.log/);
 });
 
+function runInitialPassWithSuiteOutput(suiteOutput: string, exitCode: number): string {
+  const project = mkdtempSync(`${tmpdir()}/initial-pass-`);
+  writeFileSync(`${project}/suite-output.txt`, suiteOutput);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: `cat suite-output.txt; exit ${exitCode}` } }));
+  const run = spawnSync("bash", ["-c", buildInitialPass(`${project}/run.log`)], { cwd: project, encoding: "utf8" });
+  return run.stdout;
+}
+
+test("buildInitialPass: a failed test name prints once, even when node --test lists it twice", () => {
+  const output = runInitialPassWithSuiteOutput(
+    "✖ bad one (0.3ms)\nℹ tests 2\nℹ pass 1\nℹ fail 1\n✖ failing tests:\n\ntest at x.test.js:1:1\n✖ bad one (0.3ms)\n  Error: x\n",
+    1,
+  );
+  const lines = output.split("\n");
+  let nameCount = 0;
+  for (const line of lines) {
+    const isBadOne = line.startsWith("✖ bad one");
+    if (isBadOne)
+      nameCount++;
+  }
+  assert.equal(nameCount, 1, output);
+});
+
+test("buildInitialPass: reads the jest summary", () => {
+  const failing = runInitialPassWithSuiteOutput("FAIL ./math.test.ts\n  ● add › adds\nTest Suites: 1 failed, 1 total\nTests:       1 failed, 2 passed, 3 total\n", 1);
+  assert.match(failing, /FAIL \.\/math\.test\.ts/);
+  assert.doesNotMatch(failing, /stopped before producing a summary/);
+  assert.doesNotMatch(failing, /all passing/);
+  const passing = runInitialPassWithSuiteOutput("Test Suites: 1 passed, 1 total\nTests:       3 passed, 3 total\n", 0);
+  assert.match(passing, /all passing/);
+});
+
+test("buildInitialPass: reads the vitest summary", () => {
+  const failing = runInitialPassWithSuiteOutput(" FAIL  math.test.ts > add\n Test Files  1 failed (1)\n      Tests  1 failed | 2 passed (3)\n", 1);
+  assert.match(failing, /FAIL/);
+  assert.doesNotMatch(failing, /all passing|stopped before producing a summary/);
+  const passing = runInitialPassWithSuiteOutput(" Test Files  1 passed (1)\n      Tests  3 passed (3)\n", 0);
+  assert.match(passing, /all passing/);
+});
+
+test("buildInitialPass: reads the mocha summary", () => {
+  const failing = runInitialPassWithSuiteOutput("  2 passing (5ms)\n  1 failing\n\n  1) add\n       adds:\n", 1);
+  assert.match(failing, /1\) add/);
+  assert.doesNotMatch(failing, /all passing|stopped before producing a summary/);
+  const passing = runInitialPassWithSuiteOutput("  3 passing (5ms)\n", 0);
+  assert.match(passing, /all passing/);
+});
+
+test("buildInitialPass: reads the bun test summary", () => {
+  const failing = runInitialPassWithSuiteOutput("(fail) add adds\n\n 2 pass\n 1 fail\nRan 3 tests across 1 file.\n", 1);
+  assert.match(failing, /\(fail\) add adds/);
+  assert.doesNotMatch(failing, /all passing|stopped before producing a summary/);
+  const passing = runInitialPassWithSuiteOutput(" 3 pass\n 0 fail\nRan 3 tests across 1 file.\n", 0);
+  assert.match(passing, /all passing/);
+});
+
 test("removeOldLogs: deletes files older than 7 days, keeps fresh ones", () => {
   const dir = mkdtempSync(`${tmpdir()}/tasktools-npm-test-`);
   writeFileSync(`${dir}/old.log`, "old");

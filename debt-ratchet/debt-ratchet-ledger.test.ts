@@ -57,7 +57,7 @@ test("existing ledger with the same total: blocked", () => {
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
   const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
-  assert.match(output, /Style debt is 1 and must drop below 1/);
+  assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
   rmSync(ledgerPath, { force: true });
 });
 
@@ -87,7 +87,7 @@ test("two runs, same session id, different files: debts merge into one total", (
   const transcript_path2 = writeTranscript(transcriptDir2, `${repo}/fileB.ts`);
   const output2 = runHook({ transcript_path: transcript_path2, session_id: sessionId, stop_hook_active: false });
   assert.match(output2, /"decision":"block"/);
-  assert.match(output2, /Style debt is 3 and must drop below 1/);
+  assert.match(output2, /Style debt is 3 and must drop to 0 or fewer/);
   assert.match(output2, /fileB\.ts/);
   assert.doesNotMatch(output2, /fileA\.ts/);
 

@@ -212,6 +212,111 @@ test('user typing after the state prompt writes no file and does not parse the r
   expect(written).toEqual([])
 })
 
+test('tools are denied while the state prompt is pending, then allowed again', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  let toolsRun = 0
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('tool.call', () => {
+    toolsRun++
+    return { result: {}, text: 'ran' }
+  })
+
+  await $.turn.complete(ANSWER)
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(toolsRun).toBe(1)
+
+  await clock.advance(IDLE_MS)
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(toolsRun).toBe(1)
+
+  await $.turn.complete({ ...ANSWER, isAborted: true })
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(toolsRun).toBe(2)
+})
+
+test('a user prompt during the state turn lets tools run again', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  let toolsRun = 0
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('tool.call', () => {
+    toolsRun++
+    return { result: {}, text: 'ran' }
+  })
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(toolsRun).toBe(0)
+
+  await $.prompt.submit({ text: 'never mind, do this instead', wait: false, origin: { kind: 'composer' } })
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(toolsRun).toBe(1)
+})
+
+test('pgrep gets the program command with regex characters escaped', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  const patterns: string[] = []
+  const state = { ...STATE_OBJECT, runningPrograms: [{ command: 'node server.js --port=(80)', purpose: 'serves' }] }
+  on('session.root', () => ({ value: '/work/my-project' }))
+  on('session.id', () => ({ value: 'abcdef1234567890' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('command.run', () => ({ text: '' }))
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('process.run', (_$, e) => {
+    patterns.push(e.argv[2] ?? '')
+    return { value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('session.messages', () => ({ value: [{ role: 'assistant', text: JSON.stringify(state), toolUses: [] }] }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  await $.turn.complete(ANSWER)
+  await clock.settle()
+  expect(patterns).toEqual(['node server\\.js --port=\\(80\\)'])
+})
+
+test('a reply wrapped in extra text writes no state file and does not exit', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  const wrappedReply = `Sure, here it is: ${JSON.stringify(STATE_OBJECT)} Hope that helps.`
+  const written: { path: string; text: string }[] = []
+  const commands: string[] = []
+  on('session.root', () => ({ value: '/work/my-project' }))
+  on('session.id', () => ({ value: 'abcdef1234567890' }))
+  on('fs.write', ($, e) => {
+    written.push(e)
+    return { value: undefined }
+  })
+  on('command.run', ($, e) => {
+    commands.push(e.command)
+    return { text: '' }
+  })
+  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('session.messages', () => ({ value: [{ role: 'assistant', text: wrappedReply, toolUses: [] }] }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  await $.turn.complete(ANSWER)
+  await clock.settle()
+  const writtenPaths: string[] = []
+  for (const file of written)
+    writtenPaths.push(file.path)
+  expect(writtenPaths).toEqual(['/work/my-project/.idleState/.gitignore'])
+  expect(commands).toEqual([])
+})
+
 test('session end after a state write stops dropping prompts', async ($, on) => {
   // Idle chat writes the state file and exits; after the session ends, the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })

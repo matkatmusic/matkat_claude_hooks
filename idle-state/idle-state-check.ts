@@ -21,7 +21,7 @@ export function isFirstTurn(transcript: string): boolean {
 }
 
 export function findUnreadFiles(files: string[], transcript: string): string[] {
-  let toolInputText = "";
+  const readPaths: string[] = [];
   for (const line of transcript.split("\n")) {
     if (line === "")
       continue;
@@ -32,14 +32,14 @@ export function findUnreadFiles(files: string[], transcript: string): string[] {
     const content = entry.message?.content;
     const blocks = Array.isArray(content) ? content : [];
     for (const block of blocks) {
-      const isToolUse = block.type === "tool_use";
-      if (isToolUse)
-        toolInputText += JSON.stringify(block.input) + "\n";
+      const isRead = block.type === "tool_use" && block.name === "Read";
+      if (isRead)
+        readPaths.push(resolve(block.input.file_path));
     }
   }
   const unread: string[] = [];
   for (const file of files) {
-    const wasRead = toolInputText.includes(basename(file, ".json"));
+    const wasRead = readPaths.includes(resolve(file));
     if (!wasRead)
       unread.push(file);
   }

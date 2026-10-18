@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { readEnvValue } from "../shared/env.ts";
-// PreToolUse: blocks file edits from the parent (claude-fable-* or claude-opus-5*) session. Subagents may edit.
+import { isBashEdit } from "../block-bash-edits/block-bash-edits.ts";
+// PreToolUse: blocks file edits from the parent (claude-fable-* or claude-opus-5 and later) session. Subagents may edit.
 
 // --- regex token vocabulary (jfred's regex_expressions.ts style: named source-string fragments, composed with
 // `+`, wrapped in `new RegExp(...)` only at the end) -------------------------------------------------------
@@ -56,6 +57,10 @@ const sdOrSedInPlace = matchAnyOf(sdNotRightAfterSinglePipe + wordBoundary + "sd
 // `tee` writes its stdin to a file while piping it through. e.g. "echo hi | tee f.txt".
 const teeCommand = wordBoundary + "tee" + wordBoundary;
 
+const OPUS_MAJOR_VERSION = /^claude-opus-(\d{1,2})(?!\d)/;
+const IDLE_STATE_REDIRECT = />{1,2}\s*["']?\S*\/\.idleState\/[^\s"']*["']?/g;
+const SAVED_EDIT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 const BASH_BLOCK_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, fileCommand, outputFlag, sdOrSedInPlace, teeCommand));
 // isBashContentWrite now lives in ../shared/bash-content-write.ts
 // const BASH_CONTENT_WRITE_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, outputFlag, sdOrSedInPlace, teeCommand));
@@ -74,14 +79,30 @@ export function isBlockedParentModel(transcriptPath: string): boolean {
     if (isModelAttachment)
       model = entry.attachment.identity.modelId;
   }
+  if (!model)
+    throw new Error(`block-parent-edits: no model found in transcript ${transcriptPath}: the transcript has no assistant message and no model attachment`);
   const isFable = model.startsWith("claude-fable");
-  const isOpus5 = model.startsWith("claude-opus-5");
-  return isFable || isOpus5;
+  const opusMatch = model.match(OPUS_MAJOR_VERSION);
+  const isOpusFiveOrLater = opusMatch !== null && Number(opusMatch[1]) >= 5;
+  return isFable || isOpusFiveOrLater;
 }
 
 export function isBashCommandBlocked(command: string): boolean {
-  const strippedCommand = command.replace(/'[^']*'|"[^"]*"/g, "");
-  return BASH_BLOCK_PATTERN.test(strippedCommand);
+  const commandWithoutIdleStateWrites = command.replace(IDLE_STATE_REDIRECT, "");
+  const strippedCommand = commandWithoutIdleStateWrites.replace(/'[^']*'|"[^"]*"/g, "");
+  const isPatternBlocked = BASH_BLOCK_PATTERN.test(strippedCommand);
+  const isSharedBashEdit = isBashEdit(commandWithoutIdleStateWrites);
+  return isPatternBlocked || isSharedBashEdit;
+}
+
+function removeOldSavedEdits(dir: string): void {
+  const names = readdirSync(dir);
+  for (let i = 0; i < names.length; i++) {
+    const filePath = join(dir, names[i]);
+    const isOld = Date.now() - statSync(filePath).mtimeMs > SAVED_EDIT_MAX_AGE_MS;
+    if (isOld)
+      unlinkSync(filePath);
+  }
 }
 
 // export function isBashContentWrite(command: string): boolean {
@@ -127,6 +148,7 @@ if (import.meta.main) {
     if (isBlockedParent) {
       const dir = readEnvValue("CLAUDE_HOOKS_BLOCKED_EDITS_DIR");
       mkdirSync(dir, { recursive: true });
+      removeOldSavedEdits(dir);
       const savedPath = join(dir, `${input.session_id}-${Date.now()}.json`);
       writeFileSync(savedPath, JSON.stringify(input.tool_input, null, 2));
       finalDenyReason = `${denyReason} Your blocked tool call is saved at ${savedPath} (JSON of the tool input). Tell the subagent to read that file and apply it. Do not repeat its content in the prompt. Keep the prompt short: file paths, the change, how to check it. No background.`;

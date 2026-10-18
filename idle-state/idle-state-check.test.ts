@@ -20,23 +20,32 @@ test("two prompts are not the first turn", () => {
   assert.equal(isFirstTurn([promptLine(), promptLine()].join("\n")), false);
 });
 
-test("a Bash command and a Read of the file both count as read", () => {
+test("only a Read of the file counts as read", () => {
   const files = ["/p/.idleState/2026-10-16-1142-aaaa1111.json", "/p/.idleState/2026-10-16-1143-bbbb2222.json", "/p/.idleState/2026-10-16-1144-cccc3333.json"];
   const transcript = [
     promptLine(),
     toolUseLine("Bash", { command: "cat /p/.idleState/2026-10-16-1142-aaaa1111.json" }),
     toolUseLine("Read", { file_path: files[1] }),
   ].join("\n");
-  assert.deepEqual(findUnreadFiles(files, transcript), [files[2]]);
+  assert.deepEqual(findUnreadFiles(files, transcript), [files[0], files[2]]);
 });
 
-test("a Bash command that names the file without .json counts as read", () => {
+test("an ls that names the file does not count as read", () => {
   const files = ["/x/.idleState/2026-10-16-1142-25903e44.json"];
   const transcript = [
     promptLine(),
-    toolUseLine("Bash", { command: "for f in 2026-10-16-1142-25903e44; do cat $f.json; done" }),
+    toolUseLine("Bash", { command: "ls /x/.idleState/2026-10-16-1142-25903e44.json" }),
   ].join("\n");
-  assert.deepEqual(findUnreadFiles(files, transcript), []);
+  assert.deepEqual(findUnreadFiles(files, transcript), files);
+});
+
+test("a Read of a different file does not count as read", () => {
+  const files = ["/x/.idleState/2026-10-16-1142-25903e44.json"];
+  const transcript = [
+    promptLine(),
+    toolUseLine("Read", { file_path: "/x/other.json" }),
+  ].join("\n");
+  assert.deepEqual(findUnreadFiles(files, transcript), files);
 });
 
 test("a file name in a user prompt does not count as read", () => {

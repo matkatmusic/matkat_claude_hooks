@@ -11,8 +11,26 @@ export function buildInitialPass(logPath: string): string {
 npm test 2>&1 \\
 | tee ${logPath} \\
 | awk '
-    /^✖ / { print }
+    function print_once(line,    key) {
+        key = line
+        sub(/ \\([0-9.]+ms\\)$/, "", key)
+        if (!seen[key]++) print line
+    }
+    /^✖ / { print_once($0) }
+    /^ *FAIL / { print_once($0) }
+    /^ *● .*›/ { print_once($0) }
+    /^ *[0-9]+\\) / { print_once($0) }
+    /^\\(fail\\) / { print_once($0) }
     /^ℹ fail / { saw_summary = 1; failures = $3 + 0 }
+    /^Tests: / || /^ *Tests +[0-9]/ {
+        saw_summary = 1
+        failures = 0
+        if (match($0, /[0-9]+ failed/)) failures = substr($0, RSTART) + 0
+    }
+    /^ +[0-9]+ passing/ { saw_summary = 1 }
+    /^ +[0-9]+ failing/ { saw_summary = 1; failures = $1 + 0 }
+    /^Ran [0-9]+ tests/ { saw_summary = 1 }
+    /^ *[0-9]+ fail$/ { failures = $1 + 0 }
     END {
         if (saw_summary && failures == 0) {
         print "all passing"

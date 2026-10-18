@@ -6,7 +6,7 @@ import { getSessionStatePath, readSessionState, writeSessionState } from "../sha
 
 const MAX_WORDS = Number(readEnvValue("CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS"));
 const VAGUE =
-  /fix|improve|clean ?up|make (it|this) better|optimi[sz]e|refactor|tidy|polish|streamline|sort out|deal with|rework|redo|handle/;
+  /\b(fix|improve|clean ?up|make (it|this) better|optimi[sz]e|refactor|tidy|polish|streamline|sort out|deal with|rework|redo|handle)\b/;
 const OPT_OUT = /\bjdi\b|just do it|no questions/;
 const SPECIFIC = /\/[A-Za-z0-9._-]+|[A-Za-z0-9_-]+\.[A-Za-z]{1,4}\b|`/;
 const APPROVAL =
@@ -44,6 +44,9 @@ export function isAmbiguous(prompt: string): boolean {
   if (OPT_OUT.test(lower))
     return false;
 
+  if (lower === "yes")
+    return false;
+
   // Approving work is where unstated implementation choices get made.
   if (APPROVAL.test(lower))
     return true;
@@ -72,13 +75,14 @@ type Marker = { count: number; lastFired: number };
 if (import.meta.main) {
   // const raw = await Bun.stdin.text();
   const raw = readFileSync(0, "utf8");
-  let input: { prompt?: string; session_id?: string; transcript_path?: string } = {};
-  try {
-    input = JSON.parse(raw);
-  }
-  catch {
-    process.exit(0);
-  }
+  const input: { prompt?: string; session_id?: string; transcript_path?: string } = JSON.parse(raw);
+  // let input: { prompt?: string; session_id?: string; transcript_path?: string } = {};
+  // try {
+  //   input = JSON.parse(raw);
+  // }
+  // catch {
+  //   process.exit(0);
+  // }
 
   // const path = `${MARKER_DIR}/${input.session_id ?? "unknown"}.json`;
   const path = getSessionStatePath(input.transcript_path ?? input.session_id ?? "unknown");

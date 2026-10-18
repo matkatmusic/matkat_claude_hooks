@@ -8,6 +8,13 @@ test("formatShortModelName: display names from the live status line, unknown thr
   assert.equal(formatShortModelName("Opus 4.7 (1M context)"), "opus4.7[1m]");
   assert.equal(formatShortModelName("Fable 5.1"), "fable5.1");
   assert.equal(formatShortModelName("Sonnet 5"), "sonnet5[1m]");
+  assert.equal(formatShortModelName("Opus 5.5"), "opus5.5");
+  assert.equal(formatShortModelName("Sonnet 5.5"), "sonnet5.5[1m]");
+  assert.equal(formatShortModelName("Haiku 5.5"), "haiku5.5");
+  assert.equal(formatShortModelName(formatModelName("claude-fable-5-1")), "fable5.1");
+  assert.equal(formatShortModelName(formatModelName("claude-opus-5-5")), "opus5.5");
+  assert.equal(formatShortModelName(formatModelName("claude-sonnet-5-5")), "sonnet5.5[1m]");
+  assert.equal(formatShortModelName(formatModelName("claude-haiku-5-5")), "haiku5.5");
   assert.throws(() => formatShortModelName("Opus"), /Opus/);
   assert.throws(() => formatShortModelName(undefined), /undefined/);
 });

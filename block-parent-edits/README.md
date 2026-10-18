@@ -51,7 +51,7 @@ The rule "the main session must not edit" was only text in a prompt. The model f
 1. Claude calls a tool. The hook reads the call from stdin.
 2. The hook finds out if the call comes from a subagent.
 3. For the main session, the hook reads the last model name in the transcript.
-4. If the model starts with `claude-fable` or `claude-opus-5`, and the session is not in plan mode, the hook checks the tool.
+4. If the model starts with `claude-fable` or is `claude-opus-5` or a later Opus, and the session is not in plan mode, the hook checks the tool.
 5. Edit, Write, and NotebookEdit are blocked. A Bash call is blocked only when it writes files.
 6. The hook saves the blocked tool input as a JSON file in the folder named by `CLAUDE_HOOKS_BLOCKED_EDITS_DIR`.
 7. The hook prints a deny decision. The message names the saved file, so the subagent can read it and apply the edit.

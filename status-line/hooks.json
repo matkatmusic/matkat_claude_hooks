@@ -6,7 +6,8 @@
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\""
+    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
+    "refreshInterval": 3
   },
   "hooks": {
     "SessionStart": [

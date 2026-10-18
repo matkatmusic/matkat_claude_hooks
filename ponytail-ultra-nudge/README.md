@@ -16,7 +16,9 @@ You want ultra mode in every session, and the hook reminds the agent so you do n
 
 ## How it works
 
-The hook runs each time you send a prompt. It checks the session state file and the transcript for a use of the ponytail skill at the ultra level. If it finds one, it records that in the state file and stays quiet for the rest of the session. If it finds none, it adds a message that tells the agent to invoke the skill with `args: "ultra"`.
+The hook runs each time you send a prompt. It checks your prompt and the new part of the transcript for a use of the ponytail skill at the ultra level. The arguments must be the word `ultra` alone. If it finds one, it records that in the state file and stays quiet for the rest of the session. If it finds none, it adds a message that tells the agent to invoke the skill with `args: "ultra"`. It adds this message on every prompt until ultra is used.
+
+The hook can also run on the `PostToolUse` event with matcher `Skill`. Then it sets the flag at once when the agent runs the skill. This needs an extra entry in the hooks list and in `hooks/hooks.json`.
 
 ## More details
 

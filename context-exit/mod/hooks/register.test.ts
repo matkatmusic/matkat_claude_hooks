@@ -1,36 +1,63 @@
-import { test, expect, mock } from 'claude-code/testing'
+import { test, expect } from 'claude-code/testing'
 
 const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
+const DEFAULT_TOAST_MS = 4000
 
-test('context below the limit shows no message', async ($, on) => {
-  // mock.env(on, { CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT: '30' })
-  const toasts: string[] = []
-  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 29, window: 200000 } } }))
-  on('ui.toast', (_$, e) => {
-    toasts.push(e.text)
+function watchContext($: any, on: any, startPercent: number) {
+  const toasts: { text: string; timeoutMs?: number }[] = []
+  const context = { percent: startPercent }
+  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: context.percent, window: 200000 } } }))
+  on('ui.toast', (_$: any, e: any) => {
+    toasts.push({ text: e.text, timeoutMs: e.timeoutMs })
     return { value: undefined }
   })
-  on('turn.complete', (_$, e) => ({ text: e.answer }))
+  on('turn.complete', (_$: any, e: any) => ({ text: e.answer }))
+  return { toasts, context }
+}
 
+test('context below the limit shows no message', async ($, on) => {
+  const { toasts } = watchContext($, on, 29)
   await $.turn.complete(ANSWER)
   expect(toasts).toEqual([])
 })
 
-test('context over the limit shows the message once', async ($, on) => {
-  // mock.env(on, { CLAUDE_HOOKS_CONTEXT_EXIT_PERCENT: '30' })
-  const toasts: string[] = []
-  let percent = 31
-  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent, window: 200000 } } }))
-  on('ui.toast', (_$, e) => {
-    toasts.push(e.text)
-    return { value: undefined }
-  })
-  on('turn.complete', (_$, e) => ({ text: e.answer }))
-
+test('context over the limit shows one message and no repeat at the same level', async ($, on) => {
+  const { toasts, context } = watchContext($, on, 31)
   await $.turn.complete(ANSWER)
   expect(toasts).toHaveLength(1)
-  expect(toasts[0]).toContain('above 30%')
-  percent = 32
+  context.percent = 32
+  await $.turn.complete(ANSWER)
+  expect(toasts).toHaveLength(1)
+})
+
+test('a higher level shows a new message once each', async ($, on) => {
+  const { toasts, context } = watchContext($, on, 31)
+  await $.turn.complete(ANSWER)
+  context.percent = 55
+  await $.turn.complete(ANSWER)
+  context.percent = 60
+  await $.turn.complete(ANSWER)
+  context.percent = 85
+  await $.turn.complete(ANSWER)
+  context.percent = 90
+  await $.turn.complete(ANSWER)
+  expect(toasts).toHaveLength(3)
+})
+
+test('a jump straight to a high level shows one message', async ($, on) => {
+  const { toasts } = watchContext($, on, 85)
+  await $.turn.complete(ANSWER)
+  expect(toasts).toHaveLength(1)
+})
+
+test('the message stays on screen longer than the default', async ($, on) => {
+  const { toasts } = watchContext($, on, 31)
+  await $.turn.complete(ANSWER)
+  expect(toasts[0]?.timeoutMs).toBeGreaterThan(DEFAULT_TOAST_MS)
+})
+
+test('a new session warns again at the first level', async ($, on) => {
+  const { toasts } = watchContext($, on, 31)
   await $.turn.complete(ANSWER)
   expect(toasts).toHaveLength(1)
 })

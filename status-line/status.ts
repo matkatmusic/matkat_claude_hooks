@@ -10,12 +10,16 @@ import { countTurns, getGitBranch, getSessionTokens, readSittings } from "./stat
 import type { StatusInput } from "./statusRead.ts";
 import { CONTEXT_ORANGE_AT, CONTEXT_RED_AT, CONTEXT_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT, DAY_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT, FIVE_HOUR_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT, TOKENS_YELLOW_AT, TURNS_ORANGE_AT, TURNS_RED_AT, TURNS_YELLOW_AT } from "./status_line_config.ts";
 
-export { CYAN, DASH, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
+export { CYAN, DASH, RED, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
 export { ANNOYANCE_COLORS, computeAnnoyanceLevel, resetColor } from "./statusAnnoyance.ts";
 export { computeWeeklyBudget, computeDayOfWeek, formatBar, formatCountdown, formatTokens, computeSecondsUntilNextDay, computeSecondsUntilReset, formatWeeklyResetSuffix } from "./statusFormat.ts";
 export { countTurns, getSessionTokens } from "./statusRead.ts";
 
 // const EFFORT_ABBREVIATION = { low: "L", medium: "M", high: "H", xhigh: "x", max: "max" };
+
+function formatEffort(level: keyof typeof EFFORT_ABBREVIATION): string {
+  return EFFORT_ABBREVIATION[level];
+}
 
 function joinLine(...chunks: string[]): string {
   const parts: string[] = [];
@@ -66,10 +70,8 @@ if (import.meta.main) {
     weekBudget === undefined || sevenDay === undefined || weekDay === 7
       ? ""
       : ` (next: ${selectWeeklyUsageColor(sevenDay, weekBudget)}${formatCountdown(computeSecondsUntilNextDay(weeklySecondsLeft))}${RESET})`;
-  const spentOfWeek =
-    weekBudget === undefined
-      ? DASH
-      : formatOrDash(sevenDay, (used) => `${selectWeeklyUsageColor(used, weekBudget)}${Math.floor(used)}%${RESET}`);
+  const formatWeekSpent = (used: number) => `${selectWeeklyUsageColor(used, weekBudget!)}${Math.floor(used)}%${RESET}`;
+  const spentOfWeek = weekBudget === undefined ? DASH : formatOrDash(sevenDay, formatWeekSpent);
   const formatTokenText = (n: number) => `${selectColor(n, TOKENS_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT)}${formatTokens(n)}${RESET}`;
   const barColor = selectColor(
     pct,
@@ -82,7 +84,14 @@ if (import.meta.main) {
   // const model = `${CYAN}[${input.model?.display_name ?? "?"}]${RESET}`;
   // const model = `${CYAN}[${input.model?.display_name ?? "?"}]${RESET}(${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])})`;
   // const model = `${CYAN}[${input.model?.display_name ?? "?"}:${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])}]${RESET}`;
-  const model = `${CYAN}[${formatShortModelName(input.model?.display_name)}:${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])}]${RESET}`;
+  const effortText = formatOrDash(input.effort?.level, formatEffort);
+  let model: string;
+  try {
+    model = `${CYAN}[${formatShortModelName(input.model?.display_name)}:${effortText}]${RESET}`;
+  }
+  catch (error) {
+    model = `${RED}${(error as Error).message}${RESET}`;
+  }
   // const model = `${CYAN}[${formatModelName(input.model!.id)}:${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])}]${RESET}`;
   const folder = `📁 ${(input.workspace?.current_dir ?? "").split("/").pop()}`;
   const branch = branchName ? `🌿 ${branchName}` : "";
@@ -92,11 +101,16 @@ if (import.meta.main) {
     TURNS_ORANGE_AT,
     TURNS_RED_AT,
   );
-  const turns = `🔄 ${turnsColor}${turnCount} turns${RESET}`;
+  const turnCounterNotWired = sittings.length === 0;
+  const turns = turnCounterNotWired
+    ? `🔄 ${RED}turn-counter hook is not wired: no turns or tokens${RESET}`
+    : `🔄 ${turnsColor}${turnCount} turns${RESET}`;
   const contextBar = `${barColor}${formatBar(pct)}${RESET} ${barColor}${pct}%${RESET}`;
-  const weekUsage = `Week:${spentOfWeek} (${formatOrDash(weekBudget, (budget) => `${selectBudgetColor(sevenDay, budget)}${Math.round(budget)}%${RESET}`)})`;
+  const formatBudget = (budget: number) => `${selectBudgetColor(sevenDay, budget)}${Math.round(budget)}%${RESET}`;
+  const formatDay = (day: number) => `${selectColor(day, DAY_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT)}${day}${RESET}`;
+  const weekUsage = `Week:${spentOfWeek} (${formatOrDash(weekBudget, formatBudget)})`;
   const dayCount =
-    `Day:${formatOrDash(weekDay, (day) => `${selectColor(day, DAY_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT)}${day}${RESET}`)}/${GREEN}7${RESET}` +
+    `Day:${formatOrDash(weekDay, formatDay)}/${GREEN}7${RESET}` +
     nextDaySuffix +
     (weekDay === undefined ? "" : formatWeeklyResetSuffix(weekDay, weeklySecondsLeft));
   const tokensInfo = `Tokens In:${formatOrDash(tokensIn, formatTokenText)} Out:${formatOrDash(tokensOut, formatTokenText)}`;
@@ -105,14 +119,16 @@ if (import.meta.main) {
   const cacheTimer = cacheWarm
     ? `Prompt cache [resets in: ${GREEN}${formatCountdown(cacheSecondsLeft)}${RESET}]`
     : `Prompt cache [${RED}Expired${RESET}]`;
+  const formatFiveHourUsed = (used: number) => `${selectColor(used, FIVE_HOUR_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT)}${Math.floor(used)}%${RESET}`;
+  const formatFiveHourReset = (s: number) => `${resetColor(Math.floor(s / 60), fiveHour ?? 0)}${formatCountdown(s)}${RESET}`;
   const fiveHrUsage =
-    `5hr:${formatOrDash(fiveHour, (used) => `${selectColor(used, FIVE_HOUR_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT)}${Math.floor(used)}%${RESET}`)} ` +
-    `(Resets in: ${formatOrDash(untilReset, (s) => `${resetColor(Math.floor(s / 60), fiveHour ?? 0)}${formatCountdown(s)}${RESET}`)})`;
+    `5hr:${formatOrDash(fiveHour, formatFiveHourUsed)} ` +
+    `(Resets in: ${formatOrDash(untilReset, formatFiveHourReset)})`;
 
   console.log(joinLine(model, folder, branch));
   // console.log(joinLine(turns, contextBar, weekUsage, dayCount));
   // console.log(joinLine(tokensInfo, fiveHrUsage));
-  console.log(joinLine(contextBar, turns, tokensInfo));
+  console.log(joinLine(contextBar, turns, turnCounterNotWired ? "" : tokensInfo));
   console.log(joinLine(fiveHrUsage, weekUsage, dayCount));
   console.log(joinLine(cacheTimer));
 }

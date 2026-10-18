@@ -22,10 +22,38 @@ export const STARTING_WORK_PHRASES = [
   "fanning out",
 ];
 
+const QUOTE_CLOSERS: Record<string, string> = { '"': '"', "“": "”", "`": "`" };
+
+function removeQuotedText(message: string): string {
+  let kept = "";
+  let closer = "";
+  for (const char of message) {
+    const isInQuote = closer !== "";
+    if (isInQuote) {
+      const isCloser = char === closer;
+      if (isCloser)
+        closer = "";
+      kept += " ";
+      continue;
+    }
+    const opened = QUOTE_CLOSERS[char] ?? "";
+    const isOpener = opened !== "";
+    if (isOpener) {
+      closer = opened;
+      kept += " ";
+      continue;
+    }
+    kept += char;
+  }
+  return kept;
+}
+
 export function isStartingWork(message: string): boolean {
-  const lowered = message.toLowerCase();
+  const unquoted = removeQuotedText(message).toLowerCase();
+  const words = unquoted.replace(/[^a-z0-9]+/g, " ");
+  const paddedWords = ` ${words} `;
   for (const phrase of STARTING_WORK_PHRASES) {
-    const isPhraseFound = lowered.includes(phrase);
+    const isPhraseFound = paddedWords.includes(` ${phrase} `);
     if (isPhraseFound)
       return true;
   }
@@ -38,6 +66,8 @@ export function getReason(taskListId: string | undefined, setupHelp: string): st
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  if (input.stop_hook_active)
+    process.exit(0);
   const isStarting = isStartingWork(input.last_assistant_message ?? "");
   if (!isStarting)
     process.exit(0);

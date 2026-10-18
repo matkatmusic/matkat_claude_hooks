@@ -20,7 +20,7 @@ CLAUDE_HOOKS_PLANNING_GUIDE_PATH=~/.claude/guides/planning.md
 
 ## How it works
 
-The hook runs after every Write or Edit tool call. It checks if Claude is in plan mode or if the file path contains `/plans/`. If one is true, it prints a reminder with the path of your planning guide. If both are false, it prints nothing.
+The hook runs after every Write or Edit tool call. It checks if the file is inside the `plans` folder of the project (the folder in `cwd`). If yes, it prints a reminder with the path of your planning guide. If no, it prints nothing.
 
 ## More details
 
@@ -35,9 +35,9 @@ You keep planning rules in one guide file.
 ### Steps
 
 1. The hook runs after every Write or Edit tool call.
-2. It checks two things. Is Claude in plan mode? Does the file path contain `/plans/`?
-3. If one answer is yes, it prints the reminder with the path of your planning guide.
-4. If both answers are no, it prints nothing.
+2. It checks one thing. Is the file inside the `plans` folder of the project?
+3. If yes, it prints the reminder with the path of your planning guide.
+4. If no, it prints nothing.
 
 ### The guide path
 

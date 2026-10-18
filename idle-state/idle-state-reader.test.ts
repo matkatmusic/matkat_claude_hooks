@@ -1,11 +1,27 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 process.env.CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS = "86400000";
-const { buildStateContext } = await import("./idle-state-reader.ts");
+const { buildStateContext, findIdleStateFolder } = await import("./idle-state-reader.ts");
+
+test("a subfolder of the repo finds the .idleState folder at the repo root", () => {
+  const repo = mkdtempSync(`${tmpdir()}/idle-state-repo-`);
+  mkdirSync(`${repo}/.git`);
+  mkdirSync(`${repo}/.idleState`);
+  mkdirSync(`${repo}/src/deep`, { recursive: true });
+  assert.equal(findIdleStateFolder(`${repo}/src/deep`), `${repo}/.idleState`);
+});
+
+test("the search stops at the repo root and ignores folders above it", () => {
+  const outer = mkdtempSync(`${tmpdir()}/idle-state-outer-`);
+  mkdirSync(`${outer}/.idleState`);
+  mkdirSync(`${outer}/repo/.git`, { recursive: true });
+  mkdirSync(`${outer}/repo/src`);
+  assert.equal(findIdleStateFolder(`${outer}/repo/src`), `${outer}/repo/src/.idleState`);
+});
 
 test("lists only state files from the last 24 hours, without their contents", () => {
   const folder = mkdtempSync(`${tmpdir()}/idle-state-`);

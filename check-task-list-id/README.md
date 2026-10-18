@@ -14,7 +14,7 @@ Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
 
 ## How it works
 
-The hook runs when a session starts. It gives `process.env.CLAUDE_CODE_TASK_LIST_ID` to `checkTaskListId` in `shared/task-list-id.ts`. If the value is empty or missing, the hook prints a warning that tells you how to set it. If the value is set, the hook prints nothing.
+The hook runs when a session starts. It gives `process.env.CLAUDE_CODE_TASK_LIST_ID` to `checkTaskListId` in `shared/task-list-id.ts`. If the value is empty or missing, the hook prints a warning that tells you how to set it. If the value is set but is not a good folder name, the hook prints a warning too. A good value has 3 or more characters, uses only letters, digits, `-`, `_` and `.`, and does not start with `.`. If the value is good, the hook prints nothing.
 
 ## More details
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 
@@ -53,6 +53,68 @@ test("hook: a --test-name-pattern flag scopes the background run to one test in 
   const log = readFileSync(monitorCommand[1], "utf8");
   assert.match(log, /pass 1/);
   assert.match(log, /ℹ tests 1/);
+});
+
+function runHook(project: string, command: string, env = HOOK_TEST_ENV) {
+  const input = JSON.stringify({ cwd: project, tool_input: { command } });
+  return spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env });
+}
+
+function monitorLogPaths(hookStdout: string): string[] {
+  const reason: string = JSON.parse(hookStdout).hookSpecificOutput.permissionDecisionReason;
+  const logPaths: string[] = [];
+  for (const match of reason.matchAll(/node \S+monitor-test-run\.ts (\S+\.log)/g))
+    logPaths.push(match[1]);
+  return logPaths;
+}
+
+function waitForLog(logPath: string): string {
+  const monitor = spawnSync("node", [MONITOR_SCRIPT, logPath, "30"], { encoding: "utf8" });
+  assert.match(monitor.stdout, /TEST RUN FINISHED/);
+  return monitor.stdout;
+}
+
+test("hook: a named test file runs with the runner Claude typed", () => {
+  const project = mkdtempSync(`${tmpdir()}/typed-runner-`);
+  writeFileSync(`${project}/package.json`, "{}");
+  const binDir = mkdtempSync(`${tmpdir()}/fake-bin-`);
+  writeFileSync(`${binDir}/jest`, '#!/bin/sh\necho "fake jest ran: $@"\n');
+  chmodSync(`${binDir}/jest`, 0o755);
+  const hook = runHook(project, "jest math.test.ts", { ...HOOK_TEST_ENV, PATH: `${binDir}:${process.env.PATH}` });
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  waitForLog(logPaths[0]);
+  assert.match(readFileSync(logPaths[0], "utf8"), /fake jest ran: math\.test\.ts/);
+});
+
+test("hook: every test command in the line starts its own background run", () => {
+  const project = mkdtempSync(`${tmpdir()}/two-runs-`);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+  const hook = runHook(project, "npm test && node --test fast.test.js");
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 2, hook.stdout);
+  assert.notEqual(logPaths[0], logPaths[1]);
+  assert.match(waitForLog(logPaths[0]), /all passing/);
+  assert.match(waitForLog(logPaths[1]), /exit code: 0/);
+});
+
+test("hook: a test command inside bash -c quotes is blocked too", () => {
+  const project = mkdtempSync(`${tmpdir()}/bash-c-`);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+  const hook = runHook(project, 'bash -c "npm test"');
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  assert.match(waitForLog(logPaths[0]), /all passing/);
+});
+
+test("hook: a cd into a folder that an earlier step makes lets the command run as typed", () => {
+  const project = mkdtempSync(`${tmpdir()}/new-dir-`);
+  writeFileSync(`${project}/package.json`, "{}");
+  const hook = runHook(project, "mkdir newdir && cd newdir && npm test");
+  assert.equal(hook.status, 0);
+  assert.equal(hook.stdout, "");
 });
 
 test("hook: returns immediately, and the full-suite test run finishes in the background", () => {
