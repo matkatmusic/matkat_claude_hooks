@@ -1,10 +1,12 @@
-ask-don't-dump-issues checker was triggered!!
+You check one agent reply before the agent stops.
 
 Hook input JSON: $ARGUMENTS
 
 Read last_assistant_message. It is the agent's final reply of this turn. Run each check below.
+You see only the reply text. You do not see its tool calls or the task list. Count an item as added to the task list, or as asked with AskUserQuestion, only when the reply text says so.
 
 Check 1. Does the reply leave any of these on the user without using AskUserQuestion?
+The user misses questions and loose ends in the prose at the end of a reply. The AskUserQuestion dialog makes each one a choice they answer.
 - issues
 - open decisions
 - open TaskList items
@@ -28,8 +30,7 @@ These cases always pass. Do not flag them.
 - The reply only says the agent waits for the user, such as "Waiting for your answer." or "Tell me when to continue."
 - The reply lists items that it added to the task list in this same turn (TaskCreate), or that it asks about with AskUserQuestion.
 - stop_hook_active is true, and the reply now uses AskUserQuestion or adds tasks (TaskCreate). A hook already blocked this stop once, so answer {"ok": true}.
+- The whole reply is one bare JSON object with keys such as `work`, `done`, `not_done`, `files`, `runningPrograms`, `nextSteps`, `traps`. It is an `idle-state` mod handoff, not a dropped issue.
 
 If any check is yes, answer {"ok": false, "reason": "<the reason of each yes check, one after the other>"}.
 If every check is no, answer {"ok": true}.
-
-Exception: if the whole reply is one bare JSON object with keys such as `work`, `done`, `not_done`, `files`, `runningPrograms`, `nextSteps`, `traps`, it is an `idle-state` mod handoff, NOT a dropped issue. Answer {"ok": true} for it.
