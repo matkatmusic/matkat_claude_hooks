@@ -5,6 +5,7 @@ const CHECKER_TIMEOUT_MS = 30 * 1000;
 const PLUGIN_NAME = 'ask-dont-dump';
 const RUBRIC_FILE_NAME = 'ask-dont-dump-prompt.md';
 const ARGUMENTS_PLACEHOLDER = '$ARGUMENTS';
+const DISPATCH_FILE_PATH = '../../dispatcher/dispatch.json';
 
 let isAnsweringCheckerReason = false;
 
@@ -23,7 +24,16 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
     return next(e);
   if (e.reason !== 'answer')
     return next(e);
-  const rubric = await $.fs.read(`${$.plugin.root}/${RUBRIC_FILE_NAME}`);
+  const dispatchEntries = JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCH_FILE_PATH}`));
+  for (const dispatchEntry of dispatchEntries) {
+    const isThisMod = dispatchEntry.name === PLUGIN_NAME;
+    if (!isThisMod)
+      continue;
+    const isDisabled = dispatchEntry.enabled === false;
+    if (isDisabled)
+      return next(e);
+  }
+  const rubric =await $.fs.read(`${$.plugin.root}/${RUBRIC_FILE_NAME}`);
   const hookInput = JSON.stringify({ last_assistant_message: e.answer, stop_hook_active: isAnsweringCheckerReason });
   const checkerPrompt = rubric.split(ARGUMENTS_PLACEHOLDER).join(hookInput);
   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt: checkerPrompt, timeoutMs: CHECKER_TIMEOUT_MS });
