@@ -1,4 +1,4 @@
-// Stranger test: runs the 41-row hook checklist (14 live rows in tmux, 27 direct rows); the name avoids "test" so test runners skip it.
+// Stranger test: 41 hook rows, 14 live in tmux and 27 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -35,6 +35,9 @@ const IDLE_MS = 60000;
 const IDLE_MARGIN_S = 300;
 const SETTLE_S = 15;
 const TURN_TIMEOUT_S = 900;
+const CLEAR_ATTEMPTS = 12;
+const PROMPT_WAIT_S = 60;
+const HOOK_FLUSH_S = 4;
 const BUSY_RE = /^\S \w+…|…\s*\(\d+[ms]|esc to interrupt/m;
 const TURNS_RE = /(\d+) turns/;
 const SUBAGENT_LINE_RE = /\[[^\n]*:\w\] [^\n·]+ · [^\n·]+ · \d+:\d\d · \d\S*/;
@@ -326,7 +329,82 @@ function readRecords(session: Session): JsonRecord[] {
   return records;
 }
 
+function isScreenIdle(screen: string): boolean {
+  const isBusy = BUSY_RE.test(screen);
+  const hasDialog = screen.includes("Esc to cancel");
+  const hasPrompt = screen.includes("❯");
+  return hasPrompt && !isBusy && !hasDialog;
+}
+
+// Presses Escape until no turn runs and no dialog is open; throws if the pane never gets idle.
+function clearToIdlePrompt(session: Session): void {
+  for (let attempt = 0; attempt < CLEAR_ATTEMPTS; attempt++) {
+    const screen = tmux_lib.tmux_capturePane(session.name);
+    const isIdle = isScreenIdle(screen);
+    if (isIdle) {
+      return;
+    }
+    tmux_lib.tmux_sendKeys(session.name, "Escape");
+    tmux_lib.sleep(2);
+  }
+  throw new Error(`pane ${session.name} did not return to an idle prompt:\n${tmux_lib.tmux_capturePane(session.name)}`);
+}
+
+function containsPromptRecord(records: JsonRecord[], prompt: string): boolean {
+  for (const record of records) {
+    const isUser = record.type === "user";
+    const isMeta = record.isMeta === true;
+    const isTypedPrompt = isUser && !isMeta;
+    if (!isTypedPrompt) {
+      continue;
+    }
+    const content = record.message.content;
+    if (typeof content === "string") {
+      const hasText = content.includes(prompt);
+      if (hasText) {
+        return true;
+      }
+      continue;
+    }
+    for (const block of content) {
+      const hasText = block.type === "text" && block.text.includes(prompt);
+      if (hasText) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function validatePromptRecorded(session: Session, records: JsonRecord[], prompt: string): void {
+  const isRecorded = containsPromptRecord(records, prompt);
+  if (!isRecorded) {
+    throw new Error(`prompt was not recorded as a user message in session ${session.name}: ${prompt}\n${tmux_lib.tmux_capturePane(session.name)}`);
+  }
+}
+
+// Sends a prompt, waits for its user record and hook records, then interrupts the turn it started.
+function executePromptOnlyTurn(session: Session, prompt: string): JsonRecord[] {
+  clearToIdlePrompt(session);
+  const baselineCount = readRecords(session).length;
+  tmux_lib.tmux_sendAndSubmit(session.name, prompt + " ");
+  for (let second = 0; second < PROMPT_WAIT_S; second++) {
+    const records = readRecords(session).slice(baselineCount);
+    const isRecorded = containsPromptRecord(records, prompt);
+    if (isRecorded) {
+      tmux_lib.sleep(HOOK_FLUSH_S);
+      const settledRecords = readRecords(session).slice(baselineCount);
+      clearToIdlePrompt(session);
+      return settledRecords;
+    }
+    tmux_lib.sleep(1);
+  }
+  validatePromptRecorded(session, readRecords(session).slice(baselineCount), prompt);
+  return [];
+}
+
 function executeTurn(session: Session, prompt: string, watchRegex?: RegExp): [JsonRecord[], string | undefined] {
+  clearToIdlePrompt(session);
   let lastSize = getJsonlSize(session);
   const baselineCount = readRecords(session).length;
   const isJsonlGrowing = (): boolean => {
@@ -338,7 +416,9 @@ function executeTurn(session: Session, prompt: string, watchRegex?: RegExp): [Js
   tmux_lib.tmux_sendAndSubmit(session.name, prompt + " ");
   const watchMatch = tmux_lib.tmux_waitForTurnEnd(session.name, BUSY_RE, SETTLE_S, TURN_TIMEOUT_S, isJsonlGrowing, watchRegex);
   tmux_lib.tmux_capturePaneToFile(session.name, path.join(session.bed, `pane-${session.name}.txt`));
-  return [readRecords(session).slice(baselineCount), watchMatch];
+  const turnRecords = readRecords(session).slice(baselineCount);
+  validatePromptRecorded(session, turnRecords, prompt);
+  return [turnRecords, watchMatch];
 }
 
 function getSessionModel(session: Session): string | null {
@@ -477,13 +557,6 @@ function executeSecondSession(rows: Row[], bed: string, config: string): Session
   validateSessionModel(session, "claude-sonnet-5");
   addHookRow(rows, session, 10, "ponytail-ultra-nudge", helloRecords, "Ponytail ultra has not been invoked yet", "UserPromptSubmit");
 
-  const [fixItRecords] = executeTurn(session, "fix it");
-  const gateFound = findEvidence(fixItRecords, "AMBIGUITY GATE", "UserPromptSubmit");
-  const [fixItJdiRecords] = executeTurn(session, "fix it jdi");
-  const gateInOptOut = findEvidence(fixItJdiRecords, "AMBIGUITY GATE", "UserPromptSubmit");
-  const clarifyOk = gateFound !== undefined && gateInOptOut === undefined;
-  addRow(rows, 11, "clarify-ambiguous", getSessionModel(session), clarifyOk, `gate on 'fix it': ${gateFound !== undefined ? "True" : "False"}; gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`);
-
   for (const [number, hook, prompt, needle, event] of SESSION_TWO_ROWS) {
     const [records] = executeTurn(session, prompt);
     addHookRow(rows, session, number, hook, records, needle, event);
@@ -491,6 +564,13 @@ function executeSecondSession(rows: Row[], bed: string, config: string): Session
     rmSync(path.join(project, "add.ts"), { force: true });
     rmSync(path.join(project, "add.test.ts"), { force: true });
   }
+
+  const fixItRecords = executePromptOnlyTurn(session, "fix it");
+  const gateFound = findEvidence(fixItRecords, "AMBIGUITY GATE", "UserPromptSubmit");
+  const fixItJdiRecords = executePromptOnlyTurn(session, "fix it jdi");
+  const gateInOptOut = findEvidence(fixItJdiRecords, "AMBIGUITY GATE", "UserPromptSubmit");
+  const clarifyOk = gateFound !== undefined && gateInOptOut === undefined;
+  addRow(rows, 11, "clarify-ambiguous", getSessionModel(session), clarifyOk, `gate on 'fix it': ${gateFound !== undefined ? "True" : "False"}; gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`);
 
   executeTurn(session, "say hi");
   return session;
