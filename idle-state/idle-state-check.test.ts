@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 
-const { isFirstTurn, findUnreadFiles, findUnnamedFiles, collectReplyText } = await import("./idle-state-check.ts");
+const { isFirstTurn, findUnreadFiles, findUnnamedFiles, collectReplyText, isReaderEnabled } = await import("./idle-state-check.ts");
 
 function promptLine(): string {
   return JSON.stringify({ type: "user", message: { content: "hi" }, timestamp: "2026-10-16T11:42:00.000Z" });
@@ -68,4 +70,20 @@ test("a file named in an earlier reply counts as named", () => {
     JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "Done." }] } }),
   ].join("\n");
   assert.deepEqual(findUnnamedFiles(files, collectReplyText(transcript)), []);
+});
+
+function writeHooksList(event: string): string {
+  const listPath = `${mkdtempSync(`${tmpdir()}/idle-state-list-`)}/hooks-list.ts`;
+  writeFileSync(listPath, `export const HOOKS = [{ event: "${event}", command: ["node", "/x/idle-state/idle-state-reader.ts"], enabled: true }];\n`);
+  return listPath;
+}
+
+test("the reader counts as enabled when its entry is a UserPromptSubmit hook", async () => {
+  process.env.CLAUDE_HOOKS_LIST = writeHooksList("UserPromptSubmit");
+  assert.equal(await isReaderEnabled(), true);
+});
+
+test("the reader does not count as enabled when its entry is a SessionStart hook", async () => {
+  process.env.CLAUDE_HOOKS_LIST = writeHooksList("SessionStart");
+  assert.equal(await isReaderEnabled(), false);
 });

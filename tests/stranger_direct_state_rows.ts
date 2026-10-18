@@ -51,7 +51,7 @@ function createIdleProject(context: DirectContext): string {
 }
 
 function executeIdleReader(context: DirectContext, deepDir: string, transcript: string) {
-  const input = { hook_event_name: "SessionStart", session_id: "direct-idle", cwd: deepDir, transcript_path: transcript };
+  const input = { hook_event_name: "UserPromptSubmit", session_id: "direct-idle", prompt: "hello", cwd: deepDir, transcript_path: transcript };
   return executeHook(context, READER_SCRIPT, input, deepDir);
 }
 

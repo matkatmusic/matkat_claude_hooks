@@ -16,7 +16,7 @@ Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce
 | [check-task-list-id](check-task-list-id/README.md) | Warns at session start when `CLAUDE_CODE_TASK_LIST_ID` is not set. |
 | [clarify-ambiguous](clarify-ambiguous/README.md) | Makes Claude ask one question when your prompt is vague. |
 | [debt-ratchet](debt-ratchet/README.md) | Runs eslint on edited `.ts` files. Blocks the stop unless the style debt dropped. |
-| [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files at session start. |
+| [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files on the first prompt. |
 | [nudge-task-list](nudge-task-list/README.md) | Blocks the stop when work starts without a task list. |
 | [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
 | [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |

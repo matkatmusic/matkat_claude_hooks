@@ -15,7 +15,7 @@ CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS=86400000
 2. Set `enabled: true` on these two entries in `dispatcher/hooks-list.ts`:
 
 ```ts
-{ event: "SessionStart", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-reader.ts`], enabled: true },
+{ event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-reader.ts`], enabled: true },
 { event: "Stop", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-check.ts`], enabled: true },
 ```
 
@@ -34,7 +34,7 @@ The mod waits after each reply. When the chat sits idle for a set time, it asks 
 ### What the parts are
 
 - The mod (`mod/`) watches a chat. When the chat sits idle for a set time, the mod asks Claude to write a state file. The state file is JSON. It holds the work done, the work left, the files changed, the programs running, and the traps to avoid. Then the mod exits the chat.
-- The reader (`idle-state-reader.ts`) is a SessionStart hook. When a new chat starts, it lists the state files made in a set window of time. It tells Claude to read them.
+- The reader (`idle-state-reader.ts`) is a UserPromptSubmit hook. On the first prompt of a chat, it lists the state files made in a set window of time. It tells Claude to read them. It does nothing on later prompts. It also does nothing when the first prompt runs `/catch-up`.
 - The check (`idle-state-check.ts`) is a Stop hook. It makes sure Claude does what the reader asked.
 
 The mod also writes the state file when you run `exit` yourself, before the chat closes.
@@ -52,7 +52,7 @@ Claude keeps a cache of the chat. The cache expires when the chat is idle for to
 5. The mod checks which listed programs still run, and adds the process numbers to the file.
 6. The mod runs `exit`. If programs still run, Claude asks what to do with them. The mod pushes the key for "continue" after a short delay. This uses `python3` and the terminal device, so it works on macOS and Linux only.
 7. Any new prompt in the old chat is dropped. The message tells you to start a new chat.
-8. In the new chat, the reader finds the state files in the project folder that are newer than the window. It prints one line that names them. It also saves their paths in the session state file.
+8. On the first prompt in the new chat, the reader finds the state files in the project folder that are newer than the window. It prints one line that names them. It also saves their paths in the session state file.
 9. At the end of the first turn, the check reads the saved paths. It blocks the stop until Claude read each file and named each file in any reply in the first turn. A name is the file name without `.json`. The check does nothing after the first turn.
 
 The check works only when the reader entry is enabled in the list that `CLAUDE_HOOKS_LIST` points to.

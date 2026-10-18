@@ -80,7 +80,7 @@ export async function isReaderEnabled(): Promise<boolean> {
   const listPath = resolve(import.meta.dirname, "..", readEnvValue("CLAUDE_HOOKS_LIST"));
   const { HOOKS }: { HOOKS: HookEntry[] } = await import(listPath);
   for (const hook of HOOKS) {
-    const isReaderEntry = hook.event === "SessionStart" && hook.command[hook.command.length - 1].endsWith("idle-state-reader.ts");
+    const isReaderEntry = hook.event === "UserPromptSubmit" && hook.command[hook.command.length - 1].endsWith("idle-state-reader.ts");
     const isEnabled = hook.enabled;
     const isEnabledReader = isReaderEntry && isEnabled;
     if (isEnabledReader)

@@ -585,7 +585,7 @@ function executeThirdSession(rows: Row[], bed: string, config: string, second: S
   const blockOk = found !== undefined && blockedFiles.length > 0;
   addRow(rows, 15, "block-parent-edits", model, blockOk, `${found !== undefined ? found : "None"}; saved calls: ${blockedFiles.length}`);
 
-  const readerFound = findEvidence(readRecords(session), "Tell me about the recent work", "SessionStart");
+  const readerFound = findEvidence(readRecords(session), "Tell me about the recent work", "UserPromptSubmit");
   const idleOk = stateFiles.length > 0 && hasExited && readerFound !== undefined;
   addRow(rows, 14, "idle-state", getSessionModel(second), idleOk, `state files: ${stateFiles.length}; claude exited: ${hasExited ? "True" : "False"}; next start context: ${readerFound !== undefined ? "True" : "False"}`);
   return session;

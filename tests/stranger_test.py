@@ -433,7 +433,7 @@ def run_third_session(rows, bed, config, second, state_files, has_exited):
     blocked_files = list((bed / "blocked-edits").glob("*.json"))
     add_row(rows, 15, "block-parent-edits", model, found is not None and len(blocked_files) > 0, f"{found}; saved calls: {len(blocked_files)}")
 
-    reader_found = find_evidence(read_records(session), "Tell me about the recent work", "SessionStart")
+    reader_found = find_evidence(read_records(session), "Tell me about the recent work", "UserPromptSubmit")
     idle_ok = len(state_files) > 0 and has_exited and reader_found is not None
     add_row(rows, 14, "idle-state", session_model(second), idle_ok, f"state files: {len(state_files)}; claude exited: {has_exited}; next start context: {reader_found is not None}")
     return session

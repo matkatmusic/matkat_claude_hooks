@@ -32,7 +32,8 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = ($, e, next) => {
       isWritingState = false;
     return next(e);
   }
-  return { drop: `The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFilePath}` };
+  // return { drop: `The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFilePath}` };
+  return { drop: `The chat cache has expired. You should exit this chat. Start a new chat and run /catch-up.` };
 };
 
 const denyToolsWhileStatePromptPending: Hook<'tool.call'> = ($, e, next) => {

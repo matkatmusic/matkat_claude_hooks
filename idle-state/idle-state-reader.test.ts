@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 process.env.CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS = "86400000";
@@ -43,4 +44,54 @@ test("lists only state files from the last 24 hours, without their contents", ()
 
 test("missing folder gives empty text", () => {
   assert.equal(buildStateContext("/tmp/idle-state-missing-folder", Date.now()), "");
+});
+
+function createPromptProject(): { repo: string; stateDir: string; transcriptPath: string; stateFilePath: string } {
+  const repo = mkdtempSync(`${tmpdir()}/idle-state-prompt-`);
+  mkdirSync(`${repo}/.git`);
+  mkdirSync(`${repo}/.idleState`);
+  const stateFilePath = `${repo}/.idleState/recent.json`;
+  writeFileSync(stateFilePath, "{}");
+  const stateDir = mkdtempSync(`${tmpdir()}/idle-state-session-`);
+  return { repo, stateDir, transcriptPath: `${repo}/session-abc.jsonl`, stateFilePath };
+}
+
+function runReader(project: { repo: string; stateDir: string; transcriptPath: string }, prompt: string): string {
+  const result = spawnSync("node", [new URL("./idle-state-reader.ts", import.meta.url).pathname], {
+    input: JSON.stringify({ prompt, cwd: project.repo, transcript_path: project.transcriptPath }),
+    encoding: "utf8",
+    env: { ...process.env, CLAUDE_HOOKS_SESSION_STATE_DIR: project.stateDir, CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" },
+  });
+  assert.equal(result.status, 0);
+  return result.stdout;
+}
+
+function readSavedFiles(project: { stateDir: string }): string[] {
+  return JSON.parse(readFileSync(`${project.stateDir}/session-abc.json`, "utf8")).idleStateFiles;
+}
+
+test("the first plain prompt prints the state file and saves its path", () => {
+  const project = createPromptProject();
+  const output = runReader(project, "hello there");
+  assert.ok(output.includes(project.stateFilePath));
+  assert.deepEqual(readSavedFiles(project), [project.stateFilePath]);
+});
+
+test("a catch-up prompt prints nothing and saves an empty list", () => {
+  const project = createPromptProject();
+  assert.equal(runReader(project, "/catch-up"), "");
+  assert.deepEqual(readSavedFiles(project), []);
+});
+
+test("the plugin-named catch-up prompt with arguments prints nothing and saves an empty list", () => {
+  const project = createPromptProject();
+  assert.equal(runReader(project, "/matkat-hooks:catch-up now"), "");
+  assert.deepEqual(readSavedFiles(project), []);
+});
+
+test("the second prompt prints nothing and keeps the saved paths", () => {
+  const project = createPromptProject();
+  runReader(project, "hello there");
+  assert.equal(runReader(project, "and another thing"), "");
+  assert.deepEqual(readSavedFiles(project), [project.stateFilePath]);
 });

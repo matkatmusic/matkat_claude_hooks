@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SessionStart hook: hands the model the .idleState state files from the last window of time.
+// First prompt only: hands the model the recent .idleState files; skips when the prompt runs catch-up.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { readEnvValue } from "../shared/env.ts";
@@ -55,10 +55,22 @@ export function buildStateContext(folder: string, nowMs: number): string {
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   // const context = buildStateContext(`${input.cwd}/${readEnvValue("CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME")}`, Date.now());
-  const folder = findIdleStateFolder(input.cwd);
-  const paths = findRecentStateFiles(folder, Date.now());
   const statePath = getSessionStatePath(input.transcript_path);
   const state = readSessionState(statePath);
+  const isLaterPrompt = state.idleStateFiles !== undefined;
+  if (isLaterPrompt)
+    process.exit(0);
+  const firstWord = input.prompt.trim().split(/\s+/)[0];
+  const isCatchUpPrompt = firstWord === "/catch-up" || firstWord === "/matkat-hooks:catch-up";
+  if (isCatchUpPrompt) {
+    state.idleStateFiles = [];
+    writeSessionState(statePath, state);
+    process.exit(0);
+  }
+  const folder = findIdleStateFolder(input.cwd);
+  const paths = findRecentStateFiles(folder, Date.now());
+  // const statePath = getSessionStatePath(input.transcript_path);
+  // const state = readSessionState(statePath);
   state.idleStateFiles = paths;
   writeSessionState(statePath, state);
   const context = buildStateContext(folder, Date.now());

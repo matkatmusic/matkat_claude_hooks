@@ -1,6 +1,6 @@
 {
   "hooks": {
-    "SessionStart": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           { "type": "command", "command": "node \"/path/to/claude_hooks/idle-state/idle-state-reader.ts\"" }
