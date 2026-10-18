@@ -37,28 +37,37 @@ export function isAmbiguous(prompt: string): boolean {
     return false;
 
   // Slash commands and ! passthroughs are already explicit.
-  if (trimmed.startsWith("/") || trimmed.startsWith("!"))
+  const startsWithSlash = trimmed.startsWith("/");
+  const startsWithBang = trimmed.startsWith("!");
+  const isPassthrough = startsWithSlash || startsWithBang;
+  if (isPassthrough)
     return false;
 
   const lower = trimmed.toLowerCase();
-  if (OPT_OUT.test(lower))
+  const isOptOut = OPT_OUT.test(lower);
+  if (isOptOut)
     return false;
 
   if (lower === "yes")
     return false;
 
   // Approving work is where unstated implementation choices get made.
-  if (APPROVAL.test(lower))
+  const isApproval = APPROVAL.test(lower);
+  if (isApproval)
     return true;
 
   const vague = VAGUE.test(lower);
   const words = trimmed.split(/\s+/).length;
 
   // Other short replies answer a question ("option A") — stay silent.
-  if (words <= 3 && !vague)
+  const isShortAndClear = words <= 3 && !vague;
+  if (isShortAndClear)
     return false;
 
-  return vague || (words <= MAX_WORDS && !SPECIFIC.test(trimmed));
+  const isShortEnough = words <= MAX_WORDS;
+  const isSpecific = SPECIFIC.test(trimmed);
+  const isShortAndUnspecific = isShortEnough && !isSpecific;
+  return vague || isShortAndUnspecific;
 }
 
 type Marker = { count: number; lastFired: number };

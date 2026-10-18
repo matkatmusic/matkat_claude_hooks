@@ -42,6 +42,34 @@ test("existing ledger with a higher total: new lower total drops through, allowe
   rmSync(ledgerPath, { force: true });
 });
 
+test("stale ledger entry for a file that is now clean: not blocked", () => {
+  const sessionId = randomUUID();
+  const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;
+  const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
+  writeFileSync(`${repo}/other.ts`, "export const other = 1;\n");
+  writeFileSync(`${repo}/other.test.ts`, "export const check = 1;\n");
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add other"], { cwd: repo });
+  writeFileSync(ledgerPath, JSON.stringify({ files: { [`${repo}/other.ts`]: 6 }, total: 6 }));
+  const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
+  const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
+  const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  assert.equal(output, "");
+  rmSync(ledgerPath, { force: true });
+});
+
+test("total dropping to 0: ledger saved with 0", () => {
+  const sessionId = randomUUID();
+  const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;
+  writeFileSync(ledgerPath, JSON.stringify({ files: {}, total: 5 }));
+  const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
+  const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
+  const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
+  runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  assert.equal(JSON.parse(readFileSync(ledgerPath, "utf8")).total, 0);
+  rmSync(ledgerPath, { force: true });
+});
+
 test("existing ledger with the same total: blocked", () => {
   const sessionId = randomUUID();
   const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;

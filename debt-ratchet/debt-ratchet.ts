@@ -93,9 +93,24 @@ if (import.meta.main) {
     ledgerFiles = ledger.files;
     savedTotal = ledger.total;
   }
+  const measuredFiles: Record<string, number> = {};
   for (let i = 0; i < debts.length; i++) {
-    ledgerFiles[debts[i].file] = debts[i].current;
+    measuredFiles[debts[i].file] = debts[i].current;
   }
+  const savedFilePaths = Object.keys(ledgerFiles);
+  for (let i = 0; i < savedFilePaths.length; i++) {
+    const savedPath = savedFilePaths[i];
+    const isMeasuredThisTurn = savedPath in measuredFiles;
+    const isTestFile = savedPath.endsWith(".test.ts");
+    const isStillThere = existsSync(savedPath);
+    const shouldRemeasure = !isMeasuredThisTurn && !isTestFile && isStillThere;
+    if (!shouldRemeasure)
+      continue;
+    const freshDebt = computeDebt(savedPath);
+    if (freshDebt)
+      measuredFiles[savedPath] = freshDebt.current;
+  }
+  ledgerFiles = measuredFiles;
   let newTotal = 0;
   const ledgerFilePaths = Object.keys(ledgerFiles);
   for (let i = 0; i < ledgerFilePaths.length; i++) {
@@ -111,7 +126,8 @@ if (import.meta.main) {
 
   const reason = blockReason(debts, newTotal, savedTotal, reformattedFiles);
   const hasDebt = newTotal > 0;
-  if (hasDebt)
+  const shouldSaveLedger = hasDebt || ledgerExists;
+  if (shouldSaveLedger)
     writeFileSync(ledgerPath, JSON.stringify({ files: ledgerFiles, total: newTotal }));
   if (reason) {
     writeFileSync(blocksPath, String(chainBlocks + 1));

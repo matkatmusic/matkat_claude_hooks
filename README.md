@@ -214,7 +214,7 @@ node --test
 
 ### Automated stranger test
 
-`tests/run_stranger.ts` runs the 15-row manual checklist with no human. It builds a test bed, starts Claude in tmux three times, and prints PASS or FAIL for each hook with one line of proof. It exits with 1 if any row fails.
+`tests/run_stranger.ts` runs the 41-row checklist with no human. It builds a test bed, starts Claude in tmux three times, and prints PASS or FAIL for each hook with one line of proof. It exits with 1 if any row fails.
 
 It needs tmux, bun, and a Claude config folder that is already signed in. A script cannot sign in. Run `CLAUDE_CONFIG_DIR=<config> claude` once and sign in. The test stops with an error if the config is signed out.
 

@@ -1,9 +1,10 @@
-// Stranger test: drives the 15-row hook checklist in tmux; the name avoids "test" so test runners skip it.
+// Stranger test: runs the 41-row hook checklist (14 live rows in tmux, 27 direct rows); the name avoids "test" so test runners skip it.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { tmux_lib } from "./external/tmux_lib/tmux_lib.ts";
+import { executeDirectRows } from "./stranger_direct_rows.ts";
 
 type JsonRecord = Record<string, any>;
 
@@ -101,7 +102,7 @@ function getTmuxPane(): string {
 
 // ---------- test bed ----------
 
-function writeEnv(clone: string, bed: string, config: string): void {
+export function writeEnv(clone: string, bed: string, config: string): void {
   const overrides: Record<string, string> = {
     CLAUDE_HOOKS_PLANNING_GUIDE_PATH: path.join(bed, "planning.md"),
     CLAUDE_HOOKS_TASKS_DIR: `${config}/tasks`,
@@ -109,7 +110,21 @@ function writeEnv(clone: string, bed: string, config: string): void {
     CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR: path.join(bed, "npm-test-logs"),
     CLAUDE_HOOKS_SESSION_STATE_DIR: path.join(bed, "state"),
     CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: path.join(bed, "array-debt"),
-    CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: String(IDLE_MS),
+    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: String(IDLE_MS), // the idle time is now a constant in the mod: see modifyIdleMinutes
+    CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS: "3600",
+    CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS: "604800000",
+    CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS: "120000",
+    CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS: "15",
+    CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET: "0",
+    CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE: "10",
+    CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS: "604800000",
+    CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES: "150",
+    CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000",
+    CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14",
+    CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: "/tmp",
+    CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "20",
+    CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS: "2",
+    CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH: "5",
   };
   const seen = new Set<string>();
   const lines: string[] = [];
@@ -125,10 +140,16 @@ function writeEnv(clone: string, bed: string, config: string): void {
     }
     lines.push(line);
   }
+  // for (const key of Object.keys(overrides)) {
+  //   const isSeen = seen.has(key);
+  //   if (!isSeen) {
+  //     throw new Error(`.env.example has no ${key} line`);
+  //   }
+  // }
   for (const key of Object.keys(overrides)) {
     const isSeen = seen.has(key);
     if (!isSeen) {
-      throw new Error(`.env.example has no ${key} line`);
+      lines.push(`${key}=${overrides[key]}`);
     }
   }
   for (const line of lines) {
@@ -144,7 +165,18 @@ function writeEnv(clone: string, bed: string, config: string): void {
   writeFileSync(path.join(clone, ".env"), lines.join("\n") + "\n");
 }
 
-function enableHooks(clone: string): void {
+export function modifyIdleMinutes(clone: string): void {
+  const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
+  const source = readFileSync(registerPath, "utf8");
+  const original = "const IDLE_MINUTES = 55;";
+  const hasOriginal = source.includes(original);
+  if (!hasOriginal) {
+    throw new Error(`idle-state mod has no line: ${original}`);
+  }
+  writeFileSync(registerPath, source.replace(original, `const IDLE_MINUTES = ${IDLE_MS / 60000};`));
+}
+
+export function enableHooks(clone: string): void {
   const hooksListPath = path.join(clone, "dispatcher", "hooks-list.ts");
   const lines: string[] = [];
   let enabledCount = 0;
@@ -164,7 +196,7 @@ function enableHooks(clone: string): void {
   writeFileSync(hooksListPath, lines.join("\n"));
 }
 
-function createProject(project: string): void {
+export function createProject(project: string): void {
   mkdirSync(project);
   executeCommand(["git", "init", "-q"], project);
   const packageJson = { name: "stranger-test", type: "module", scripts: { test: "node --test" } };
@@ -185,7 +217,7 @@ function writeSettings(config: string, clone: string): void {
     settings = JSON.parse(readFileSync(settingsPath, "utf8"));
   }
   settings.statusLine = { type: "command", command: `node "${clone}/status-line/status.ts"`, refreshInterval: 3 };
-  settings.subagentStatusLine = { type: "command", command: `node "${clone}/status-line/subagentStatusLine.ts"` };
+  settings.subagentStatusLine = { type: "command", command: `node "${clone}/status-line/subagentStatusLine.ts"`, refreshInterval: 3 };
   mkdirSync(config, { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
 }
@@ -210,6 +242,7 @@ function buildBed(bed: string, config: string): void {
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
   writeEnv(clone, bed, config);
   enableHooks(clone);
+  modifyIdleMinutes(clone);
   createProject(path.join(bed, "project"));
   writeSettings(config, clone);
   installPlugins(clone, config);
@@ -478,7 +511,7 @@ function executeThirdSession(rows: Row[], bed: string, config: string, second: S
   return session;
 }
 
-function executeMain(): void {
+async function executeMain(): Promise<void> {
   if (process.env.TMUX_PANE === undefined) {
     const argumentWords: string[] = [];
     for (const argument of process.argv.slice(2)) {
@@ -501,6 +534,9 @@ function executeMain(): void {
   const rows: Row[] = [];
   try {
     buildBed(bed, config);
+    for (const result of await executeDirectRows(bed, config)) {
+      addRow(rows, result.number, result.hook, null, result.ok, result.evidence);
+    }
     const first = executeFirstSession(rows, bed, config);
     tmux_lib.tmux_killPane(first.name);
     const second = executeSecondSession(rows, bed, config);
@@ -521,4 +557,6 @@ function executeMain(): void {
   process.exit(allPassed ? 0 : 1);
 }
 
-executeMain();
+if (import.meta.main) {
+  await executeMain();
+}

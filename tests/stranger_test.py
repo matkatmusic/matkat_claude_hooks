@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated stranger test: runs the 15-row manual checklist in tmux and prints PASS or FAIL per row.
+"""Automated stranger test: runs the 14-row manual checklist in tmux and prints PASS or FAIL per row.
 
 Needs tmux, bun, Python 3, and a signed-in Claude config folder.
 Usage: python3 tests/stranger_test.py --bed <new folder> --config <signed-in config folder>
@@ -134,7 +134,7 @@ def write_settings(config, clone):
     path = config / "settings.json"
     settings = json.loads(path.read_text()) if path.exists() else {}
     settings["statusLine"] = {"type": "command", "command": f'node "{clone}/status-line/status.ts"', "refreshInterval": 3}
-    settings["subagentStatusLine"] = {"type": "command", "command": f'node "{clone}/status-line/subagentStatusLine.ts"'}
+    settings["subagentStatusLine"] = {"type": "command", "command": f'node "{clone}/status-line/subagentStatusLine.ts"', "refreshInterval": 3}
     config.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(settings, indent=2) + "\n")
 
