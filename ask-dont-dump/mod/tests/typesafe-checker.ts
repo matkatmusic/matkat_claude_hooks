@@ -5,6 +5,7 @@ const client = new TypeSafeClient();
 // a reply is in each category whose yes/no score is 0.5 or more
 const CATEGORY_THRESHOLD = 0.5;
 const isPrintingRequests = process.argv.includes("--dry-run");
+const isWritingScores = process.argv.includes("--withScores");
 
 /*
 const replyCategories: Record<string, { label: string; definition: string }> = {
@@ -48,6 +49,7 @@ const replyCategories: Record<string, { label: string; definition: string }> = {
 */
 
 type LabeledReply = { id: string; text: { category: string[]; text: string }[] };
+type ScoredReply = { id: string; reply: string[]; matched?: string[]; typesafe?: string[]; missed?: string[]; scores?: Record<string, number> };
 const categoryLabels: { categories: Record<string, string>; replies: LabeledReply[] } =
   await Bun.file(`${import.meta.dir}/category-labels.json`).json();
 const replyCategories = categoryLabels.categories;
@@ -85,7 +87,7 @@ export async function computeReplyScores(text: string) {
 
 // bun mod/tests/typesafe-checker.ts [--dry-run]; scores every reply in category-labels.json
 if (import.meta.main) {
-  const replies: { id: string; text: string; expected: string[] }[] = [];
+  const replies: { id: string; lineTexts: string[]; text: string; expected: string[] }[] = [];
   for (const reply of categoryLabels.replies) {
     const lineTexts: string[] = [];
     const expectedSet = new Set<string>();
@@ -94,7 +96,7 @@ if (import.meta.main) {
       for (const category of line.category)
         expectedSet.add(category);
     }
-    replies.push({ id: reply.id, text: lineTexts.join("\n"), expected: [...expectedSet] });
+    replies.push({ id: reply.id, lineTexts, text: lineTexts.join("\n"), expected: [...expectedSet] });
   }
   if (isPrintingRequests) {
     console.log(JSON.stringify(buildReplyRequest(replies[0].text), null, 2));
@@ -103,6 +105,7 @@ if (import.meta.main) {
   const tallies: Record<string, { category: string; truePositives: number; falsePositives: number; falseNegatives: number }> = {};
   for (const category of Object.keys(replyCategories))
     tallies[category] = { category, truePositives: 0, falsePositives: 0, falseNegatives: 0 };
+  const scoredReplies: ScoredReply[] = [];
   // ponytail: 4 replies at a time; the SDK retries 429s
   for (let i = 0; i < replies.length; i += 4) {
     const batch = replies.slice(i, i + 4);
@@ -114,10 +117,13 @@ if (import.meta.main) {
       const matched = results[index].categories;
       const missed: string[] = [];
       const extra: string[] = [];
+      const expectedAndFound: string[] = [];
       for (const category of reply.expected) {
         const isMatched = matched.includes(category);
-        if (isMatched)
+        if (isMatched) {
+          expectedAndFound.push(category);
           tallies[category].truePositives++;
+        }
         else {
           missed.push(category);
           tallies[category].falseNegatives++;
@@ -130,9 +136,19 @@ if (import.meta.main) {
           tallies[category].falsePositives++;
         }
       }
-      console.log(JSON.stringify({ id: reply.id, expected: reply.expected, matched, missed, extra, scores: results[index].scores }));
+      const scored = { id: reply.id, expected: reply.expected, matched, missed, extra, scores: results[index].scores };
+      console.log(JSON.stringify(scored));
+      const entry: ScoredReply = { id: reply.id, reply: reply.lineTexts, matched: expectedAndFound, typesafe: extra, missed };
+      if (isWritingScores)
+        entry.scores = results[index].scores;
+      scoredReplies.push(entry);
     }
   }
   for (const category of Object.keys(tallies))
     console.log(JSON.stringify(tallies[category]));
+  const isoTime = new Date().toISOString();
+  const timestamp = isoTime.slice(0, 19).replaceAll(":", "-");
+  const outPath = `${import.meta.dir}/results/typesafe-${timestamp}.json`;
+  await Bun.write(outPath, JSON.stringify({ threshold: CATEGORY_THRESHOLD, categories: replyCategories, replies: scoredReplies, tallies: Object.values(tallies) }, null, 2));
+  console.log(outPath);
 }
