@@ -37,6 +37,7 @@ If yes, the reason is: "<quote each item>. If an item is not on your task list, 
 Rules for all checks:
 Do not flag the following cases; these cases always pass:
 - The reply only says the agent waits for the user, such as "Waiting for your answer." or "Tell me when to continue."
+- The reply says the agent is waiting for a subagent (helper) to finish, such as "The task stays open until the helper finishes." or "I'm waiting for the agent to send me their report.".
 - The reply lists items that it added to the task list in this same turn (`TaskCreate`), or that it asks about with `AskUserQuestion`.
 - stop_hook_active is `true`, and the reply text says it asked with `AskUserQuestion` or added tasks with `TaskCreate`. A hook already blocked this stop once, so answer `{"ok": true}`.
 - The whole reply is one bare JSON object with the following keys: `work`, `done`, `not_done`, `files`, `runningPrograms`, `nextSteps`, `traps`. A bare JSON object with these keys is an `idle-state` mod handoff, not a dropped issue, so answer `{"ok": true}`.

@@ -61,7 +61,8 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt: checkerPrompt, timeoutMs: CHECKER_TIMEOUT_MS });
   if (!reply.isAnswered)
     throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
-  const verdict = JSON.parse(reply.text);
+  const verdictJson = reply.text.slice(reply.text.indexOf('{'), reply.text.lastIndexOf('}') + 1);
+  const verdict = JSON.parse(verdictJson);
   if (verdict.ok)
     return next(e);
   void $.prompt.submit({ text: verdict.reason });

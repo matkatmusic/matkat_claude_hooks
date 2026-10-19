@@ -49,6 +49,16 @@ test('test_reply_that_fails_submits_the_reason', async ($, on) => {
   expect(submittedTexts).toEqual(['R'])
 })
 
+test('test_reply_wrapped_in_a_code_fence_still_submits_the_reason', async ($, on) => {
+  // Step 1: the checker stub flags a loose end and wraps its verdict in a code fence.
+  const { submittedTexts } = setUpCheckerStubs(on, '```json\n{"ok": false, "reason": "R"}\n```')
+  // Step 2: a main-loop turn ends with a final answer.
+  await $.turn.complete(ANSWER)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  // Step 3: exactly one prompt went back to the model, and it holds the reason.
+  expect(submittedTexts).toEqual(['R'])
+})
+
 test('test_disabled_in_dispatch_json_skips_the_checker', async ($, on) => {
   // Step 1: dispatch.json turns this mod off, and the checker stub would fail the reply if it ran.
   const { submittedTexts, modelCalls } = setUpCheckerStubs(on, '{"ok": false, "reason": "R"}', '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false } } }')
