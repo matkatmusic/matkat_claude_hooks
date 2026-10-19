@@ -22,30 +22,32 @@
     "describesUserDecision": "the reply describes a decision made by the user",
     "describesStartingMultiStepWork": "the reply announces work requiring multiple steps to complete has begun",
     "describesStepInMultistepWork": "the reply describes a step or part of a multi-step work process",
-    "mentionsExistingTask": "the reply mentions an existing task that is already on a task list or to-do list: pending, in progress, or still to do",
-    
-    "mentionsOpenTasks": "the reply mentions items on a task list or to-do list that are not done yet: pending, in progress, or still to do",
-    "invitesConsent": "the reply is prose that asks the user to approve going ahead with a task or job, as in \"Want me to apply it?\" or \"Say go and I will run it.\"",
-    "declaresUnfinishedWork": "the reply says that work is not finished in this turn: parts are left to do, or the work continues later"
+    "mentionsExistingTask": "the reply mentions an existing task that is already on a task list or to-do list: pending, in progress, or still to do"
   },
   "replies": [
     {
       "id": "s1-helper-still-running",
       "text": [
         {
-          "category": "waitingForSubagent",
+          "category": [
+            "describesWaitingForSubagent"
+          ],
           "text": "The helper is still running. I will report when it finishes."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Fix: before `JSON.parse`, cut the text from the first `{` to the last `}`. The code fence then does not matter."
         },
         {
-          "category": "describesWorkInProgress",
+          "category": [
+            "describesWorkInProgress"
+          ],
           "text": "- The helper also adds one test that sends back a fenced answer."
         }
       ],
@@ -64,43 +66,59 @@
       "id": "s1-not-done",
       "text": [
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "I fixed the bug, and all 5 tests pass. The checker model sometimes puts its answer inside a code fence (a block that starts and ends with three backticks). The hook then fails when it reads the answer."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkDone",
+          "category": [
+            "describesWorkDone"
+          ],
           "text": "- **Fix:** `register.ts` line 64 now keeps only the text from the first `{` to the last `}`, then reads it. If no answer is there, the hook still fails loudly."
         },
         {
-          "category": "describesWorkDone",
+          "category": [
+            "describesWorkDone"
+          ],
           "text": "- **Test:** I added `test_reply_wrapped_in_a_code_fence_still_submits_the_reason`."
         },
         {
-          "category": "describesWorkNotDone",
+          "category": [
+            "describesWorkNotDone"
+          ],
           "text": "- **Not done:** I did not run the new test against the old code, so I have not seen it fail without the fix."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Comment:** the comment-length hook flagged a comment in the new test. A helper made it shorter."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Editor errors:** the `setTimeout` errors in your editor were there before this change. Two older tests already had them, and the new test copies the same line. The tests pass with them."
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "- **Run tests with:** `command claude plugin test .` from `ask-dont-dump/mod`. Plain `bun test` cannot find `claude-code/testing`."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "I did not commit anything. When you stage, add only the two `ask-dont-dump` files. The `tests/run_stranger*` and `tests/stranger_test.py` files also have changes, but they were already changed before this session."
         }
       ],
@@ -119,19 +137,25 @@
       "id": "s1-timers-waiting",
       "text": [
         {
-          "category": "describesWaitingForSubagent",
+          "category": [
+            "describesWaitingForSubagent"
+          ],
           "text": "A helper is doing both jobs now. I am waiting for it to report."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "1. **Test check:** the helper puts the old line back and runs the tests. The new test must fail. Then it puts the fix back and runs the tests again."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "2. **`setTimeout` error:** I changed the plan a little. The helper does not edit the tsconfig. It adds one line to a new file, `mod/types/timers.d.ts`. The shared tsconfig already reads that folder, so the line covers only this mod."
         }
       ],
@@ -150,19 +174,26 @@
       "id": "s1-142-143",
       "text": [
         {
-          "category": "describesCreatingTasks",
+          "category": [
+            "describesCreatingTasks"
+          ],
           "text": "I added both jobs to the task list: #142 (test check) and #143 (`setTimeout` error)."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- My first `setTimeout` line had a type that was too narrow. It caused a new error on the same 3 lines. I sent the helper a wider type to use."
         },
         {
-          "category": ["describesWaitingForSubagent", "describesWorkToDo"],
+          "category": [
+            "describesWaitingForSubagent",
+            "describesWorkToDo"
+          ],
           "text": "- When the helper reports back, I check both jobs and close the tasks."
         }
       ],
@@ -183,27 +214,35 @@
       "id": "s1-143-stays-open",
       "text": [
         {
-          "category": "describesWorkDone",
+          "category": [
+            "describesWorkDone"
+          ],
           "text": "The test check worked. With the old line, the new test fails with the same error you saw. With the fix, all 5 tests pass. Task #142 is done."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkInProgress",
+          "category": [
+            "describesWorkInProgress"
+          ],
           "text": "- The helper is checking the wider `setTimeout` type now. `mod/types/timers.d.ts` already has it."
         },
         {
-          "category": "describesWorkNotDone",
+          "category": [
+            "describesWorkNotDone"
+          ],
           "text": "- Task #143 stays open until the helper's type check shows no errors."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWaitingForSubagent",
+          "category": [
+            "describesWaitingForSubagent"
+          ],
           "text": "Waiting for the helper's report."
         }
       ],
@@ -223,35 +262,48 @@
       "id": "s1-unlabeled-rules-file",
       "text": [
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "Another Claude session is checking the ask-dont-dump rules file (`ask-dont-dump-prompt.md`), and I sent it my answer. That session asked me not to edit the file."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["describesIssue", "mentionsExistingTask"],
+          "category": [
+            "describesIssue",
+            "mentionsExistingTask"
+          ],
           "text": "- **Wrong blocks:** I found 3 that were wrong and 1 that was half wrong. Each time, a helper was already doing the work, or I had already put the item on the task list."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- **Cause:** the checker sees only the words of my reply, never the tool calls. It did not see that I had added items to the task list, and no rule tells it to pass a reply that waits for a helper."
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "- **Right block:** the block about the untested test and the `setTimeout` errors was correct."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- **Suggested changes:** add a rule that passes \"a helper is doing it, I am waiting.\" Also let plain words such as \"added to the task list\" count as a task list entry."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "**Also found:** one block arrived two turns late, after the work was already done. This is a timing problem, not a problem in the rules file."
         }
       ],
@@ -271,167 +323,235 @@
       "id": "s2-unlabeled-five-changes-a",
       "text": [
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "Five changes make the stranger test cover every hook in a real Claude session. On/off switching during a run already works, because the hook runner and all three mods reread the JSON files on every event."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "**1. Add live on/off switching to the test** (`tests/run_stranger.ts:108`)"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- Today `writeUserDispatch` writes `user-dispatch.json` once, before any session starts."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Add one helper that rewrites a single on/off flag or setting while a session runs."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Each row then has three steps:"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  1. Turn the hook off and send the prompt. The hook message must not appear."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  2. Turn it on and send the same prompt. The message must appear."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  3. Turn it off again. The message must disappear."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- This runs inside one session, so it also proves that switching works without a restart."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**2. Load all three mods in the live sessions** (`run_stranger.ts:217`)"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- Today only `idle-state/mod` is loaded. `context-exit/mod` and `ask-dont-dump/mod` never run in a real session."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**3. Replace the fake mod engine with live rows** (`tests/stranger_direct_mod_rows.ts`)"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- **context-exit:** The first warning comes at 30% of the context window, which means about 300,000 words of chat. A real test needs that number to come from `dispatch.json`, so the test can set it to 1%."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- **idle-state:** The test now edits the mod's code to change `IDLE_MINUTES` (`run_stranger.ts:136`). Move that number into `dispatch.json` too, so the test sets it through JSON instead."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- **ask-dont-dump:** It has no row at all. Add a live row: one prompt that makes Claude dump a list of issues, then check the mod's reply."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Comment out the fake engine and its test file."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**4. Fill the live coverage gaps**"
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- Row 9 is missing. The numbers jump from 8 to 10."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- No live row checks `typecheck-on-stop` or `debt-ratchet` when a helper agent stops. Only the main chat's stop is tested."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- No live row checks `turn-counter` when a session ends or a turn fails."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- No live row checks the idle-state mod's events for tool calls or slash commands."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Add one live config row: put an unknown hook name in `user-dispatch.json`. The session must show the loud error from `shared/settings.ts:38`."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Add one live settings row: change a folder setting mid-session, such as the blocked-edits folder. The next saved file must land in the new folder."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**5. Sort the 25 other direct rows by your rule**"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- 17 rows only send JSON into a script and check what it prints. These stay direct."
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "- 8 rows do more:"
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - Rows 22, 27, 28, 38, and 40 check files the hook leaves behind."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - Rows 34, 38, and 40 check a chain of several calls."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - Row 31 checks the test bed's `settings.json`."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - Row 39 starts in a subfolder."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "**Not ready to tell the other session yet.** The dispatch.json code is done, but no stranger run has passed yet."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "asksQuestion",
+          "category": [
+            "asksQuestion"
+          ],
           "text": "Should the 8 rows in step 5 move to real sessions?"
         },
         {
-          "category": "describesQuestionCandidateAnswer",
+          "category": [
+            "describesQuestionCandidateAnswer"
+          ],
           "text": "- **Move them live (my pick).** They test what hooks do across turns and with files, and only a real session proves that."
         },
         {
-          "category": "describesQuestionCandidateAnswer",
+          "category": [
+            "describesQuestionCandidateAnswer"
+          ],
           "text": "- **Keep them direct.** The runs stay faster and give the same result each time."
         }
       ],
@@ -456,191 +576,272 @@
       "id": "s2-unlabeled-five-changes-b",
       "text": [
         {
-          "category": ["describesStateOfCode", "describesCurrentBehavior"],
+          "category": [
+            "describesStateOfCode",
+            "describesCurrentBehavior"
+          ],
           "text": "Five changes cover it. The base is already in place: the dispatcher reads `dispatch.json` and `user-dispatch.json` again on every hook call, and the mods re-read them on every event. A file write in the middle of a run takes effect on the next hook call, with no restart."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "**1. Run the mods in real sessions**"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- Today the runner starts Claude with only two plugin folders: the clone and `idle-state/mod` (`run_stranger.ts:216`)."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- The `context-exit` and `ask-dont-dump` mods never load in a real session. `ask-dont-dump` has no row at all, live or fake."
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "- Add `--plugin-dir` for both mods."
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "- Comment out the two fake-engine rows in `stranger_direct_mod_rows.ts`."
         },
         {
-          "category": ["describesWorkToDo", "describesApproach"],
+          "category": [
+            "describesWorkToDo",
+            "describesApproach"
+          ],
           "text": "- Add live rows for them:"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  - `ask-dont-dump`: give Claude a prompt that makes it list many issues, then look for the mod's message."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  - `context-exit`: see the question at the end."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  - `idle-state`: move the extra mod cases from the fake row into the live row 14 session."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**2. Add on/off pairs for every hook, in one session**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Add one helper, `setEnablement(hook, event, on)`. It rewrites the bed's `user-dispatch.json` in the middle of a session."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- For each live row:"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  1. Turn the hook off and send the prompt. The hook message must be absent."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  2. Turn it on and send the same prompt. The message must be present."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- This proves that `user-dispatch.json` overrides `dispatch.json`, and that a change works without a restart."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- `SessionStart` and `SessionEnd` hooks cannot change inside one session. Test those across two sessions instead: off in one session, on in the next."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**3. Change values live**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Change one path value in the middle of a session. Example: `CLAUDE_HOOKS_BLOCKED_EDITS_DIR`. Then check that new files land in the new folder."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- This proves that `input.settings` comes from the json on every call."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**4. Check that errors are loud, through the real dispatcher**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Write an unknown hook name into `user-dispatch.json`. The next hook call must show the \"unknown hook\" error in the session."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Remove one enablement. The session must show the \"no enablement\" error."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**5. Stop editing source code in the test bed**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- `modifyIdleMinutes` (`run_stranger.ts:136`) rewrites `IDLE_MINUTES = 55` in the mod file."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Move `IDLE_MINUTES` into `dispatch.json` values. Then the test sets it in json, like every other value."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "**Rows with no live coverage today**"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- `idle-state-check` (Stop)"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- `typecheck-on-stop` and `debt-ratchet` on `SubagentStop`"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- `turn-counter` on `StopFailure` and `SessionEnd`"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- The `context-exit` and `ask-dont-dump` mods"
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "**Keep as they are**"
         },
         {
-          "category": ["describesApproach", "describesStateOfCode"],
+          "category": [
+            "describesApproach",
+            "describesStateOfCode"
+          ],
           "text": "- The other 25 direct rows only pipe JSON into a hook script, so they pass your rule."
         },
         {
-          "category": ["describesApproach", "describesStateOfCode"],
+          "category": [
+            "describesApproach",
+            "describesStateOfCode"
+          ],
           "text": "- They call the script directly and skip the dispatcher. Changes 2 to 4 test the dispatcher."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "**Also found**"
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- The direct rows run first. A crash in them stops the whole run before any real session starts."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- `tests/stranger_test.py` is an older copy of the test, and nothing runs it."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["leavesOpenDecision", "asksQuestion"],
+          "category": [
+            "leavesOpenDecision",
+            "asksQuestion"
+          ],
           "text": "One decision is yours. The `context-exit` thresholds (30, 50, and 80 percent) are fixed in the mod. A live test cannot fill 30% of a 1M context in a short time. My pick is to move the thresholds into `dispatch.json` values, so the test can set them to 1, 2, and 3 percent. Do you want that?"
         }
       ],
@@ -667,67 +868,93 @@
       "id": "s2-unlabeled-two-calls",
       "text": [
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "The two calls go through two different checks. An `import` loads code, and the plugin loader only loads code from inside the mod's own folder. `$.fs.read` reads data through the mod engine at run time. In our tests the engine let that read reach outside the folder."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "**What task #126 found today** (from saved session notes; I did not run it again just now)"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- A trial import of `../../../shared/settings.ts` failed with: \"cannot import ... it is outside the plugin's folder\"."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- A symlink did not work either. The loader follows the symlink to the real file, sees that the file is outside the mod folder, and rejects it."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- Data reads are not checked the same way. So `$.fs.read(\".../dispatcher/dispatch.json\")` works."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "**A second block, even if the import were allowed**"
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- `shared/settings.ts` uses `node:fs`, `node:os`, `node:path`, and `import.meta.dirname`."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- Mod code has none of those. It must use `$.fs` instead. That is why each mod has its own copy of `isEventEnabled` that uses `$.fs.read`."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "leavesOpenDecision",
+          "category": [
+            "leavesOpenDecision"
+          ],
           "text": "**One way to share it, if you want that**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Keep one `mod-settings.ts` that uses only `$`."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Have `install.sh` copy it into each mod's `hooks/` folder as a real file, not a symlink."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Cost: you add one copy step. A mod also breaks if someone forgets to run `install.sh`."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- My pick: keep the three copies. The function is 15 lines, and a copy step adds a new way to fail."
         }
       ],
@@ -744,31 +971,44 @@
       "id": "s2-i-think-it-passed",
       "text": [
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "The test is `shared/mod-copies.test.ts`. It went in with commit `2c75012`."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- It finds the `const DISPATCHER_DIR` line and the `isEventEnabled` function in each of the three `register.ts` files."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- It fails if any copy differs from the one in `ask-dont-dump`."
         },
         {
-          "category": "describesCurrentBehavior",
+          "category": [
+            "describesCurrentBehavior"
+          ],
           "text": "- It also fails if a file has no such line or function."
         },
         {
-          "category": "describesWorkDone",
+          "category": [
+            "describesWorkDone"
+          ],
           "text": "- I compared the three copies just now. All three match."
         },
         {
-          "category": ["describesCurrentBehavior", "describesUnconfirmedResult"],
+          "category": [
+            "describesCurrentBehavior",
+            "describesUnconfirmedResult"
+          ],
           "text": "- It does not show up among today's failures, so I think it passed. The log does not list passing tests by name, so I cannot confirm that from the log."
         }
       ],
@@ -783,99 +1023,145 @@
       "id": "s2-old-behavior-back",
       "text": [
         {
-          "category": ["describesWorkDone", "describesCurrentBehavior", "describesIssue"],
+          "category": [
+            "describesWorkDone",
+            "describesCurrentBehavior",
+            "describesIssue"
+          ],
           "text": "I checked the context-exit file. It behaves the same as before: the user value wins, then the default, and a missing default still throws. Three issues remain."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "**1. The copies test misses the new helpers**"
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- `shared/mod-copies.test.ts` compares only `DISPATCHER_DIR` and `isEventEnabled`. It does not compare `readDefault` or `readUser`."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- It passed just now (1 pass, 0 fail), but the copies differ:"
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - context-exit `readUser` uses your early exit."
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "  - ask-dont-dump and idle-state `readUser` still use `if (hasUserFile) user = ...`."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Fix: copy your version into the other two mods. Then make the test pull out all three functions."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "**2. Two lines of dead code in `readUser`**"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "- Lines 23 and 24 set `user` to `{ enablements: {} }`, then replace it right away. The empty object is never used:"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  ```ts"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  const user: { enablements: Record<string, Record<string, boolean>> } = JSON.parse(await $.fs.read(userPath));"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  ```"
         },
         {
-          "category": "describesIssue",
+          "category": [
+            "describesIssue"
+          ],
           "text": "- Lines 25 to 28 return `userValue` or `undefined`. That is the same as one line:"
         },
         {
-          "category": "",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  ```ts"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  return user.enablements[pluginName]?.[event];"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "  ```"
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "**3. One small behavior change**"
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- Before, `dispatch.json` was read on every call. A broken `dispatch.json` threw even when `user-dispatch.json` had the value."
         },
         {
-          "category": ["describesStateOfCode", "describesCurrentBehavior", "describesIssue", "leavesOpenDecision"],
+          "category": [
+            "describesStateOfCode",
+            "describesCurrentBehavior",
+            "describesIssue",
+            "leavesOpenDecision"
+          ],
           "text": "- Now, if the user file has the value, `dispatch.json` is never read, so that break stays hidden until a hook has no user value. I think this is fine. Tell me if you want the old behavior back."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["leavesOpenDecision", "describesWorkToDo"],
+          "category": [
+            "leavesOpenDecision",
+            "describesWorkToDo"
+          ],
           "text": "**Next action:** Tell me to send a helper to make all three mods match, apply the two cleanups, and widen the copies test."
         }
       ],
@@ -900,39 +1186,53 @@
       "id": "s2-unlabeled-task-list-1585",
       "text": [
         {
-          "category": "describesUserDecision",
+          "category": [
+            "describesUserDecision"
+          ],
           "text": "You chose: all three fixes, and keep the new behavior."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkInProgress",
+          "category": [
+            "describesWorkInProgress"
+          ],
           "text": "A helper is running now. It will:"
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "1. Copy your `readUser` into all three mods, with the two cleanups."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "2. Widen `mod-copies.test.ts` to check `readDefault`, `readUser`, and `isEventEnabled`."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "3. Change one copy on purpose to prove the test catches a mismatch, then undo that change."
         },
         {
-          "category": "describesApproach",
+          "category": [
+            "describesApproach"
+          ],
           "text": "4. Run the copies test and each mod's tests."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWaitingForSubagent",
+          "category": [
+            "describesWaitingForSubagent"
+          ],
           "text": "I will report the results when it finishes."
         }
       ],
@@ -953,67 +1253,97 @@
       "id": "s2-unlabeled-readuser-copies",
       "text": [
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "The three mods now have the same `readUser`, and the copies test checks all three functions. Nothing is committed yet."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Copies:** `readDefault`, `readUser`, and `isEventEnabled` are now the same in all three mods. I checked this myself."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **`readUser`:** All three use your early exit, plus the two cleanups: `const user` and a one-line return."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Copies test:** `mod-copies.test.ts` now compares `DISPATCHER_DIR`, `readDefault`, `readUser`, and `isEventEnabled`."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Mismatch check:** The helper changed one character in `idle-state`'s `readUser`. The test failed, and it passed again after the helper undid the change."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- **Test results:**"
         },
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "  - Copies test: 1 pass, 0 fail."
         },
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "  - `ask-dont-dump`: 4 pass, 0 fail."
         },
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "  - `context-exit`: 7 pass, 0 fail."
         },
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "  - `idle-state`: 9 pass, 1 fail. The failure is the old one: \"idle chat writes a state file, exits, then drops prompts\"."
         },
         {
-          "category": "describesWorkDone",
+          "category": [
+            "describesWorkDone"
+          ],
           "text": "- Task #138 is marked done."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "**Also found**"
         },
         {
-          "category": ["describesSessionInformation", "describesStateOfCode"],
+          "category": [
+            "describesSessionInformation",
+            "describesStateOfCode"
+          ],
           "text": "- `ask-dont-dump/mod/ask-dont-dump-prompt.md` has a one-line change. The helper did not make it, so it is yours or another session's. Leave it out of this commit unless you made it."
         },
         {
-          "category": ["describesSessionInformation", "describesIssue"],
+          "category": [
+            "describesSessionInformation",
+            "describesIssue"
+          ],
           "text": "- The helper hit the `claude plugin test` shell wrapper problem. `papercuts.md` already logs this problem, so I added nothing."
         }
       ],
@@ -1032,23 +1362,32 @@
       "id": "s2-older-commit",
       "text": [
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "Confirmed. Both commits are in, and the folder has no changes left to commit:"
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- `7df8e84` refactored isEventEnabled (SRP): the three mods and `mod-copies.test.ts`."
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- `299f721` added prose for catching 'Next Action': the prompt line."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["describesStateOfCode", "describesWorkToDo"],
+          "category": [
+            "describesStateOfCode",
+            "describesWorkToDo"
+          ],
           "text": "The dotfiles repo still points at the older claude_hooks commit. To update it, commit the `claude/claude_hooks` change in dotfiles."
         }
       ],
@@ -1065,63 +1404,94 @@
       "id": "s2-next-phases",
       "text": [
         {
-          "category": "describesStartingMultiStepWork",
+          "category": [
+            "describesStartingMultiStepWork"
+          ],
           "text": "I started phase 1 of the stranger test work. The phases run one after another, because almost every task edits `run_stranger.ts`."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkInProgress",
+          "category": [
+            "describesWorkInProgress"
+          ],
           "text": "**Phase 1 (running now)**"
         },
         {
-          "category": ["describesWorkInProgress", "describesSpecificTask"],
+          "category": [
+            "describesWorkInProgress",
+            "describesSpecificTask"
+          ],
           "text": "- #136: Run the live sessions before the direct rows."
         },
         {
-          "category": ["describesWorkInProgress", "describesSpecificTask"],
+          "category": [
+            "describesWorkInProgress",
+            "describesSpecificTask"
+          ],
           "text": "- #137: Comment out the old `stranger_test.py`, and point any README mention to `run_stranger.ts`."
         },
         {
-          "category": ["describesWorkInProgress", "describesSpecificTask"],
+          "category": [
+            "describesWorkInProgress",
+            "describesSpecificTask"
+          ],
           "text": "- #127: Add `setEnablement` and `setValue`. Row 4 uses them as the first proof: hook off means no message, hook on means the message shows."
         },
         {
-          "category": "describesWorkInProgress",
+          "category": [
+            "describesWorkInProgress"
+          ],
           "text": "- At the end, the helper runs the full live stranger test."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStepInMultistepWork",
+          "category": [
+            "describesStepInMultistepWork"
+          ],
           "text": "**Next phases (one after another)**"
         },
         {
-          "category": ["describesStepInMultistepWork", "describesSpecificTask"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesSpecificTask"
+          ],
           "text": "1. #128 and #129: Load all three mods. Move the context-exit thresholds and `IDLE_MINUTES` into `dispatch.json`. Add live mod rows."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesSpecificTask"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesSpecificTask"
+          ],
           "text": "2. On/off pairs for the other live rows, plus #135 (SessionStart and SessionEnd hooks, across two sessions)."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesSpecificTask"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesSpecificTask"
+          ],
           "text": "3. #130, #133, and #134: Live coverage gaps and checks for loud errors."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesSpecificTask"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesSpecificTask"
+          ],
           "text": "4. #131: Move the 8 side-effect direct rows to live sessions."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesWorkToDo",
+          "category": [
+            "describesWorkToDo"
+          ],
           "text": "When phase 1 finishes, I will report its PASS/FAIL table."
         }
       ],
@@ -1140,71 +1510,110 @@
       "id": "s2-phase2-running-now",
       "text": [
         {
-          "category": ["describesWorkDone", "describesWorkInProgress"],
+          "category": [
+            "describesWorkDone",
+            "describesWorkInProgress"
+          ],
           "text": "Phase 1 is done. All 14 live rows pass, and they now run before the direct rows. Phase 2 is running."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesStateChecked",
+          "category": [
+            "describesStateChecked"
+          ],
           "text": "**Phase 1 result** (I checked the diff)"
         },
         {
-          "category": ["describesWorkDone", "describesSpecificTask"],
+          "category": [
+            "describesWorkDone",
+            "describesSpecificTask"
+          ],
           "text": "- #136: The live sessions run first. The table printed all live rows before the known direct-row crash."
         },
         {
-          "category": ["describesWorkDone", "describesSpecificTask"],
+          "category": [
+            "describesWorkDone",
+            "describesSpecificTask"
+          ],
           "text": "- #127: `setEnablement` and `setValue` work. Row 4 passes both checks: with the hook off, no message shows; with it on, the message shows."
         },
         {
-          "category": ["describesWorkDone", "describesSpecificTask"],
+          "category": [
+            "describesWorkDone",
+            "describesSpecificTask"
+          ],
           "text": "- #137: The old `stranger_test.py` is disabled. README already pointed to `run_stranger.ts`, so it needed no change."
         },
         {
-          "category": ["describesWorkDone", "describesSpecificTask"],
+          "category": [
+            "describesWorkDone",
+            "describesSpecificTask"
+          ],
           "text": "- Unit tests: `run_stranger.test.ts` has 3 pass, 0 fail."
         },
         {
-          "category": ["describesStateOfCode"],
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- Nothing is committed."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["describesStartingMultiStepWork", "describesSpecificTask"],
+          "category": [
+            "describesStartingMultiStepWork",
+            "describesSpecificTask"
+          ],
           "text": "**Phase 2 (running now): #128 and #129**"
         },
         {
-          "category": ["describesStepInMultistepWork", "describesApproach"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesApproach"
+          ],
           "text": "- Move the context-exit thresholds and `IDLE_MINUTES` into `dispatch.json`."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesApproach"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesApproach"
+          ],
           "text": "- Load all three mods in live sessions."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesApproach"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesApproach"
+          ],
           "text": "- Replace the fake mod engine with live rows for context-exit, idle-state, and ask-dont-dump."
         },
         {
-          "category": ["describesStepInMultistepWork", "describesApproach"],
+          "category": [
+            "describesStepInMultistepWork",
+            "describesApproach"
+          ],
           "text": "- Run the full stranger test again until every row passes."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["describesSessionInformation", "describesStateOfCode"],
+          "category": [
+            "describesSessionInformation",
+            "describesStateOfCode"
+          ],
           "text": "**Also found**"
         },
         {
-          "category": "describesStateOfCode",
+          "category": [
+            "describesStateOfCode"
+          ],
           "text": "- The `ask-dont-dump` mod files have changes that neither helper made: `register.ts`, `register.test.ts`, and two staged `.gitignore` files. I told the phase 2 helper not to touch them."
         }
       ],
@@ -1223,47 +1632,65 @@
       "id": "s2-warning-percents",
       "text": [
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "I will leave those ask-dont-dump changes alone. The session that made them commits them."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "All the phase 2 steps are already on the task list:"
         },
         {
-          "category": "describesSpecificTask",
+          "category": [
+            "describesSpecificTask"
+          ],
           "text": "- **#128:** Load all three mods in live sessions."
         },
         {
-          "category": "describesSpecificTask",
+          "category": [
+            "describesSpecificTask"
+          ],
           "text": "- **#129:** Move the thresholds and `IDLE_MINUTES` into `dispatch.json`, and add the live mod rows."
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "- The full stranger test run is the last check for both tasks."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": "describesSessionInformation",
+          "category": [
+            "describesSessionInformation"
+          ],
           "text": "Only one helper is running, so no two helpers edit the same files."
         },
         {
-          "category": "",
+          "category": [],
           "text": ""
         },
         {
-          "category": ["describesSessionInformation", "describesStateOfCode"],
+          "category": [
+            "describesSessionInformation",
+            "describesStateOfCode"
+          ],
           "text": "**Also found**"
         },
         {
-          "category": ["describesWaitingForSubagent", "describesStateOfCode"],
+          "category": [
+            "describesWaitingForSubagent",
+            "describesStateOfCode"
+          ],
           "text": "- An error just showed up in `context-exit/mod/hooks/register.ts`: \"Cannot find name `WARNING_PERCENTS`\". The phase 2 helper is moving that value into `dispatch.json`, so this is probably a half-done edit. I will check it when the helper reports."
         }
       ],
