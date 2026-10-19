@@ -72,18 +72,17 @@ test("a file named in an earlier reply counts as named", () => {
   assert.deepEqual(findUnnamedFiles(files, collectReplyText(transcript)), []);
 });
 
-function writeHooksList(event: string): string {
-  const listPath = `${mkdtempSync(`${tmpdir()}/idle-state-list-`)}/hooks-list.ts`;
-  writeFileSync(listPath, `export const HOOKS = [{ event: "${event}", command: ["node", "/x/idle-state/idle-state-reader.ts"], enabled: true }];\n`);
-  return listPath;
+function writeDispatcherDir(readerEnabled: boolean): string {
+  const dir = mkdtempSync(`${tmpdir()}/idle-state-dispatcher-`);
+  const dispatch = { enablements: { "idle-state-reader": { UserPromptSubmit: readerEnabled } }, values: {} };
+  writeFileSync(`${dir}/dispatch.json`, JSON.stringify(dispatch));
+  return dir;
 }
 
-test("the reader counts as enabled when its entry is a UserPromptSubmit hook", async () => {
-  process.env.CLAUDE_HOOKS_LIST = writeHooksList("UserPromptSubmit");
-  assert.equal(await isReaderEnabled(), true);
+test("the reader counts as enabled when dispatch.json enables it", () => {
+  assert.equal(isReaderEnabled(writeDispatcherDir(true)), true);
 });
 
-test("the reader does not count as enabled when its entry is a SessionStart hook", async () => {
-  process.env.CLAUDE_HOOKS_LIST = writeHooksList("SessionStart");
-  assert.equal(await isReaderEnabled(), false);
+test("the reader does not count as enabled when dispatch.json disables it", () => {
+  assert.equal(isReaderEnabled(writeDispatcherDir(false)), false);
 });

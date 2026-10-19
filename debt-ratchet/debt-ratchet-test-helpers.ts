@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process";
 
 export const ARRAY_DEBT_DIR = mkdtempSync(`${tmpdir()}/debt-ratchet-ledgers-`);
 
-export function setDebtRatchetEnv(): void {
-  process.env.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR = ARRAY_DEBT_DIR;
-  process.env.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS = "604800000";
-  process.env.CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES = "150";
-  process.env.CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET = "0";
-  process.env.CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE = "10";
-}
+export const DEBT_SETTINGS = {
+  CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: ARRAY_DEBT_DIR,
+  CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS: "604800000",
+  CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES: "150",
+  CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET: "0",
+  CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE: "10",
+};
+
+export const DEBT_LIMITS = { maxFileLines: 150, debtTarget: 0, fixBatchSize: 10 };
 
 export const ESLINT_CONFIG = `
 export default [
@@ -70,9 +72,9 @@ export function writeTranscript(dir: string, filePath: string): string {
   return path;
 }
 
-export function runHook(input: object): string {
+export function executeHook(input: object): string {
   const run = spawnSync("node", [`${import.meta.dirname}/debt-ratchet.ts`], {
-    input: JSON.stringify(input),
+    input: JSON.stringify({ settings: DEBT_SETTINGS, ...input }),
     encoding: "utf8",
   });
   return run.stdout.trim();

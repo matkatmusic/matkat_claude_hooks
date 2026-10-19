@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
-import { readEnvValue } from "./env.ts";
 // One JSON file per session holds every hook's per-session state.
 
 export type Sitting = {
@@ -19,10 +18,9 @@ export type SessionState = {
   idleStateFiles?: string[];
 };
 
-export function getSessionStatePath(transcriptPathOrSessionId: string): string {
+export function getSessionStatePath(transcriptPathOrSessionId: string, stateDir: string): string {
   const sessionId = basename(transcriptPathOrSessionId).replace(/\.jsonl$/, "");
-  // return `${process.env.HOME}/.claude/.dotfiles/${sessionId}.json`;
-  return `${readEnvValue("CLAUDE_HOOKS_SESSION_STATE_DIR")}/${sessionId}.json`;
+  return `${stateDir}/${sessionId}.json`;
 }
 
 export function readSessionState(path: string): SessionState {

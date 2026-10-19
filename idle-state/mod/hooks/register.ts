@@ -1,5 +1,7 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 
+const PLUGIN_NAME = 'idle-state';
+const DISPATCHER_DIR = '../../dispatcher';
 const MS_PER_MINUTE = 60 * 1000;
 const IDLE_MINUTES = 55;
 const LATE_LIMIT_MINUTES = 58;
@@ -7,6 +9,22 @@ const EXIT_KEY_DELAY_MINUTES = 1 / 60;
 const IDLE_STATE_FOLDER_NAME = '.idleState';
 const REGEX_SPECIAL_CHARACTERS = '\\^$.|?*+()[]{}';
 const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/tty', os.O_RDWR)\nfor key in b'2\\r':\n    fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))";
+
+async function isEventEnabled($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
+  const defaults = JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
+  const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
+  const hasUserFile = await $.fs.exists(userPath);
+  let user: { enablements: Record<string, Record<string, boolean>> } = { enablements: {} };
+  if (hasUserFile)
+    user = JSON.parse(await $.fs.read(userPath));
+  const userValue = user.enablements[pluginName]?.[event];
+  if (userValue !== undefined)
+    return userValue;
+  const defaultValue = defaults.enablements[pluginName]?.[event];
+  if (defaultValue === undefined)
+    throw new Error(`dispatch.json has no enablement for ${pluginName} ${event}`);
+  return defaultValue;
+}
 
 function formatTwoDigits(n: number): string {
   return String(n).padStart(2, '0');
@@ -24,7 +42,24 @@ function clearState<E, R>(_$: unknown, e: E, next: (e: E) => R): R {
   return next(e);
 }
 
-const blockPromptAfterStateSaved: Hook<'prompt.submit'> = ($, e, next) => {
+const clearStateOnSessionStart: Hook<'session.start'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'session.start');
+  if (!enabled)
+    return next(e);
+  return clearState($, e, next);
+};
+
+const clearStateOnSessionEnd: Hook<'session.end'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'session.end');
+  if (!enabled)
+    return next(e);
+  return clearState($, e, next);
+};
+
+const blockPromptAfterStateSaved: Hook<'prompt.submit'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'prompt.submit');
+  if (!enabled)
+    return next(e);
   idleTimer?.cancel();
   if (stateFilePath === undefined) {
     const isUserPromptDuringStateWrite = isWritingState && !e.text.includes(statePrompt);
@@ -32,11 +67,13 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = ($, e, next) => {
       isWritingState = false;
     return next(e);
   }
-  // return { drop: `The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFilePath}` };
   return { drop: `The chat cache has expired. You should exit this chat. Start a new chat and run /catch-up.` };
 };
 
-const denyToolsWhileStatePromptPending: Hook<'tool.call'> = ($, e, next) => {
+const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'tool.call');
+  if (!enabled)
+    return next(e);
   if (!isWritingState)
     return next(e);
   return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
@@ -73,6 +110,9 @@ Rules for populating the template:
 }
 
 const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'turn.complete');
+  if (!enabled)
+    return next(e);
   if (e.agentId !== undefined)
     return next(e);
   idleTimer?.cancel();
@@ -170,6 +210,9 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
 };
 
 const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'command.run');
+  if (!enabled)
+    return next(e);
   if (stateFilePath !== undefined)
     return next(e);
   idleTimer?.cancel();
@@ -181,14 +224,9 @@ const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
 };
 
 export const register: Register = on => {
-  // let idleTimer: { cancel: () => void } | undefined;
-  // let lastAnswerAt = 0;
-  // let isWritingState = false;
-  // let stateFilePath: string | undefined;
-  // let statePrompt = '';
 
-  on('session.start', clearState);
-  on('session.end', clearState);
+  on('session.start', clearStateOnSessionStart);
+  on('session.end', clearStateOnSessionEnd);
   on('prompt.submit', blockPromptAfterStateSaved);
   on('turn.complete', updateIdleStateOnTurnComplete);
   on('tool.call', denyToolsWhileStatePromptPending);

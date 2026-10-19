@@ -5,12 +5,12 @@ import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR = "/tmp/tasktools-npm-test";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS = "3600";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS = "120000";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS = "604800000";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_WAIT_SECONDS = "240";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_POLL_SECONDS = "2";
+const HOOK_SETTINGS = {
+  CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR: "/tmp/tasktools-npm-test",
+  CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS: "3600",
+  CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS: "120000",
+  CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS: "604800000",
+};
 
 const MONITOR_SCRIPT = `${import.meta.dirname}/monitor-test-run.ts`;
 // node --test sets these; if the hook inherits them, its nested node --test run skips the file.
@@ -22,7 +22,7 @@ test("hook: returns immediately, and the one-file test run finishes in the backg
   const project = mkdtempSync(`${tmpdir()}/background-run-`);
   writeFileSync(`${project}/package.json`, "{}");
   writeFileSync(`${project}/slow.test.js`, 'require("node:test").test("slow", async () => { await new Promise((r) => setTimeout(r, 3000)); });');
-  const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test slow.test.js" } });
+  const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test slow.test.js" }, settings: HOOK_SETTINGS });
   const start = Date.now();
   const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   assert.ok(Date.now() - start < 2500, "the hook does not wait for the 3 second test");
@@ -42,7 +42,7 @@ test("hook: a --test-name-pattern flag scopes the background run to one test in 
     `${project}/two.test.js`,
     'const { test } = require("node:test"); test("keep", () => {}); test("skip", () => { throw new Error("should not run"); });',
   );
-  const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test --test-name-pattern=^keep$ two.test.js" } });
+  const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test --test-name-pattern=^keep$ two.test.js" }, settings: HOOK_SETTINGS });
   const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   const reason: string = JSON.parse(hook.stdout).hookSpecificOutput.permissionDecisionReason;
   const monitorCommand = reason.match(/node \S+monitor-test-run\.ts (\S+\.log)/);
@@ -56,7 +56,7 @@ test("hook: a --test-name-pattern flag scopes the background run to one test in 
 });
 
 function runHook(project: string, command: string, env = HOOK_TEST_ENV) {
-  const input = JSON.stringify({ cwd: project, tool_input: { command } });
+  const input = JSON.stringify({ cwd: project, tool_input: { command }, settings: HOOK_SETTINGS });
   return spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env });
 }
 
@@ -121,7 +121,7 @@ test("hook: returns immediately, and the full-suite test run finishes in the bac
   const project = mkdtempSync(`${tmpdir()}/background-run-`);
   writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
   writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
-  const input = JSON.stringify({ cwd: project, tool_input: { command: "npm test" } });
+  const input = JSON.stringify({ cwd: project, tool_input: { command: "npm test" }, settings: HOOK_SETTINGS });
   const start = Date.now();
   const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   assert.ok(Date.now() - start < 2500, "the hook does not wait for the suite to finish");

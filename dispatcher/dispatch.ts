@@ -1,21 +1,16 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, resolve } from "node:path";
-// import { HOOKS, type HookEntry } from "./hooks-list.ts";
-import type { HookEntry } from "./hooks-list.ts";
+import { basename, extname } from "node:path";
 import { buildHookOutput } from "./output.ts";
-import { readEnvValue } from "../shared/env.ts";
+import { readSettings, isEnabled, getValues, getHooks, DISPATCHER_DIR, type HookEntry, type Settings } from "../shared/settings.ts";
 // Runs the hooks in the list for one event and merges their outputs.
 
-const listPath = resolve(import.meta.dirname, "..", readEnvValue("CLAUDE_HOOKS_LIST"));
-const { HOOKS }: { HOOKS: HookEntry[] } = await import(listPath);
-
-export { HOOKS, type HookEntry, buildHookOutput };
+export { type HookEntry, buildHookOutput };
 
 const HOME = process.env.HOME;
 
-export function executeHooks(input: any, hooks: HookEntry[]): string {
+export function executeHooks(input: any, hooks: HookEntry[], settings: { defaults: Settings; user: Settings }): string {
   const event = input.hook_event_name;
   let currentInput = input;
   let updatedInput: any;
@@ -28,10 +23,13 @@ export function executeHooks(input: any, hooks: HookEntry[]): string {
 
   for (let i = 0; i < hooks.length; i++) {
     const hook = hooks[i];
-    if (!hook.enabled)
-      continue;
     const isSameEvent = hook.event === event;
     if (!isSameEvent)
+      continue;
+    const scriptPath = hook.command[hook.command.length - 1];
+    const name = basename(scriptPath, extname(scriptPath));
+    const hookEnabled = isEnabled(settings, name, event);
+    if (!hookEnabled)
       continue;
     const hasMatcher = hook.matcher !== undefined;
     if (hasMatcher) {
@@ -52,10 +50,10 @@ export function executeHooks(input: any, hooks: HookEntry[]): string {
       systemMessages.push(deletedDirectoryMessage);
     }
     const result = spawnSync(hook.command[0], hook.command.slice(1), {
-      input: JSON.stringify(currentInput),
+      input: JSON.stringify({ ...currentInput, settings: getValues(settings, name) }),
       encoding: "utf8",
       timeout: timeoutSeconds * 1000,
-      env: { ...process.env, ...hook.env },
+      env: process.env,
       cwd,
     });
     if (result.error) {
@@ -128,7 +126,8 @@ export function executeHooks(input: any, hooks: HookEntry[]): string {
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  const result = executeHooks(input, HOOKS);
+  const settings = readSettings(DISPATCHER_DIR);
+  const result = executeHooks(input, getHooks(settings), settings);
   const isSessionEnd = input.hook_event_name === "SessionEnd";
   let systemMessage;
   const hasResult = result !== "";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
 // Stop hook: blocks when the reply names work still to build that isn't on the task list.
 
 // Lowercase substrings; the message is lowercased before matching.
@@ -125,8 +125,7 @@ function getWordStem(word: string): string {
   return hasTrailingE ? stem.slice(0, stem.length - 1) : stem;
 }
 
-function getContentStems(text: string): string[] {
-  const minimumWordLength = Number(readEnvValue("CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH"));
+function getContentStems(text: string, minimumWordLength: number): string[] {
   let lowered = text.toLowerCase();
   for (const phrase of NEEDS_BUILDING_PHRASES)
     lowered = lowered.split(phrase).join(" ");
@@ -142,11 +141,10 @@ function getContentStems(text: string): string[] {
   return stems;
 }
 
-export function isListed(line: string, subjects: string[]): boolean {
-  const minimumSharedWords = Number(readEnvValue("CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS"));
-  const lineStems = new Set(getContentStems(line));
+export function isListed(line: string, subjects: string[], minimumWordLength: number, minimumSharedWords: number): boolean {
+  const lineStems = new Set(getContentStems(line, minimumWordLength));
   for (const subject of subjects) {
-    const subjectStems = new Set(getContentStems(subject));
+    const subjectStems = new Set(getContentStems(subject, minimumWordLength));
     let sharedCount = 0;
     for (const lineStem of lineStems) {
       const isShared = subjectStems.has(lineStem);
@@ -163,18 +161,6 @@ export function isListed(line: string, subjects: string[]): boolean {
   return false;
 }
 
-// Old matcher: raw count of shared long words, no stems, no ratio.
-// function longWords(text: string): string[] {
-//   const minimumWordLength = Number(readEnvValue("CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH"));
-//   const pieces = text.toLowerCase().split(/[^a-z]+/);
-//   const words: string[] = [];
-//   for (const piece of pieces) {
-//     if (piece.length >= minimumWordLength)
-//       words.push(piece);
-//   }
-//   return words;
-// }
-
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   if (input.stop_hook_active)
@@ -186,11 +172,13 @@ if (import.meta.main) {
     process.exit(0);
 
   const taskListId = process.env.CLAUDE_CODE_TASK_LIST_ID ?? input.session_id;
-  const subjects = getOpenTaskSubjects(`${readEnvValue("CLAUDE_HOOKS_TASKS_DIR")}/${taskListId}`);
+  const subjects = getOpenTaskSubjects(`${getSetting(input, "CLAUDE_HOOKS_TASKS_DIR")}/${taskListId}`);
+  const minimumWordLength = Number(getSetting(input, "CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH"));
+  const minimumSharedWords = Number(getSetting(input, "CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS"));
 
   const unlisted: string[] = [];
   for (const line of lines) {
-    const isLineListed = isListed(line, subjects);
+    const isLineListed = isListed(line, subjects, minimumWordLength, minimumSharedWords);
     if (!isLineListed)
       unlisted.push(line);
   }

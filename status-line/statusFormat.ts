@@ -1,5 +1,4 @@
 import { RESET, selectColor } from "./statusColors.ts";
-// import { readEnvValue } from "../shared/env.ts";
 import { WEEKLY_RESET_ORANGE_MINUTES, WEEKLY_RESET_RED_MINUTES, WEEKLY_RESET_SHOW_HOURS, WEEKLY_RESET_YELLOW_MINUTES } from "./status_line_config.ts";
 
 export function formatTokens(n: number): string {

@@ -1,6 +1,5 @@
 import { test, expect, mock } from 'claude-code/testing'
 
-// const IDLE_MS = 2 * 60 * 1000
 const IDLE_MS = 3300000
 const STATE_OBJECT = {
   work: ['built the idle-state mod'],
@@ -16,15 +15,23 @@ const STATE_OBJECT = {
 }
 const TEMPLATE_TEXT = '{ "work": ["what this chat worked on"] }'
 const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
+const DISPATCH_ALL_ON = '{ "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } } }'
+const DISPATCH_ALL_OFF = '{ "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } } }'
+
+function stubFs(on: any, dispatchText = DISPATCH_ALL_ON) {
+  on('fs.exists', () => ({ value: false }))
+  on('fs.read', (_$: any, e: any) => {
+    const isDispatchFile = e.path.endsWith('dispatch.json')
+    if (isDispatchFile)
+      return { value: dispatchText }
+    return { value: TEMPLATE_TEXT }
+  })
+}
 
 test('idle chat writes a state file, exits, then drops prompts', async ($, on) => {
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const submitted: string[] = []
   const written: { path: string; text: string }[] = []
@@ -39,7 +46,7 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
     commands.push(e.command)
     return { text: '' }
   })
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', (_$, e) => {
     const isServer = e.argv[2] === 'bun run server'
     if (isServer)
@@ -65,7 +72,6 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
   expect(submitted).toEqual([])
   await clock.advance(IDLE_MS)
   expect(submitted).toHaveLength(1)
-  // expect(submitted[0]).toContain('Reply with only a JSON object')
   expect(submitted[0]).toContain(TEMPLATE_TEXT)
 
   await $.turn.complete({ ...ANSWER, answer: 'I ran the turn-done script.' })
@@ -86,7 +92,6 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
   expect(commands).toEqual(['exit'])
 
   const result = await $.prompt.submit({ text: 'hello again', wait: false, origin: { kind: 'composer' } })
-  // expect(result.drop).toBe(`The chat cache has expired. You should exit this chat. Start a new chat. The SessionStart hook will automatically read ${stateFile?.path}`)
   expect(result.drop).toContain(stateFile?.path)
 })
 
@@ -106,7 +111,7 @@ test('typing exit writes the state file first, then exits', async ($, on) => {
     commands.push(e.command)
     return { text: '' }
   })
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.messages', () => ({
     value: [
@@ -138,10 +143,6 @@ test('aborted state turn writes no file and the next prompt is not dropped', asy
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const written: { path: string; text: string }[] = []
   const commands: string[] = []
@@ -155,7 +156,7 @@ test('aborted state turn writes no file and the next prompt is not dropped', asy
     commands.push(e.command)
     return { text: '' }
   })
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.messages', () => ({ value: [{ role: 'assistant', text: JSON.stringify(STATE_OBJECT), toolUses: [] }] }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
@@ -176,10 +177,6 @@ test('user typing after the state prompt writes no file and does not parse the r
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   const submitted: string[] = []
   const written: { path: string; text: string }[] = []
@@ -190,7 +187,7 @@ test('user typing after the state prompt writes no file and does not parse the r
     return { value: undefined }
   })
   on('command.run', () => ({ text: '' }))
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.messages', () => ({
     value: [
@@ -216,7 +213,7 @@ test('tools are denied while the state prompt is pending, then allowed again', a
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, { HOME: '/home/u' })
   let toolsRun = 0
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('turn.complete', ($, e) => ({ text: e.answer }))
   on('prompt.submit', ($, e) => ({ text: e.text }))
   on('tool.call', () => {
@@ -241,7 +238,7 @@ test('a user prompt during the state turn lets tools run again', async ($, on) =
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, { HOME: '/home/u' })
   let toolsRun = 0
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('turn.complete', ($, e) => ({ text: e.answer }))
   on('prompt.submit', ($, e) => ({ text: e.text }))
   on('tool.call', () => {
@@ -268,7 +265,7 @@ test('pgrep gets the program command with regex characters escaped', async ($, o
   on('session.id', () => ({ value: 'abcdef1234567890' }))
   on('fs.write', () => ({ value: undefined }))
   on('command.run', () => ({ text: '' }))
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', (_$, e) => {
     patterns.push(e.argv[2] ?? '')
     return { value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -300,7 +297,7 @@ test('a reply wrapped in extra text writes no state file and does not exit', asy
     commands.push(e.command)
     return { text: '' }
   })
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.messages', () => ({ value: [{ role: 'assistant', text: wrappedReply, toolUses: [] }] }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
@@ -317,21 +314,40 @@ test('a reply wrapped in extra text writes no state file and does not exit', asy
   expect(commands).toEqual([])
 })
 
+test('all events disabled in dispatch.json: the idle timer never starts and tools run', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  const submitted: string[] = []
+  let toolsRun = 0
+  stubFs(on, DISPATCH_ALL_OFF)
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => {
+    submitted.push(e.text)
+    return { text: e.text }
+  })
+  on('tool.call', () => {
+    toolsRun++
+    return { result: {}, text: 'ran' }
+  })
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  await $.tool.call({ tool: 'Read', file_path: '/a.md' })
+  expect(submitted).toEqual([])
+  expect(toolsRun).toBe(1)
+})
+
 test('session end after a state write stops dropping prompts', async ($, on) => {
   // Idle chat writes the state file and exits; after the session ends, the next prompt passes.
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, {
     HOME: '/home/u',
-    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: '60000',
-    // CLAUDE_HOOKS_IDLE_STATE_LATE_LIMIT_MS: '180000',
-    // CLAUDE_HOOKS_IDLE_STATE_EXIT_KEY_DELAY_MS: '1000',
-    // CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME: '.idleState',
   })
   on('session.root', () => ({ value: '/work/my-project' }))
   on('session.id', () => ({ value: 'abcdef1234567890' }))
   on('fs.write', () => ({ value: undefined }))
   on('command.run', () => ({ text: '' }))
-  on('fs.read', () => ({ value: TEMPLATE_TEXT }))
+  stubFs(on)
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.messages', () => ({ value: [{ role: 'assistant', text: JSON.stringify(STATE_OBJECT), toolUses: [] }] }))
   on('turn.complete', ($, e) => ({ text: e.answer }))

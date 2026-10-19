@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
 // PostToolUse on Write|Edit|MultiEdit|NotebookEdit: reminds the agent to follow the planning guide after it touches a plan file.
 
 function convertHomePath(path: string): string {
@@ -14,8 +14,8 @@ function convertHomePath(path: string): string {
   return path;
 }
 
-export function buildReminder(): string {
-  return `Conform the plan you're editing to ${convertHomePath(readEnvValue("CLAUDE_HOOKS_PLANNING_GUIDE_PATH"))}.`;
+export function buildReminder(input: { settings?: Record<string, string> }): string {
+  return `Conform the plan you're editing to ${convertHomePath(getSetting(input, "CLAUDE_HOOKS_PLANNING_GUIDE_PATH"))}.`;
 }
 
 export function isPlanEdit(input: {
@@ -38,7 +38,7 @@ if (import.meta.main) {
     process.exit(0);
   console.log(
     JSON.stringify({
-      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: buildReminder() },
+      hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: buildReminder(input) },
     }),
   );
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { computeDebt } from "./debt-compute.ts";
 import { filterUniqueNonTestTsFiles } from "../shared/debt-files.ts";
@@ -20,7 +21,11 @@ if (import.meta.main) {
     const isEmpty = lines[i].length === 0;
     if (isEmpty)
       continue;
-    absolutePaths.push(resolve(repoRoot, lines[i]));
+    const absolutePath = resolve(repoRoot, lines[i]);
+    const existsOnDisk = existsSync(absolutePath);
+    if (!existsOnDisk)
+      continue;
+    absolutePaths.push(absolutePath);
   }
   const files = filterUniqueNonTestTsFiles(absolutePaths);
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Claude Code status line. Docs: code.claude.com/docs/en/statusline
 import { existsSync, readFileSync } from "node:fs";
-// import { readEnvValue } from "../shared/env.ts";
+import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { EFFORT_ABBREVIATION, formatShortModelName } from "./statusShared.ts";
 import { CYAN, DASH, GREEN, RED, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
 import { resetColor } from "./statusAnnoyance.ts";
@@ -14,8 +14,6 @@ export { CYAN, DASH, RED, RESET, formatOrDash, selectColor, selectBudgetColor, s
 export { ANNOYANCE_COLORS, computeAnnoyanceLevel, resetColor } from "./statusAnnoyance.ts";
 export { computeWeeklyBudget, computeDayOfWeek, formatBar, formatCountdown, formatTokens, computeSecondsUntilNextDay, computeSecondsUntilReset, formatWeeklyResetSuffix } from "./statusFormat.ts";
 export { countTurns, getSessionTokens } from "./statusRead.ts";
-
-// const EFFORT_ABBREVIATION = { low: "L", medium: "M", high: "H", xhigh: "x", max: "max" };
 
 function formatEffort(level: keyof typeof EFFORT_ABBREVIATION): string {
   return EFFORT_ABBREVIATION[level];
@@ -50,8 +48,8 @@ if (import.meta.main) {
   const context = input.context_window ?? {};
   const limits = input.rate_limits ?? {};
   const pct = Math.floor(context.used_percentage ?? 0);
-  // const sittings = await readSittings(input.session_id);
-  const sittings = readSittings(input.transcript_path ?? input.session_id);
+  const stateDir = getValues(readSettings(DISPATCHER_DIR), "shared")["CLAUDE_HOOKS_SESSION_STATE_DIR"];
+  const sittings = readSittings(input.transcript_path ?? input.session_id, stateDir);
   const tokens = getSessionTokens(sittings);
   const tokensIn = tokens?.in;
   const tokensOut = tokens?.out;
@@ -81,9 +79,6 @@ if (import.meta.main) {
   );
   const branchName = getGitBranch(projectDir);
 
-  // const model = `${CYAN}[${input.model?.display_name ?? "?"}]${RESET}`;
-  // const model = `${CYAN}[${input.model?.display_name ?? "?"}]${RESET}(${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])})`;
-  // const model = `${CYAN}[${input.model?.display_name ?? "?"}:${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])}]${RESET}`;
   const effortText = formatOrDash(input.effort?.level, formatEffort);
   let model: string;
   try {
@@ -92,7 +87,6 @@ if (import.meta.main) {
   catch (error) {
     model = `${RED}${(error as Error).message}${RESET}`;
   }
-  // const model = `${CYAN}[${formatModelName(input.model!.id)}:${formatOrDash(input.effort?.level, (level) => EFFORT_ABBREVIATION[level])}]${RESET}`;
   const folder = `📁 ${(input.workspace?.current_dir ?? "").split("/").pop()}`;
   const branch = branchName ? `🌿 ${branchName}` : "";
   const turnsColor = selectColor(
@@ -126,8 +120,6 @@ if (import.meta.main) {
     `(Resets in: ${formatOrDash(untilReset, formatFiveHourReset)})`;
 
   console.log(joinLine(model, folder, branch));
-  // console.log(joinLine(turns, contextBar, weekUsage, dayCount));
-  // console.log(joinLine(tokensInfo, fiveHrUsage));
   console.log(joinLine(contextBar, turns, turnCounterNotWired ? "" : tokensInfo));
   console.log(joinLine(fiveHrUsage, weekUsage, dayCount));
   console.log(joinLine(cacheTimer));

@@ -6,9 +6,8 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import type { FileDebt } from "./debt-compute.ts";
-import { ARRAY_DEBT_DIR, setDebtRatchetEnv, setUpRepo, writeTranscript, runHook } from "./debt-ratchet-test-helpers.ts";
+import { ARRAY_DEBT_DIR, DEBT_LIMITS, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-setDebtRatchetEnv();
 const { blockReason } = await import("./debt-compute.ts");
 
 test("first sighting with debt: blocked, ledger written with the total", () => {
@@ -21,7 +20,7 @@ test("first sighting with debt: blocked, ledger written with the total", () => {
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
-  const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  const output = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
   assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
   assert.equal(JSON.parse(readFileSync(ledgerPath, "utf8")).total, 1);
@@ -40,40 +39,31 @@ function setUpDebtTranscript(): string {
 test("reentrant stop with the same debt: blocked again", () => {
   const sessionId = randomUUID();
   const transcript_path = setUpDebtTranscript();
-  const first = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  const first = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(first, /"decision":"block"/);
-  const second = runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+  const second = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
   assert.match(second, /"decision":"block"/);
 });
 
 test("reentrant stops stop blocking after the chain limit", () => {
   const sessionId = randomUUID();
   const transcript_path = setUpDebtTranscript();
-  runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   let output = "";
   for (let i = 0; i < 5; i++)
-    output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+    output = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
   assert.equal(output, "");
 });
 
 test("a new chain starts again after the limit", () => {
   const sessionId = randomUUID();
   const transcript_path = setUpDebtTranscript();
-  runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   for (let i = 0; i < 5; i++)
-    runHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
-  const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+    executeHook({ transcript_path, session_id: sessionId, stop_hook_active: true });
+  const output = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
 });
-
-// test("HEAD has 1 violation, working copy has the same 1: allowed", () => {
-//   const repo = setUpRepo("export function nums() {\n  return [1, 2, 3].map((n) => n + 1);\n}\n");
-//   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
-//   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
-//   const output = runHook({ transcript_path, stop_hook_active: false });
-//   assert.equal(output, "");
-// });
-// Superseded by the per-session ledger ratchet: an unchanged debt count now blocks (see "existing ledger with same total: blocked").
 
 test("subagent edits are collected: only the edit at/after turn start is evaluated", () => {
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
@@ -113,7 +103,7 @@ test("subagent edits are collected: only the edit at/after turn start is evaluat
   });
   writeFileSync(`${subagentsDir}/agent-x.jsonl`, `${beforeTurnStart}\n${afterTurnStart}\n`);
 
-  const output = runHook({ transcript_path, session_id: randomUUID(), stop_hook_active: false });
+  const output = executeHook({ transcript_path, session_id: randomUUID(), stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
   assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
   assert.match(output, /subject\.ts/);
@@ -125,18 +115,20 @@ test("blockReason lists the files that have no test file", () => {
   const lonelyFile: FileDebt = { file: "/x/lonely.ts", current: 1, lines: [], reformatted: false, lineCount: 10, missingTest: true };
   const messyFile: FileDebt = { file: "/x/messy.ts", current: 2, lines: [3, 4], reformatted: false, lineCount: 10, missingTest: false };
   // The block reason must name the file with no test file.
-  const reason = blockReason([lonelyFile, messyFile], 3, undefined, []);
+  const reason = blockReason([lonelyFile, messyFile], 3, undefined, [], DEBT_LIMITS);
   assert.match(reason ?? "", /lonely\.ts/);
   // A file with no flagged lines gets no "lines ... show:" line.
   assert.doesNotMatch(reason ?? "", /lonely\.ts: lines/);
 });
 
-// test("blockReason skips the style debt part when the only problem is a missing test file", () => {
-//   const lonelyFile: FileDebt = { file: "/x/lonely.ts", current: 1, lines: [], reformatted: false, lineCount: 10, missingTest: true };
-//   const reason = blockReason([lonelyFile], 1, undefined, []);
-//   assert.doesNotMatch(reason ?? "", /Style debt/);
-//   assert.match(reason ?? "", /These files have no test file: \/x\/lonely\.ts/);
-// });
+test("blockReason requires the total to drop by fixBatchSize, never below debtTarget", () => {
+  const limits = { ...DEBT_LIMITS, debtTarget: 0, fixBatchSize: 5 };
+  const messyFile: FileDebt = { file: "/x/messy.ts", current: 7, lines: [3], reformatted: false, lineCount: 10, missingTest: false };
+  const reasonFromSeven = blockReason([messyFile], 7, undefined, [], limits);
+  assert.match(reasonFromSeven ?? "", /Style debt is 7 and must drop to 2 or fewer/);
+  const reasonFromThree = blockReason([messyFile], 3, undefined, [], limits);
+  assert.match(reasonFromThree ?? "", /Style debt is 3 and must drop to 0 or fewer/);
+});
 
 test("SubagentStop: a fake agent transcript with one Edit tool_use yields that file path", () => {
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
@@ -146,7 +138,7 @@ test("SubagentStop: a fake agent transcript with one Edit tool_use yields that f
   );
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-agent-transcript-`);
   const agent_transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
-  const output = runHook({ agent_transcript_path, session_id: randomUUID(), stop_hook_active: false });
+  const output = executeHook({ agent_transcript_path, session_id: randomUUID(), stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
   assert.match(output, /subject\.ts/);
 });

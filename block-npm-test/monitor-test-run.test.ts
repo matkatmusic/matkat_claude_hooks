@@ -5,9 +5,6 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_WAIT_SECONDS = "240";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_POLL_SECONDS = "1";
-
 const MONITOR_SCRIPT = `${import.meta.dirname}/monitor-test-run.ts`;
 
 test("monitor prints the result and the log path when the done file exists", () => {

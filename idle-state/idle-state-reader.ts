@@ -2,7 +2,7 @@
 // First prompt only: hands the model the recent .idleState files; skips when the prompt runs catch-up.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname } from "node:path";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
 
 const IDLE_STATE_FOLDER_NAME = ".idleState";
@@ -24,8 +24,7 @@ export function findIdleStateFolder(cwd: string): string {
   }
 }
 
-export function findRecentStateFiles(folder: string, nowMs: number): string[] {
-  const windowMs = Number(readEnvValue("CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS"));
+export function findRecentStateFiles(folder: string, nowMs: number, windowMs: number): string[] {
   const hasFolder = existsSync(folder);
   if (!hasFolder)
     return [];
@@ -42,20 +41,17 @@ export function findRecentStateFiles(folder: string, nowMs: number): string[] {
   return paths;
 }
 
-export function buildStateContext(folder: string, nowMs: number): string {
-  const paths = findRecentStateFiles(folder, nowMs);
+export function buildStateContext(folder: string, nowMs: number, windowMs: number): string {
+  const paths = findRecentStateFiles(folder, nowMs, windowMs);
   if (paths.length === 0)
     return "";
   const text = `Tell me about the recent work written in the state files ${paths.join(", ")}`;
-  // for (const path of paths)
-  //   text += `\n\n# ${path}\n${readFileSync(path, "utf8")}`;
   return text;
 }
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  // const context = buildStateContext(`${input.cwd}/${readEnvValue("CLAUDE_HOOKS_IDLE_STATE_FOLDER_NAME")}`, Date.now());
-  const statePath = getSessionStatePath(input.transcript_path);
+  const statePath = getSessionStatePath(input.transcript_path, getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR"));
   const state = readSessionState(statePath);
   const isLaterPrompt = state.idleStateFiles !== undefined;
   if (isLaterPrompt)
@@ -68,12 +64,11 @@ if (import.meta.main) {
     process.exit(0);
   }
   const folder = findIdleStateFolder(input.cwd);
-  const paths = findRecentStateFiles(folder, Date.now());
-  // const statePath = getSessionStatePath(input.transcript_path);
-  // const state = readSessionState(statePath);
+  const windowMs = Number(getSetting(input, "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS"));
+  const paths = findRecentStateFiles(folder, Date.now(), windowMs);
   state.idleStateFiles = paths;
   writeSessionState(statePath, state);
-  const context = buildStateContext(folder, Date.now());
+  const context = buildStateContext(folder, Date.now(), windowMs);
   if (context !== "")
     console.log(context);
 }

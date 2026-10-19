@@ -1,3 +1,79 @@
-[
-  { "name": "ask-dont-dump", "enabled": true }
-]
+{
+  "enablements": {
+    "block-npm-test": { "PreToolUse": false },
+    "block-parent-edits": { "PreToolUse": false },
+    "block-bash-edits": { "PreToolUse": false },
+    "plan-file-reminder": { "PostToolUse": false },
+    "check-task-list-id": { "SessionStart": false },
+    "nudge-task-list": { "Stop": false },
+    "unlisted-items": { "Stop": false },
+    "turn-counter": { "SessionStart": false, "Stop": false, "StopFailure": false, "SessionEnd": false },
+    "ponytail-ultra-nudge": { "UserPromptSubmit": false },
+    "clarify-ambiguous": { "UserPromptSubmit": false },
+    "typecheck-on-stop": { "Stop": false, "SubagentStop": false },
+    "debt-ratchet": { "Stop": false, "SubagentStop": false },
+    "idle-state-reader": { "UserPromptSubmit": false },
+    "idle-state-check": { "Stop": false },
+    "ask-dont-dump": { "prompt.submit": true, "turn.complete": true },
+    "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
+    "context-exit": { "turn.complete": true }
+  },
+  "values": {
+    "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },
+    "block-npm-test": {
+      "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": "/tmp/tasktools-npm-test",
+      "CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS": "3600",
+      "CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS": "120000",
+      "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS": "604800000"
+    },
+    "block-parent-edits": {
+      "CLAUDE_HOOKS_BLOCKED_EDITS_DIR": "~/.claude/claude_hooks/blocked-edits"
+    },
+    "debt-ratchet": {
+      "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": "~/.claude/array-debt",
+      "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS": "604800000",
+      "CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES": "1000",
+      "CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET": "0",
+      "CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE": "10"
+    },
+    "idle-state-reader": {
+      "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS": "86400000"
+    },
+    "plan-file-reminder": {
+      "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "~/.claude/guides/planning.md"
+    },
+    "turn-counter": {
+      "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT": "/private/tmp",
+      "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS": "14"
+    },
+    "typecheck-on-stop": {
+      "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES": "20"
+    },
+    "unlisted-items": {
+      "CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH": "5",
+      "CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS": "2",
+      "CLAUDE_HOOKS_TASKS_DIR": "~/.claude/tasks"
+    }
+  },
+  "hooks": [
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-npm-test/block-npm-test.ts"], "timeout": 300 },
+    { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["node", "../block-parent-edits/block-parent-edits.ts"] },
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-bash-edits/block-bash-edits.ts"] },
+    { "event": "PostToolUse", "matcher": "Write|Edit", "command": ["node", "../plan-file-reminder/plan-file-reminder.ts"] },
+    { "event": "SessionStart", "command": ["node", "../check-task-list-id/check-task-list-id.ts"] },
+    { "event": "Stop", "command": ["node", "../nudge-task-list/nudge-task-list.ts"] },
+    { "event": "Stop", "command": ["node", "../unlisted-items/unlisted-items.ts"] },
+    { "event": "SessionStart", "command": ["node", "../status-line/turn-counter.ts"] },
+    { "event": "Stop", "command": ["node", "../status-line/turn-counter.ts"] },
+    { "event": "StopFailure", "command": ["node", "../status-line/turn-counter.ts"] },
+    { "event": "SessionEnd", "command": ["node", "../status-line/turn-counter.ts"] },
+    { "event": "UserPromptSubmit", "command": ["node", "../ponytail-ultra-nudge/ponytail-ultra-nudge.ts"] },
+    { "event": "UserPromptSubmit", "command": ["node", "../clarify-ambiguous/clarify-ambiguous.ts"] },
+    { "event": "Stop", "command": ["node", "../typecheck-on-stop/typecheck-on-stop.ts"], "timeout": 300 },
+    { "event": "SubagentStop", "command": ["node", "../typecheck-on-stop/typecheck-on-stop.ts"], "timeout": 300 },
+    { "event": "Stop", "command": ["node", "../debt-ratchet/debt-ratchet.ts"], "timeout": 300 },
+    { "event": "SubagentStop", "command": ["node", "../debt-ratchet/debt-ratchet.ts"], "timeout": 300 },
+    { "event": "UserPromptSubmit", "command": ["node", "../idle-state/idle-state-reader.ts"] },
+    { "event": "Stop", "command": ["node", "../idle-state/idle-state-check.ts"] }
+  ]
+}

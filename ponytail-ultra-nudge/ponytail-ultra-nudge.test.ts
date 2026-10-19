@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isPonytailUltraInTranscript, isPonytailUltraSkillCall, isPonytailUltraTypedPrompt } from "./ponytail-ultra-nudge.ts";
 
@@ -64,47 +64,56 @@ test("skill call helper", () => {
   assert.equal(isPonytailUltraSkillCall("Bash", { skill: "ponytail:ponytail", args: "ultra" }), false);
 });
 
+const stateDir = mkdtempSync(`${tmpdir()}/ponytail-nudge-state-`);
+after(() => rmSync(stateDir, { recursive: true, force: true }));
+
 const runHook = (home: string, input: object) =>
   execFileSync("node", [`${import.meta.dirname}/ponytail-ultra-nudge.ts`], {
-    input: JSON.stringify(input),
-    env: { ...process.env, HOME: home, CLAUDE_HOOKS_SESSION_STATE_DIR: `${home}/.claude/claude_hooks` },
+    input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir }, ...input }),
   });
 
-const readState = (home: string, session: string) => JSON.parse(readFileSync(`${home}/.claude/claude_hooks/${session}.json`, "utf8"));
+const readState = (session: string) => JSON.parse(readFileSync(`${stateDir}/${session}.json`, "utf8"));
 
 test("state already marks ponytail ultra invoked: exits with no output, transcript is never read", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const dir = `${home}/.claude/claude_hooks`;
-  mkdirSync(dir, { recursive: true });
-  const transcriptPath = `${home}/no-such-transcript.jsonl`;
-  writeFileSync(`${dir}/no-such-transcript.json`, JSON.stringify({ ponytailUltraInvoked: true }));
+  const sessionId = `no-such-transcript-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
+  writeFileSync(`${stateDir}/${sessionId}.json`, JSON.stringify({ ponytailUltraInvoked: true }));
 
   const output = runHook(home, { transcript_path: transcriptPath });
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.equal(output.toString(), "");
 });
 
 test("transcript shows the typed ultra command: writes the state key", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-a.jsonl`;
+  const sessionId = `session-a-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
   writeFileSync(transcriptPath, `${typedLine("/ponytail:ponytail", "ultra")}\n`);
 
   runHook(home, { transcript_path: transcriptPath });
-  assert.equal(readState(home, "session-a").ponytailUltraInvoked, true);
+  const state = readState(sessionId);
+  rmSync(`${stateDir}/${sessionId}.json`);
+  assert.equal(state.ponytailUltraInvoked, true);
 });
 
 test("typed ultra prompt sets the flag on that same prompt, with no nudge", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-b.jsonl`;
+  const sessionId = `session-b-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
   writeFileSync(transcriptPath, "");
 
   const output = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "/ponytail ultra" });
+  const state = readState(sessionId);
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.equal(output.toString(), "");
-  assert.equal(readState(home, "session-b").ponytailUltraInvoked, true);
+  assert.equal(state.ponytailUltraInvoked, true);
 });
 
 test("PostToolUse of an ultra Skill call sets the flag, with no output", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-c.jsonl`;
+  const sessionId = `session-c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
 
   const output = runHook(home, {
     hook_event_name: "PostToolUse",
@@ -112,13 +121,16 @@ test("PostToolUse of an ultra Skill call sets the flag, with no output", () => {
     tool_name: "Skill",
     tool_input: { skill: "ponytail:ponytail", args: "ultra" },
   });
+  const state = readState(sessionId);
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.equal(output.toString(), "");
-  assert.equal(readState(home, "session-c").ponytailUltraInvoked, true);
+  assert.equal(state.ponytailUltraInvoked, true);
 });
 
 test("PostToolUse of a Skill call with not-ultra args does not set the flag", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-d.jsonl`;
+  const sessionId = `session-d-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
 
   const output = runHook(home, {
     hook_event_name: "PostToolUse",
@@ -126,46 +138,54 @@ test("PostToolUse of a Skill call with not-ultra args does not set the flag", ()
     tool_name: "Skill",
     tool_input: { skill: "ponytail:ponytail", args: "not ultra" },
   });
+  const stateFileExists = existsSync(`${stateDir}/${sessionId}.json`);
+  rmSync(`${stateDir}/${sessionId}.json`, { force: true });
   assert.equal(output.toString(), "");
-  assert.equal(existsSync(`${home}/.claude/claude_hooks/session-d.json`), false);
+  assert.equal(stateFileExists, false);
 });
 
 test("no ultra yet: nudges on every prompt", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-e.jsonl`;
+  const sessionId = `session-e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
   writeFileSync(transcriptPath, "");
 
   const first = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "hello" });
   const second = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "again" });
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.notEqual(first.toString(), "");
   assert.notEqual(second.toString(), "");
 });
 
 test("second prompt reads only the new part of the transcript", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-f.jsonl`;
+  const sessionId = `session-f-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
   const oldLine = `${typedLine("/ponytail:ponytail", "full")}\n`;
   writeFileSync(transcriptPath, oldLine);
 
   runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "one" });
-  assert.equal(readState(home, "session-f").ponytailTranscriptOffset, Buffer.byteLength(oldLine));
+  assert.equal(readState(sessionId).ponytailTranscriptOffset, Buffer.byteLength(oldLine));
 
   const ultraLine = `${typedLine("/ponytail:ponytail", "ultra")}\n`;
   writeFileSync(transcriptPath, ultraLine);
-  writeFileSync(`${home}/.claude/claude_hooks/session-f.json`, JSON.stringify({ ponytailTranscriptOffset: Buffer.byteLength(ultraLine) }));
+  writeFileSync(`${stateDir}/${sessionId}.json`, JSON.stringify({ ponytailTranscriptOffset: Buffer.byteLength(ultraLine) }));
   const output = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "two" });
   assert.notEqual(output.toString(), "");
-  assert.equal(readState(home, "session-f").ponytailUltraInvoked, undefined);
+  assert.equal(readState(sessionId).ponytailUltraInvoked, undefined);
 
   appendFileSync(transcriptPath, `${skillLine("ponytail:ponytail", "ultra")}\n`);
   const lastOutput = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "three" });
+  const state = readState(sessionId);
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.equal(lastOutput.toString(), "");
-  assert.equal(readState(home, "session-f").ponytailUltraInvoked, true);
+  assert.equal(state.ponytailUltraInvoked, true);
 });
 
 test("a half-written last line is read on the next prompt, not lost", () => {
   const home = mkdtempSync(`${tmpdir()}/ponytail-nudge-`);
-  const transcriptPath = `${home}/session-g.jsonl`;
+  const sessionId = `session-g-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcriptPath = `${home}/${sessionId}.jsonl`;
   const fullLine = skillLine("ponytail:ponytail", "ultra");
   writeFileSync(transcriptPath, fullLine.slice(0, 40));
 
@@ -174,6 +194,8 @@ test("a half-written last line is read on the next prompt, not lost", () => {
 
   writeFileSync(transcriptPath, `${fullLine}\n`);
   const second = runHook(home, { hook_event_name: "UserPromptSubmit", transcript_path: transcriptPath, prompt: "two" });
+  const state = readState(sessionId);
+  rmSync(`${stateDir}/${sessionId}.json`);
   assert.equal(second.toString(), "");
-  assert.equal(readState(home, "session-g").ponytailUltraInvoked, true);
+  assert.equal(state.ponytailUltraInvoked, true);
 });

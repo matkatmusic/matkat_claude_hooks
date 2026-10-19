@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-process.env.CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS = "86400000";
+const WINDOW_MS = 86400000;
+const stateDir = mkdtempSync(`${tmpdir()}/idle-state-reader-state-`);
+after(() => rmSync(stateDir, { recursive: true, force: true }));
 const { buildStateContext, findIdleStateFolder } = await import("./idle-state-reader.ts");
 
 test("a subfolder of the repo finds the .idleState folder at the repo root", () => {
@@ -34,7 +36,7 @@ test("lists only state files from the last 24 hours, without their contents", ()
   writeFileSync(`${folder}/.gitignore`, "ignored-secret-text");
   utimesSync(recent, (nowMs - 60 * 60 * 1000) / 1000, (nowMs - 60 * 60 * 1000) / 1000);
   utimesSync(old, (nowMs - 30 * 60 * 60 * 1000) / 1000, (nowMs - 30 * 60 * 60 * 1000) / 1000);
-  const result = buildStateContext(folder, nowMs);
+  const result = buildStateContext(folder, nowMs, WINDOW_MS);
   assert.ok(result.includes(recent));
   assert.ok(!result.includes("recent-secret-text"));
   assert.ok(!result.includes(old));
@@ -43,31 +45,38 @@ test("lists only state files from the last 24 hours, without their contents", ()
 });
 
 test("missing folder gives empty text", () => {
-  assert.equal(buildStateContext("/tmp/idle-state-missing-folder", Date.now()), "");
+  assert.equal(buildStateContext("/tmp/idle-state-missing-folder", Date.now(), WINDOW_MS), "");
 });
 
-function createPromptProject(): { repo: string; stateDir: string; transcriptPath: string; stateFilePath: string } {
+function createPromptProject(): { repo: string; sessionId: string; transcriptPath: string; stateFilePath: string } {
   const repo = mkdtempSync(`${tmpdir()}/idle-state-prompt-`);
   mkdirSync(`${repo}/.git`);
   mkdirSync(`${repo}/.idleState`);
   const stateFilePath = `${repo}/.idleState/recent.json`;
   writeFileSync(stateFilePath, "{}");
-  const stateDir = mkdtempSync(`${tmpdir()}/idle-state-session-`);
-  return { repo, stateDir, transcriptPath: `${repo}/session-abc.jsonl`, stateFilePath };
+  const sessionId = `session-abc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return { repo, sessionId, transcriptPath: `${repo}/${sessionId}.jsonl`, stateFilePath };
 }
 
-function runReader(project: { repo: string; stateDir: string; transcriptPath: string }, prompt: string): string {
+function runReader(project: { repo: string; transcriptPath: string }, prompt: string): string {
   const result = spawnSync("node", [new URL("./idle-state-reader.ts", import.meta.url).pathname], {
-    input: JSON.stringify({ prompt, cwd: project.repo, transcript_path: project.transcriptPath }),
+    input: JSON.stringify({
+      prompt,
+      cwd: project.repo,
+      transcript_path: project.transcriptPath,
+      settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" },
+    }),
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_HOOKS_SESSION_STATE_DIR: project.stateDir, CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" },
   });
   assert.equal(result.status, 0);
   return result.stdout;
 }
 
-function readSavedFiles(project: { stateDir: string }): string[] {
-  return JSON.parse(readFileSync(`${project.stateDir}/session-abc.json`, "utf8")).idleStateFiles;
+function readSavedFiles(project: { sessionId: string }): string[] {
+  const statePath = `${stateDir}/${project.sessionId}.json`;
+  const savedFiles = JSON.parse(readFileSync(statePath, "utf8")).idleStateFiles;
+  rmSync(statePath);
+  return savedFiles;
 }
 
 test("the first plain prompt prints the state file and saves its path", () => {

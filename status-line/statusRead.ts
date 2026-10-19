@@ -8,7 +8,6 @@ export type StatusInput = {
   session_id?: string;
   context_window?: {
     used_percentage?: number;
-    // total_input_tokens?: number; // per-turn snapshot, not session total; see sessionTokens total_output_tokens?: number;
   };
   transcript_path?: string;
   rate_limits?: {
@@ -20,22 +19,10 @@ export type StatusInput = {
 
 export type Sitting = { turns?: number; tokensIn?: number; tokensOut?: number };
 
-// async function readSittings(sessionId: string | undefined): Promise<Sitting[]> {
-//   if (!sessionId)
-//     return [];
-//   try {
-//     const path = `${process.env.HOME}/.claude/turn-counters/${sessionId}.counter`;
-//     const parsed = JSON.parse(await Bun.file(path).text());
-//     return Array.isArray(parsed) ? parsed : [];
-//   }
-//   catch {
-//     return [];
-//   }
-// }
-export function readSittings(pathOrSessionId: string | undefined): Sitting[] {
+export function readSittings(pathOrSessionId: string | undefined, stateDir: string): Sitting[] {
   if (!pathOrSessionId)
     return [];
-  const path = getSessionStatePath(pathOrSessionId);
+  const path = getSessionStatePath(pathOrSessionId, stateDir);
   return readSessionState(path).sittings ?? [];
 }
 

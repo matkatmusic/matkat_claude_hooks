@@ -3,20 +3,18 @@ import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, statSy
 import { dirname, join, basename } from "node:path";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";
 import { filterUniqueNonTestTsFiles } from "../shared/debt-files.ts";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
 import { computeDebt, blockReason, type FileDebt } from "./debt-compute.ts";
 // Stop hook: blocks the turn if its edits raised eslint violation counts above the HEAD baseline.
 
-const LEDGER_DIR = readEnvValue("CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR");
-const LEDGER_MAX_AGE_MS = Number(readEnvValue("CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS"));
 const MAX_CHAIN_BLOCKS = 3;
 
-// Deletes ledger files older than LEDGER_MAX_AGE_MS from dir.
-export function removeOldLedgers(dir: string, now: number): void {
+// Deletes ledger files older than maxAgeMs from dir.
+export function removeOldLedgers(dir: string, now: number, maxAgeMs: number): void {
   const files = readdirSync(dir);
   for (let i = 0; i < files.length; i++) {
     const path = `${dir}/${files[i]}`;
-    const isOld = now - statSync(path).mtimeMs > LEDGER_MAX_AGE_MS;
+    const isOld = now - statSync(path).mtimeMs > maxAgeMs;
     if (isOld)
       unlinkSync(path);
   }
@@ -24,6 +22,13 @@ export function removeOldLedgers(dir: string, now: number): void {
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  const LEDGER_DIR = getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR");
+  const ledgerMaxAgeMs = Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS"));
+  const limits = {
+    maxFileLines: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES")),
+    debtTarget: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET")),
+    fixBatchSize: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE")),
+  };
   const isReentrant = input.stop_hook_active === true;
   mkdirSync(LEDGER_DIR, { recursive: true });
   const blocksPath = `${LEDGER_DIR}/${input.session_id}.blocks`;
@@ -83,7 +88,7 @@ if (import.meta.main) {
     debts.push({ file: testFiles[i], current: 0, lines: [], reformatted: false, lineCount, missingTest: false });
   }
 
-  removeOldLedgers(LEDGER_DIR, Date.now());
+  removeOldLedgers(LEDGER_DIR, Date.now(), ledgerMaxAgeMs);
   const ledgerPath = `${LEDGER_DIR}/${input.session_id}.json`;
   const ledgerExists = existsSync(ledgerPath);
   let ledgerFiles: Record<string, number> = {};
@@ -124,7 +129,7 @@ if (import.meta.main) {
       reformattedFiles.push(debt.file);
   }
 
-  const reason = blockReason(debts, newTotal, savedTotal, reformattedFiles);
+  const reason = blockReason(debts, newTotal, savedTotal, reformattedFiles, limits);
   const hasDebt = newTotal > 0;
   const shouldSaveLedger = hasDebt || ledgerExists;
   if (shouldSaveLedger)

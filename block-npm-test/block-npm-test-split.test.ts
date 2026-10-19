@@ -6,8 +6,7 @@ import { tmpdir } from "node:os";
 import { isRunner } from "./block-npm-test-find.ts";
 import { splitSimpleCommands } from "./block-npm-test-split.ts";
 
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS = "604800000";
-const { isNodeProject } = await import("./block-npm-test-scripts.ts");
+import { isNodeProject } from "./block-npm-test-scripts.ts";
 
 test("isNodeProject: package.json in cwd", () => {
   const dir = mkdtempSync(`${tmpdir()}/node-project-`);

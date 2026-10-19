@@ -1,4 +1,3 @@
-// import { readEnvValue } from "../shared/env.ts";
 import { ANNOYANCE_ANCHORS } from "./status_line_config.ts";
 
 // Six steps of "how much will a forced break sting": hue falls, saturation rises
@@ -14,7 +13,6 @@ export const ANNOYANCE_COLORS = [
 function computeAnnoyanceThresholds(minutes: number): number[] {
   const longestWaitMinutes = ANNOYANCE_ANCHORS[ANNOYANCE_ANCHORS.length - 1][0];
   const clamped = Math.min(Math.max(minutes, 0), longestWaitMinutes);
-  // const upper = ANNOYANCE_ANCHORS.findIndex(([at]) => at >= clamped);
   let upper = -1;
   for (let i = 0; i < ANNOYANCE_ANCHORS.length; i++) {
     const anchorReachesClamped = ANNOYANCE_ANCHORS[i][0] >= clamped;

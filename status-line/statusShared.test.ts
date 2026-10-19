@@ -25,7 +25,6 @@ test("effort abbreviations, model names, unknown model throws", () => {
   assert.equal(formatModelName("claude-haiku-4-5-20251001"), "Haiku 4.5");
   assert.equal(formatModelName("claude-sonnet-5[1m]"), "Sonnet 5 (1M context)");
   assert.equal(formatModelName("claude-opus-4-7[1m]"), "Opus 4.7 (1M context)");
-  // assert.equal(formatShortModelName(formatModelName("claude-sonnet-5[1m]")), "sonnet5[1m]");
   assert.equal(formatShortModelName(formatModelName("claude-opus-5")), "opus5");
   assert.throws(() => formatModelName("claude-nope-9"), /claude-nope-9/);
   assert.throws(() => formatModelName("claude-nope-9[1m]"), /claude-nope-9\[1m\]/);

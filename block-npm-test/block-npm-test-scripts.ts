@@ -1,10 +1,6 @@
 import { existsSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { readEnvValue } from "../shared/env.ts";
-
-const LOG_MAX_AGE_MS = Number(readEnvValue("CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS"));
-
 // INITIAL_PASS: first-pass test command; prints only failures or "all passing".
 export function buildInitialPass(logPath: string): string {
   return `set -o pipefail
@@ -54,12 +50,12 @@ kill $SLEEP_PID
 mv ${logPath}.summary ${logPath}.done`;
 }
 
-// Deletes log files older than LOG_MAX_AGE_MS from dir.
-export function removeOldLogs(dir: string, now: number): void {
+// Deletes log files older than logMaxAgeMs from dir.
+export function removeOldLogs(dir: string, now: number, logMaxAgeMs: number): void {
   const files = readdirSync(dir);
   for (let i = 0; i < files.length; i++) {
     const path = `${dir}/${files[i]}`;
-    const isOld = now - statSync(path).mtimeMs > LOG_MAX_AGE_MS;
+    const isOld = now - statSync(path).mtimeMs > logMaxAgeMs;
     if (isOld)
       unlinkSync(path);
   }

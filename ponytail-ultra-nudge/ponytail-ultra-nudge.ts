@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { getSessionStatePath, readSessionState, writeSessionState, type SessionState } from "../shared/session-state.ts";
+import { getSetting } from "../shared/settings.ts";
 // UserPromptSubmit and PostToolUse(Skill) hook: nudges the agent on every prompt until ponytail ultra is invoked.
 
 const SKILL_NAMES = ["ponytail:ponytail", "ponytail"];
@@ -74,7 +75,7 @@ export function isPonytailUltraInTranscript(transcript: string): boolean {
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  const path = getSessionStatePath(input.transcript_path);
+  const path = getSessionStatePath(input.transcript_path, getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR"));
   const state: NudgeState = readSessionState(path);
   if (state.ponytailUltraInvoked)
     process.exit(0);

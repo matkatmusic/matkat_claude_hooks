@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-// / <reference path="./hooks-globals.d.ts" /> Counts turns per conversation into the session state file's sittings list.
+// Counts turns per conversation into the session state file's sittings list.
 
 import { mkdir, readdir, readFile, stat, unlink } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
 import type { Sitting } from "../shared/session-state.ts";
-import { readEnvValue } from "../shared/env.ts";
-
-const SCRATCH_ROOT = readEnvValue("CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT");
+import { getSetting } from "../shared/settings.ts";
 
 async function listDir(dir: string): Promise<string[]> {
   try {
@@ -24,15 +22,16 @@ async function listDir(dir: string): Promise<string[]> {
 }
 
 // Subagent and workflow tokens never reach the parent transcript, so gather their own files.
-export async function sidechainPaths(
+export async function findSidechainPaths(
   transcriptPath: string,
+  scratchRoot: string,
 ): Promise<string[]> {
   const sessionDir = transcriptPath.replace(/\.jsonl$/, "");
   const sessionId = sessionDir.slice(sessionDir.lastIndexOf("/") + 1);
   const projectDir = transcriptPath.slice(0, transcriptPath.lastIndexOf("/"));
   const projectName = projectDir.slice(projectDir.lastIndexOf("/") + 1);
   // Workflow agents write only under the scratchpad; the durable subagents/ folder misses them.
-  const scratchEntries = await listDir(SCRATCH_ROOT);
+  const scratchEntries = await listDir(scratchRoot);
   const scratchRoots: string[] = [];
   for (let i = 0; i < scratchEntries.length; i++) {
     const isClaudeRoot = scratchEntries[i].includes("/claude-");
@@ -59,8 +58,6 @@ export async function sidechainPaths(
 }
 
 export type Tokens = { in: number; out: number };
-
-const KEEP_DAYS = Number(readEnvValue("CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS"));
 
 export function applyEvent(
   sittings: Sitting[],
@@ -92,8 +89,9 @@ export function applyEvent(
 }
 
 // Re-sums the whole transcript each time, so a race with the last write self-corrects next Stop.
-export async function sumTranscriptTokens(
+export async function countTranscriptTokens(
   transcriptPath: string | undefined,
+  scratchRoot: string,
 ): Promise<Tokens | undefined> {
   if (!transcriptPath)
     return undefined;
@@ -151,7 +149,7 @@ export async function sumTranscriptTokens(
   };
 
   addLines(text);
-  for (const path of await sidechainPaths(transcriptPath)) {
+  for (const path of await findSidechainPaths(transcriptPath, scratchRoot)) {
     try {
       addLines(await readFile(path, "utf8"));
     }
@@ -162,11 +160,9 @@ export async function sumTranscriptTokens(
   return { in: tokensIn, out: tokensOut };
 }
 
-async function purgeStaleCounters(now: number): Promise<void> {
-  const cutoff = now - KEEP_DAYS * 86400;
-  const dir = dirname(getSessionStatePath("_"));
+async function removeStaleCounters(now: number, keepDays: number, dir: string): Promise<void> {
+  const cutoff = now - keepDays * 86400;
   for (const name of await readdir(dir)) {
-    // if (!name.endsWith(".counter"))
     const isNotJson = !name.endsWith(".json");
     if (isNotJson)
       continue;
@@ -177,22 +173,13 @@ async function purgeStaleCounters(now: number): Promise<void> {
   }
 }
 
-// async function readSittings(path: string): Promise<Sitting[]> {
-//   try {
-//     const parsed = JSON.parse(await readFile(path, "utf8"));
-//     return Array.isArray(parsed) ? parsed : [];
-//   }
-//   catch {
-//     return [];
-//   }
-// }
-
 if (import.meta.main) {
   let input: {
     hook_event_name?: string;
     session_id?: string;
     transcript_path?: string;
     stop_hook_active?: boolean;
+    settings?: Record<string, string>;
   } = {};
   try {
     input = JSON.parse(readFileSync(0, "utf8"));
@@ -202,23 +189,25 @@ if (import.meta.main) {
   }
   if (!input.session_id)
     process.exit(0);
+  const scratchRoot = getSetting(input, "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT");
+  const keepDays = Number(getSetting(input, "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS"));
   const isStopAfterStopHookBlock = input.hook_event_name === "Stop" && input.stop_hook_active === true;
   if (isStopAfterStopHookBlock)
     process.exit(0);
 
-  const path = getSessionStatePath(input.session_id);
+  const stateDir = getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR");
+  const path = getSessionStatePath(input.session_id, stateDir);
   const now = Math.floor(Date.now() / 1000);
 
   if (input.hook_event_name === "SessionStart") {
-    // await mkdir(COUNTER_DIR, { recursive: true });
     await mkdir(dirname(path), { recursive: true });
-    await purgeStaleCounters(now);
+    await removeStaleCounters(now, keepDays, stateDir);
   }
 
   const tokens =
     input.hook_event_name === "SessionStart"
       ? undefined
-      : await sumTranscriptTokens(input.transcript_path);
+      : await countTranscriptTokens(input.transcript_path, scratchRoot);
   const state = readSessionState(path);
   const updated = applyEvent(
     state.sittings ?? [],

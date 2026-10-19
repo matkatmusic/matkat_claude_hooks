@@ -6,9 +6,8 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { ARRAY_DEBT_DIR, STYLISTIC_ESLINT_CONFIG, setDebtRatchetEnv, setUpRepo, writeTranscript, runHook } from "./debt-ratchet-test-helpers.ts";
+import { ARRAY_DEBT_DIR, STYLISTIC_ESLINT_CONFIG, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-setDebtRatchetEnv();
 const { computeDebt } = await import("./debt-compute.ts");
 
 test("computeDebt on a repo with no eslint.config.js and no node_modules returns a numeric count", () => {
@@ -95,7 +94,7 @@ test("eslint --fix runs: fixable brace-style debt is fixed in place, and the ref
   const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${dir}/subject.ts`);
-  const output = runHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
+  const output = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"additionalContext"/);
   assert.match(output, /This hook reformatted these files to the house layout/);
   assert.match(output, /subject\.ts/);

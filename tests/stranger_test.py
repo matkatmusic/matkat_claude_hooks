@@ -74,47 +74,32 @@ def one_line(text):
 
 # ---------- test bed ----------
 
-def write_env(clone, bed, config):
-    overrides = {
-        "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": str(bed / "planning.md"),
-        "CLAUDE_HOOKS_TASKS_DIR": f"{config}/tasks",
-        "CLAUDE_HOOKS_BLOCKED_EDITS_DIR": str(bed / "blocked-edits"),
-        "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": str(bed / "npm-test-logs"),
-        "CLAUDE_HOOKS_SESSION_STATE_DIR": str(bed / "state"),
-        "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": str(bed / "array-debt"),
-        "CLAUDE_HOOKS_IDLE_STATE_IDLE_MS": str(IDLE_MS),
+def write_user_dispatch(clone, bed, config):
+    enablements = {
+        "block-npm-test": {"PreToolUse": True},
+        "block-parent-edits": {"PreToolUse": True},
+        "block-bash-edits": {"PreToolUse": True},
+        "plan-file-reminder": {"PostToolUse": True},
+        "check-task-list-id": {"SessionStart": True},
+        "nudge-task-list": {"Stop": True},
+        "unlisted-items": {"Stop": True},
+        "turn-counter": {"SessionStart": True, "Stop": True, "StopFailure": True, "SessionEnd": True},
+        "ponytail-ultra-nudge": {"UserPromptSubmit": True},
+        "clarify-ambiguous": {"UserPromptSubmit": True},
+        "typecheck-on-stop": {"Stop": True, "SubagentStop": True},
+        "debt-ratchet": {"Stop": True, "SubagentStop": True},
+        "idle-state-reader": {"UserPromptSubmit": True},
+        "idle-state-check": {"Stop": True},
     }
-    seen = set()
-    lines = []
-    for line in (clone / ".env.example").read_text().splitlines():
-        key = line.split("=", 1)[0]
-        if key in overrides:
-            line = f"{key}={overrides[key]}"
-            seen.add(key)
-        lines.append(line)
-    for key in overrides:
-        if key not in seen:
-            raise RuntimeError(f".env.example has no {key} line")
-    for line in lines:
-        is_value_line = "=" in line and not line.startswith("#")
-        if is_value_line and "/path/to" in line:
-            raise RuntimeError(f".env still has a placeholder path: {line}")
-    (clone / ".env").write_text("\n".join(lines) + "\n")
-
-
-def enable_hooks(clone):
-    hooks_list = clone / "dispatcher" / "hooks-list.ts"
-    lines = []
-    enabled_count = 0
-    for line in hooks_list.read_text().split("\n"):
-        is_real_hook = "import.meta.dirname" in line and "enabled: false" in line
-        if is_real_hook:
-            line = line.replace("enabled: false", "enabled: true")
-            enabled_count += 1
-        lines.append(line)
-    if enabled_count == 0:
-        raise RuntimeError("no real hook found in hooks-list.ts")
-    hooks_list.write_text("\n".join(lines))
+    values = {
+        "shared": {"CLAUDE_HOOKS_SESSION_STATE_DIR": str(bed / "state")},
+        "plan-file-reminder": {"CLAUDE_HOOKS_PLANNING_GUIDE_PATH": str(bed / "planning.md")},
+        "unlisted-items": {"CLAUDE_HOOKS_TASKS_DIR": f"{config}/tasks"},
+        "block-parent-edits": {"CLAUDE_HOOKS_BLOCKED_EDITS_DIR": str(bed / "blocked-edits")},
+        "block-npm-test": {"CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": str(bed / "npm-test-logs")},
+        "debt-ratchet": {"CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": str(bed / "array-debt")},
+    }
+    (clone / "dispatcher" / "user-dispatch.json").write_text(json.dumps({"enablements": enablements, "values": values}, indent=2) + "\n")
 
 
 def make_project(project):
@@ -154,8 +139,7 @@ def build_bed(bed, config):
     run(["git", "clone", "-q", str(REPO), str(clone)])
     run(["npm", "install"], cwd=clone)
     (bed / "planning.md").write_text("A plan has a goal, steps, and a test for each step.\n")
-    write_env(clone, bed, config)
-    enable_hooks(clone)
+    write_user_dispatch(clone, bed, config)
     make_project(bed / "project")
     write_settings(config, clone)
     install_plugins(clone, config)
@@ -188,7 +172,7 @@ def launch_session(model, bed, config):
         raise RuntimeError("claude is not on PATH")
     script = (
         "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; "
-        f"set -a; source {shlex.quote(str(clone / '.env'))}; set +a; cd {shlex.quote(str(project))}; "
+        f"cd {shlex.quote(str(project))}; "
         f"CLAUDE_CONFIG_DIR={shlex.quote(str(config))} exec {shlex.quote(claude)} --model {model} "
         f"--plugin-dir {shlex.quote(str(clone))} --plugin-dir {shlex.quote(str(clone / 'idle-state' / 'mod'))}"
     )

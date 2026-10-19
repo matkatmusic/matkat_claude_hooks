@@ -1,4 +1,3 @@
-// import { readEnvValue } from "../shared/env.ts";
 import { WEEKLY_ORANGE_POINTS_LEFT, WEEKLY_RED_POINTS_LEFT, WEEKLY_YELLOW_POINTS_LEFT } from "./status_line_config.ts";
 
 export const CYAN ="\x1b[36m";

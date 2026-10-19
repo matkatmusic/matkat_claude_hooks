@@ -3,13 +3,12 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { tmpdir } from "node:os";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import type { Sitting } from "../shared/session-state.ts";
 
-process.env.CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT = "/private/tmp";
-process.env.CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS = "14";
-const { applyEvent, sumTranscriptTokens } = await import("./turn-counter.ts");
+const SCRATCH_ROOT = "/private/tmp";
+const { applyEvent, countTranscriptTokens } = await import("./turn-counter.ts");
 
 const events = [
   "SessionStart",
@@ -80,7 +79,7 @@ test("sums good lines once each, skips the rest", async () => {
       "",
     ].join("\n"),
   );
-  assert.deepEqual(await sumTranscriptTokens(scratch), { in: 15, out: 5 });
+  assert.deepEqual(await countTranscriptTokens(scratch, SCRATCH_ROOT), { in: 15, out: 5 });
   await unlink(scratch);
 });
 
@@ -98,31 +97,32 @@ test("adds subagent files and dedupes ids shared with the parent", async () => {
       goodLine("msg_a", 10, 2), // already counted in the parent
     ].join("\n"),
   );
-  assert.deepEqual(await sumTranscriptTokens(parent), { in: 110, out: 42 });
+  assert.deepEqual(await countTranscriptTokens(parent, SCRATCH_ROOT), { in: 110, out: 42 });
   await unlink(sidecar);
   await unlink(parent);
 });
 
 test("a Stop that follows a Stop-hook block is not counted", () => {
   const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-state-`);
-  const sessionId = `sess-${Date.now()}`;
+  const sessionId = `sess-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const settings = { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: SCRATCH_ROOT, CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14" };
   const runEvent = (input: object) =>
     spawnSync("node", [`${import.meta.dirname}/turn-counter.ts`], {
-      input: JSON.stringify({ session_id: sessionId, ...input }),
+      input: JSON.stringify({ session_id: sessionId, settings, ...input }),
       encoding: "utf8",
-      env: { ...process.env, CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir },
     });
   runEvent({ hook_event_name: "SessionStart" });
   runEvent({ hook_event_name: "Stop", stop_hook_active: false });
   runEvent({ hook_event_name: "Stop", stop_hook_active: true });
   const state = JSON.parse(readFileSync(`${stateDir}/${sessionId}.json`, "utf8"));
+  rmSync(stateDir, { recursive: true, force: true });
   assert.equal(state.sittings[0].turns, 1);
 });
 
 test("no transcript path", async () => {
-  assert.equal(await sumTranscriptTokens(undefined), undefined);
+  assert.equal(await countTranscriptTokens(undefined, SCRATCH_ROOT), undefined);
 });
 
 test("missing transcript file", async () => {
-  assert.equal(await sumTranscriptTokens("/no/such/file.jsonl"), undefined);
+  assert.equal(await countTranscriptTokens("/no/such/file.jsonl", SCRATCH_ROOT), undefined);
 });

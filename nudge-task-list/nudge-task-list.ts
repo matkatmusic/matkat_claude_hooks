@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-// import { spawnSync } from "node:child_process";
-// import { readEnvValue } from "../shared/env.ts";
 import { checkTaskListId } from "../shared/task-list-id.ts";
 // Stop hook: when the reply announces work is starting, tell the agent to use the task list.
 
@@ -71,8 +69,6 @@ if (import.meta.main) {
   const isStarting = isStartingWork(input.last_assistant_message ?? "");
   if (!isStarting)
     process.exit(0);
-  // const checkId = spawnSync("node", [readEnvValue("CLAUDE_HOOKS_CHECK_TASK_LIST_ID_PATH")], { encoding: "utf8" });
-  // const setupHelp = checkId.stdout ? JSON.parse(checkId.stdout).systemMessage : "";
   const setupHelp = checkTaskListId(process.env.CLAUDE_CODE_TASK_LIST_ID) ?? "";
   console.log(JSON.stringify({ decision: "block", reason: getReason(process.env.CLAUDE_CODE_TASK_LIST_ID, setupHelp) }));
 }

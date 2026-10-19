@@ -2,9 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { setDebtRatchetEnv, setUpRepo } from "./debt-ratchet-test-helpers.ts";
-
-setDebtRatchetEnv();
+import { setUpRepo } from "./debt-ratchet-test-helpers.ts";
 
 function runReport(repo: string): string {
   const run = spawnSync("node", [`${import.meta.dirname}/debt-ratchet-report.ts`], { cwd: repo, encoding: "utf8" });

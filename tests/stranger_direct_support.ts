@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, symlinkSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { getValues, readSettings } from "../shared/settings.ts";
 
 export interface DirectContext {
   clone: string;
@@ -23,7 +24,7 @@ export interface HookRun {
   stderr: string;
 }
 
-const CLEARED_NAMES = /^(CLAUDE_HOOKS_|CLAUDE_CODE_)|^(CLAUDECODE|CLAUDE_PID|CLAUDE_EFFORT)$/;
+const CLEARED_NAMES = /^CLAUDE_CODE_|^(CLAUDECODE|CLAUDE_PID|CLAUDE_EFFORT)$/;
 
 export function createContext(bed: string, config: string): DirectContext {
   const direct = path.join(bed, "direct");
@@ -46,16 +47,22 @@ export function buildHookEnv(context: DirectContext, extra: Record<string, strin
     if (!isCleared)
       env[key] = process.env[key];
   }
-  env.CLAUDE_HOOKS_SESSION_STATE_DIR = path.join(context.direct, "state");
-  env.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR = path.join(context.direct, "array-debt");
-  env.CLAUDE_HOOKS_BLOCKED_EDITS_DIR = path.join(context.direct, "blocked-edits");
-  env.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR = path.join(context.direct, "npm-test-logs");
-  env.CLAUDE_HOOKS_TASKS_DIR = path.join(context.direct, "tasks");
   return { ...env, ...extra };
 }
 
+export function buildHookSettings(context: DirectContext, script: string): Record<string, string> {
+  const name = path.basename(script, path.extname(script));
+  const values = getValues(readSettings(path.join(context.clone, "dispatcher")), name);
+  values.CLAUDE_HOOKS_SESSION_STATE_DIR = path.join(context.direct, "state");
+  values.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR = path.join(context.direct, "array-debt");
+  values.CLAUDE_HOOKS_BLOCKED_EDITS_DIR = path.join(context.direct, "blocked-edits");
+  values.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR = path.join(context.direct, "npm-test-logs");
+  values.CLAUDE_HOOKS_TASKS_DIR = path.join(context.direct, "tasks");
+  return values;
+}
+
 export function executeHook(context: DirectContext, script: string, input: object | string, cwd: string, extraEnv: Record<string, string> = {}): HookRun {
-  const stdin = typeof input === "string" ? input : JSON.stringify(input);
+  const stdin = typeof input === "string" ? input : JSON.stringify({ ...input, settings: buildHookSettings(context, script) });
   const result = spawnSync("node", [path.join(context.clone, script)], { input: stdin, cwd, env: buildHookEnv(context, extraEnv), encoding: "utf8" });
   if (result.error)
     throw result.error;

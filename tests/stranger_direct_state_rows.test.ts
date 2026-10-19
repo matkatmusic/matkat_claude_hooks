@@ -10,7 +10,7 @@ const REPO = path.resolve(import.meta.dirname, "..");
 
 function isCopiedPath(source: string): boolean {
   const name = path.basename(source);
-  const isSkipped = name === "node_modules" || name === ".git" || name === ".env" || name === "tests";
+  const isSkipped = name === "node_modules" || name === ".git" || name === ".env" || name === "user-dispatch.json" || name === "tests";
   return !isSkipped;
 }
 
@@ -18,7 +18,8 @@ test("validateIdleReaderSubfolder passes on a copy of the repo with the idle-sta
   const bed = mkdtempSync(path.join(tmpdir(), "direct-state-"));
   const clone = path.join(bed, "claude_hooks");
   cpSync(REPO, clone, { recursive: true, filter: isCopiedPath });
-  writeFileSync(path.join(clone, ".env"), "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS=86400000\n");
+  const userDispatch = { enablements: {}, values: { "idle-state-reader": { CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" } } };
+  writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify(userDispatch));
   const context = { ...createContext(bed, bed), clone };
   const result = validateIdleReaderSubfolder(context);
   assert.equal(result.number, 39);

@@ -3,8 +3,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { homedir } from "node:os";
 
-process.env.CLAUDE_HOOKS_PLANNING_GUIDE_PATH = "/guides/planning.md";
-const { isPlanEdit, buildReminder } = await import("./plan-file-reminder.ts");
+import { isPlanEdit, buildReminder } from "./plan-file-reminder.ts";
 
 test("plan mode does not make a non-plan file a plan", () => {
   assert.equal(isPlanEdit({ permission_mode: "plan", cwd: "/x", tool_input: { file_path: "/x/notes.md" } }), false);
@@ -48,13 +47,11 @@ test("no file path", () => {
 });
 
 test("reminder names the guide path from env", () => {
-  assert.ok(buildReminder().includes("/guides/planning.md"));
+  assert.ok(buildReminder({ settings: { CLAUDE_HOOKS_PLANNING_GUIDE_PATH: "/guides/planning.md" } }).includes("/guides/planning.md"));
 });
 
 test("tilde in the guide path expands to the home folder", () => {
-  process.env.CLAUDE_HOOKS_PLANNING_GUIDE_PATH = "~/guides/planning.md";
-  const reminder = buildReminder();
-  process.env.CLAUDE_HOOKS_PLANNING_GUIDE_PATH = "/guides/planning.md";
+  const reminder = buildReminder({ settings: { CLAUDE_HOOKS_PLANNING_GUIDE_PATH: "~/guides/planning.md" } });
   assert.ok(reminder.includes(`${homedir()}/guides/planning.md`));
   assert.ok(!reminder.includes("~"));
 });

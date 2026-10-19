@@ -3,16 +3,24 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { buildHookEnv, countOccurrences, createContext, executeHook, formatFlag } from "./stranger_direct_support.ts";
+import { buildHookEnv, buildHookSettings, countOccurrences, createContext, executeHook, formatFlag } from "./stranger_direct_support.ts";
 
-test("buildHookEnv drops shell CLAUDE_HOOKS values and points state at the direct folder", () => {
-  process.env.CLAUDE_HOOKS_PLANNING_GUIDE_PATH = "/should/be/dropped";
+test("buildHookEnv drops shell CLAUDE_CODE values and keeps the extra ones", () => {
+  process.env.CLAUDE_CODE_SHOULD_DROP = "/should/be/dropped";
   const bed = mkdtempSync(path.join(tmpdir(), "direct-support-"));
   const context = createContext(bed, path.join(bed, "config"));
   const env = buildHookEnv(context, { CLAUDE_CODE_TASK_LIST_ID: "abc" });
-  assert.equal(env.CLAUDE_HOOKS_PLANNING_GUIDE_PATH, undefined);
-  assert.equal(env.CLAUDE_HOOKS_SESSION_STATE_DIR, path.join(bed, "direct", "state"));
+  assert.equal(env.CLAUDE_CODE_SHOULD_DROP, undefined);
   assert.equal(env.CLAUDE_CODE_TASK_LIST_ID, "abc");
+});
+
+test("buildHookSettings points state at the direct folder and keeps dispatch.json defaults", () => {
+  const bed = mkdtempSync(path.join(tmpdir(), "direct-support-"));
+  const repo = path.resolve(import.meta.dirname, "..");
+  const context = { ...createContext(bed, bed), clone: repo };
+  const settings = buildHookSettings(context, "typecheck-on-stop/typecheck-on-stop.ts");
+  assert.equal(settings.CLAUDE_HOOKS_SESSION_STATE_DIR, path.join(bed, "direct", "state"));
+  assert.equal(settings.CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES, "20");
 });
 
 test("executeHook feeds stdin to a clone script and returns its output", () => {

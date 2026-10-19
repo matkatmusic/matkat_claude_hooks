@@ -10,7 +10,6 @@ const MODEL_NAMES: Record<string, string> = {
   "claude-sonnet-4-6": "Sonnet 4.6",
   "claude-sonnet-5": "Sonnet 5",
   "claude-sonnet-5-5": "Sonnet 5.5" ,
-  // "claude-sonnet-5-5[1m]": "Sonnet 5.5 (1M context)",
   "claude-haiku-4-5-20251001": "Haiku 4.5",
   "claude-haiku-5-5": "Haiku 5.5",
 };
@@ -45,7 +44,6 @@ const SHORT_MODEL_NAMES: Record<string, string> = {
   "Sonnet 4.6": "sonnet4.6",
   "Sonnet 4.6 (1M context)": "sonnet4.6[1m]",
   "Sonnet 5": "sonnet5[1m]",
-  // "Sonnet 5 (1M context)": "sonnet5[1m]",
   "Sonnet 5.5": "sonnet5.5[1m]", //sonnet always runs with 1m context now
   "Sonnet 5.5 (1M context)": "sonnet5.5[1m]",
   "Haiku 4.5": "haiku4.5",

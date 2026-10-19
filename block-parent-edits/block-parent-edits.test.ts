@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync, utimesSync, existsSync } from
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
-process.env.CLAUDE_HOOKS_BLOCKED_EDITS_DIR = `${tmpdir()}/claude-blocked-edits`;
+const DEFAULT_SETTINGS = { CLAUDE_HOOKS_BLOCKED_EDITS_DIR: `${tmpdir()}/claude-blocked-edits` };
 
 function readSavedBlockedEditPath(denyReason: string): string {
   const match = denyReason.match(/Your blocked tool call is saved at (\S+)/);
@@ -26,7 +26,7 @@ function writeTranscript(model: string): string {
 
 function runHook(input: object, env: Record<string, string | undefined> = process.env): string {
   const run = spawnSync("node", [`${import.meta.dirname}/block-parent-edits.ts`], {
-    input: JSON.stringify(input),
+    input: JSON.stringify({ settings: DEFAULT_SETTINGS, ...input }),
     encoding: "utf8",
     env,
   });
@@ -242,8 +242,7 @@ test("a blocked edit deletes saved files older than one day and keeps newer ones
   utimesSync(oldFile, twoDaysAgo, twoDaysAgo);
   const transcript_path = writeTranscript("claude-fable-5-1");
   runHook(
-    { session_id: "test-session", transcript_path, tool_name: "Edit", tool_input: {} },
-    { ...process.env, CLAUDE_HOOKS_BLOCKED_EDITS_DIR: savedDir },
+    { session_id: "test-session", transcript_path, tool_name: "Edit", tool_input: {}, settings: { CLAUDE_HOOKS_BLOCKED_EDITS_DIR: savedDir } },
   );
   assert.equal(existsSync(oldFile), false);
   assert.equal(existsSync(newFile), true);

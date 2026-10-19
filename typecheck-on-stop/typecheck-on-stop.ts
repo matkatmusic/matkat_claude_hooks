@@ -3,7 +3,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
 import { getSessionStatePath } from "../shared/session-state.ts";
 // Stop/SubagentStop: blocks the stop while tsc reports type errors in TypeScript files edited this turn.
 
@@ -28,8 +28,8 @@ function readErrorFilePath(errorLine: string, cwd: string): string | undefined {
   return resolve(cwd, errorLine.slice(0, pathEnd));
 }
 
-function readBlockCountPath(stateKeyPath: string): string {
-  return getSessionStatePath(`typecheck-blocks-${basename(stateKeyPath)}`);
+function readBlockCountPath(stateKeyPath: string, stateDir: string): string {
+  return getSessionStatePath(`typecheck-blocks-${basename(stateKeyPath)}`, stateDir);
 }
 
 function readBlockCount(countPath: string): number {
@@ -49,8 +49,8 @@ function printStopResult(result: object): void {
 }
 
 if (import.meta.main) {
-  const maxErrorLines = Number(readEnvValue("CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES"));
   const input = JSON.parse(readFileSync(0, "utf8"));
+  const maxErrorLines = Number(getSetting(input, "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES"));
   const hasTsconfig = existsSync(`${input.cwd}/tsconfig.json`);
   if (!hasTsconfig)
     process.exit(0);
@@ -87,7 +87,7 @@ if (import.meta.main) {
     process.exit(0);
 
   const stateKeyPath = isSubagentTranscript ? input.agent_transcript_path : input.transcript_path;
-  const countPath = readBlockCountPath(stateKeyPath);
+  const countPath = readBlockCountPath(stateKeyPath, getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR"));
 
   const run = spawnSync("npx", ["tsc", "--noEmit", "--pretty", "false", "-p", "."], { cwd: input.cwd, encoding: "utf8" });
   if (run.error)

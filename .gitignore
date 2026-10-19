@@ -1,4 +1,5 @@
 .env
+dispatcher/user-dispatch.json
 node_modules
 
 .plate/

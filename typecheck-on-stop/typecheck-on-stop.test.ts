@@ -1,12 +1,21 @@
 #!/usr/bin/env node
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { strict as assert } from "node:assert";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { basename } from "node:path";
 import { spawnSync } from "node:child_process";
 
+const stateDir = mkdtempSync(`${tmpdir()}/typecheck-on-stop-state-`);
+after(() => rmSync(stateDir, { recursive: true, force: true }));
+
+function getBlockCountPath(transcriptPath: string): string {
+  return `${stateDir}/typecheck-blocks-${basename(transcriptPath, ".jsonl")}.json`;
+}
+
 function writeTranscript(dir: string, filePath: string): string {
-  const path = `${dir}/transcript.jsonl`;
+  // A unique transcript name per test folder gives each test its own block count file.
+  const path = `${dir}/${basename(dir)}.jsonl`;
   const lines = [
     JSON.stringify({ type: "user", message: { content: "add a helper" } }),
     JSON.stringify({
@@ -20,13 +29,14 @@ function writeTranscript(dir: string, filePath: string): string {
   return path;
 }
 
-function runHook(input: object, maxErrorLines: string = "20", extraEnv: Record<string, string> = {}): string {
-  const stateDir = mkdtempSync(`${tmpdir()}/typecheck-on-stop-state-`);
+function runHook(input: { transcript_path: string; [key: string]: unknown }, maxErrorLines: string = "20", extraEnv: Record<string, string> = {}, keepsBlockCount: boolean = false): string {
   const run = spawnSync("node", [`${import.meta.dirname}/typecheck-on-stop.ts`], {
-    input: JSON.stringify(input),
+    input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: maxErrorLines }, ...input }),
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: maxErrorLines, CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, ...extraEnv },
+    env: { ...process.env, ...extraEnv },
   });
+  if (!keepsBlockCount)
+    rmSync(getBlockCountPath(input.transcript_path), { force: true });
   return run.stdout.trim();
 }
 
@@ -126,13 +136,12 @@ test("blocks loudly with stderr when tsc fails to start", () => {
 
 test("keeps blocking when stop_hook_active is true, and stops blocking after the limit", () => {
   const { cwd, transcript_path } = setUpProject("bad.ts", 'const x: number = "a";\n');
-  const stateDir = mkdtempSync(`${tmpdir()}/typecheck-on-stop-state-`);
-  const env = { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir };
   const decisions: (string | undefined)[] = [];
   for (let i = 0; i < 6; i++) {
-    const output = runHook({ cwd, transcript_path, stop_hook_active: true }, "20", env);
+    const output = runHook({ cwd, transcript_path, stop_hook_active: true }, "20", {}, true);
     decisions.push(JSON.parse(output).decision);
   }
+  rmSync(getBlockCountPath(transcript_path), { force: true });
   assert.equal(decisions[0], "block");
   assert.equal(decisions[1], "block");
   assert.notEqual(decisions[5], "block");

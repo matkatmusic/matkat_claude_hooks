@@ -105,67 +105,32 @@ function getTmuxPane(): string {
 
 // ---------- test bed ----------
 
-export function writeEnv(clone: string, bed: string, config: string): void {
-  const overrides: Record<string, string> = {
-    CLAUDE_HOOKS_PLANNING_GUIDE_PATH: path.join(bed, "planning.md"),
-    CLAUDE_HOOKS_TASKS_DIR: `${config}/tasks`,
-    CLAUDE_HOOKS_BLOCKED_EDITS_DIR: path.join(bed, "blocked-edits"),
-    CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR: path.join(bed, "npm-test-logs"),
-    CLAUDE_HOOKS_SESSION_STATE_DIR: path.join(bed, "state"),
-    CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: path.join(bed, "array-debt"),
-    // CLAUDE_HOOKS_IDLE_STATE_IDLE_MS: String(IDLE_MS), // the idle time is now a constant in the mod: see modifyIdleMinutes
-    CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS: "3600",
-    CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS: "604800000",
-    CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS: "120000",
-    CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS: "15",
-    CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET: "0",
-    CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE: "10",
-    CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS: "604800000",
-    CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES: "150",
-    CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000",
-    CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14",
-    CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: "/tmp",
-    CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "20",
-    CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS: "2",
-    CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH: "5",
+export function writeUserDispatch(clone: string, bed: string, config: string): void {
+  const enablements: Record<string, Record<string, boolean>> = {
+    "block-npm-test": { PreToolUse: true },
+    "block-parent-edits": { PreToolUse: true },
+    "block-bash-edits": { PreToolUse: true },
+    "plan-file-reminder": { PostToolUse: true },
+    "check-task-list-id": { SessionStart: true },
+    "nudge-task-list": { Stop: true },
+    "unlisted-items": { Stop: true },
+    "turn-counter": { SessionStart: true, Stop: true, StopFailure: true, SessionEnd: true },
+    "ponytail-ultra-nudge": { UserPromptSubmit: true },
+    "clarify-ambiguous": { UserPromptSubmit: true },
+    "typecheck-on-stop": { Stop: true, SubagentStop: true },
+    "debt-ratchet": { Stop: true, SubagentStop: true },
+    "idle-state-reader": { UserPromptSubmit: true },
+    "idle-state-check": { Stop: true },
   };
-  const seen = new Set<string>();
-  const lines: string[] = [];
-  const exampleLines = readFileSync(path.join(clone, ".env.example"), "utf8").split("\n");
-  if (exampleLines[exampleLines.length - 1] === "") {
-    exampleLines.pop();
-  }
-  for (let line of exampleLines) {
-    const key = line.split("=", 1)[0]!;
-    if (key in overrides) {
-      line = `${key}=${overrides[key]}`;
-      seen.add(key);
-    }
-    lines.push(line);
-  }
-  // for (const key of Object.keys(overrides)) {
-  //   const isSeen = seen.has(key);
-  //   if (!isSeen) {
-  //     throw new Error(`.env.example has no ${key} line`);
-  //   }
-  // }
-  for (const key of Object.keys(overrides)) {
-    const isSeen = seen.has(key);
-    if (!isSeen) {
-      lines.push(`${key}=${overrides[key]}`);
-    }
-  }
-  for (const line of lines) {
-    const hasEquals = line.includes("=");
-    const isComment = line.startsWith("#");
-    const isValueLine = hasEquals && !isComment;
-    const hasPlaceholder = line.includes("/path/to");
-    const isPlaceholderLine = isValueLine && hasPlaceholder;
-    if (isPlaceholderLine) {
-      throw new Error(`.env still has a placeholder path: ${line}`);
-    }
-  }
-  writeFileSync(path.join(clone, ".env"), lines.join("\n") + "\n");
+  const values: Record<string, Record<string, string>> = {
+    shared: { CLAUDE_HOOKS_SESSION_STATE_DIR: path.join(bed, "state") },
+    "plan-file-reminder": { CLAUDE_HOOKS_PLANNING_GUIDE_PATH: path.join(bed, "planning.md") },
+    "unlisted-items": { CLAUDE_HOOKS_TASKS_DIR: `${config}/tasks` },
+    "block-parent-edits": { CLAUDE_HOOKS_BLOCKED_EDITS_DIR: path.join(bed, "blocked-edits") },
+    "block-npm-test": { CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR: path.join(bed, "npm-test-logs") },
+    "debt-ratchet": { CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: path.join(bed, "array-debt") },
+  };
+  writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify({ enablements, values }, null, 2) + "\n");
 }
 
 export function modifyIdleMinutes(clone: string): void {
@@ -177,26 +142,6 @@ export function modifyIdleMinutes(clone: string): void {
     throw new Error(`idle-state mod has no line: ${original}`);
   }
   writeFileSync(registerPath, source.replace(original, `const IDLE_MINUTES = ${IDLE_MS / 60000};`));
-}
-
-export function enableHooks(clone: string): void {
-  const hooksListPath = path.join(clone, "dispatcher", "hooks-list.ts");
-  const lines: string[] = [];
-  let enabledCount = 0;
-  for (let line of readFileSync(hooksListPath, "utf8").split("\n")) {
-    const hasImportDirname = line.includes("import.meta.dirname");
-    const isDisabled = line.includes("enabled: false");
-    const isRealHook = hasImportDirname && isDisabled;
-    if (isRealHook) {
-      line = line.replace("enabled: false", "enabled: true");
-      enabledCount += 1;
-    }
-    lines.push(line);
-  }
-  if (enabledCount === 0) {
-    throw new Error("no real hook found in hooks-list.ts");
-  }
-  writeFileSync(hooksListPath, lines.join("\n"));
 }
 
 export function createProject(project: string): void {
@@ -243,8 +188,7 @@ function buildBed(bed: string, config: string): void {
   executeCommand(["git", "clone", "-q", REPO, clone]);
   executeCommand(["npm", "install"], clone);
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
-  writeEnv(clone, bed, config);
-  enableHooks(clone);
+  writeUserDispatch(clone, bed, config);
   modifyIdleMinutes(clone);
   createProject(path.join(bed, "project"));
   writeSettings(config, clone);
@@ -268,7 +212,7 @@ function launchSession(model: string, bed: string, config: string): Session {
   const claude = whichResult.stdout.trim();
   const script =
     "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; " +
-    `set -a; source ${wrapShellWord(path.join(clone, ".env"))}; set +a; cd ${wrapShellWord(project)}; ` +
+    `cd ${wrapShellWord(project)}; ` +
     `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} exec ${wrapShellWord(claude)} --model ${model} ` +
     `--plugin-dir ${wrapShellWord(clone)} --plugin-dir ${wrapShellWord(path.join(clone, "idle-state", "mod"))}`;
   const pane = tmux_lib.tmux_splitWorkerPane(getTmuxPane(), project, "bash -c " + wrapShellWord(script));
@@ -598,7 +542,6 @@ async function executeMain(): Promise<void> {
       argumentWords.push(wrapShellWord(argument));
     }
     const command = ["BUN_JSC_useTailCalls=0", wrapShellWord(process.execPath), wrapShellWord(import.meta.filename), ...argumentWords].join(" ") + "; read";
-    // const result = spawnSync("tmux", ["new-session", "-s", "stranger-test", "-x", "200", "-y", "60", command, ";", "set-option", "-w", "window-size", "manual"], { stdio: "inherit" });
     const result = spawnSync("tmux", ["new-session", "-s", "stranger-test", "-x", "200", "-y", "60", command], { stdio: "inherit" });
     process.exit(result.status ?? 1);
   }

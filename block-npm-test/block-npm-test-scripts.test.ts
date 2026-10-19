@@ -5,10 +5,8 @@ import { mkdtempSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS = "604800000";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_WAIT_SECONDS = "240";
-process.env.CLAUDE_HOOKS_BLOCK_NPM_TEST_MONITOR_POLL_SECONDS = "2";
-const { buildBackgroundTestScript, buildInitialPass, removeOldLogs } = await import("./block-npm-test-scripts.ts");
+
+import { buildBackgroundTestScript, buildInitialPass, removeOldLogs } from "./block-npm-test-scripts.ts";
 
 const MONITOR_SCRIPT = `${import.meta.dirname}/monitor-test-run.ts`;
 
@@ -80,7 +78,7 @@ test("removeOldLogs: deletes files older than 7 days, keeps fresh ones", () => {
   writeFileSync(`${dir}/fresh.log`, "fresh");
   const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
   utimesSync(`${dir}/old.log`, eightDaysAgo, eightDaysAgo);
-  removeOldLogs(dir, Date.now());
+  removeOldLogs(dir, Date.now(), 604800000);
   assert.deepEqual(readdirSync(dir), ["fresh.log"]);
 });
 

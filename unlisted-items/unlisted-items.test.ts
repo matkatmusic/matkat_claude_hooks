@@ -2,8 +2,8 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
 
-process.env.CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH = "5";
-process.env.CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS = "2";
+const MIN_WORD_LENGTH = 5;
+const MIN_SHARED_WORDS = 2;
 const { getLastAssistantText, findNeedsBuildingLines: needsBuildingLines, isListed } = await import("./unlisted-items.ts");
 
 const assistantLine = (text: string) =>
@@ -27,23 +27,23 @@ test("blocks when no task subject overlaps", () => {
   const transcript = assistantLine("Still needs building: the merge script");
   const lines = needsBuildingLines(getLastAssistantText(transcript));
   assert.equal(lines.length, 1);
-  assert.equal(isListed(lines[0], ["Fix the login page"]), false);
+  assert.equal(isListed(lines[0], ["Fix the login page"], MIN_WORD_LENGTH, MIN_SHARED_WORDS), false);
 });
 
 test("allows when a task subject shares two long words", () => {
   const transcript = assistantLine("Still needs building: the merge script");
   const lines = needsBuildingLines(getLastAssistantText(transcript));
-  assert.equal(isListed(lines[0], ["Write the merge script"]), true);
+  assert.equal(isListed(lines[0], ["Write the merge script"], MIN_WORD_LENGTH, MIN_SHARED_WORDS), true);
 });
 
 test("allows a reworded task that has the same word stems", () => {
   const lines = needsBuildingLines("Still needs building: merging scripts");
-  assert.equal(isListed(lines[0], ["Write the merge script"]), true);
+  assert.equal(isListed(lines[0], ["Write the merge script"], MIN_WORD_LENGTH, MIN_SHARED_WORDS), true);
 });
 
 test("blocks when an unrelated task shares two words but most of the line is missing", () => {
   const lines = needsBuildingLines("Still needs building: the merge script runner with retry logging and metrics");
-  assert.equal(isListed(lines[0], ["Write the merge script"]), false);
+  assert.equal(isListed(lines[0], ["Write the merge script"], MIN_WORD_LENGTH, MIN_SHARED_WORDS), false);
 });
 
 test("ignores phrases inside quotes or backticks", () => {
@@ -57,11 +57,16 @@ test("ignores a phrase inside a quote that spans lines", () => {
   assert.deepEqual(needsBuildingLines("```\nnext step: example\n```\nDone."), []);
 });
 
+const HOOK_SETTINGS = {
+  CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH: "5",
+  CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS: "2",
+  CLAUDE_HOOKS_TASKS_DIR: "/nonexistent-tasks-dir",
+};
+
 function runHook(input: object): string {
   const result = spawnSync("node", [new URL("./unlisted-items.ts", import.meta.url).pathname], {
-    input: JSON.stringify(input),
+    input: JSON.stringify({ settings: HOOK_SETTINGS, ...input }),
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_HOOKS_TASKS_DIR: "/nonexistent-tasks-dir" },
   });
   return result.stdout;
 }

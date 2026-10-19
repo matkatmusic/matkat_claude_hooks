@@ -3,9 +3,8 @@
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { isPromptLine } from "../shared/prompt-line.ts";
-import { readEnvValue } from "../shared/env.ts";
 import { getSessionStatePath, readSessionState } from "../shared/session-state.ts";
-import type { HookEntry } from "../dispatcher/hooks-list.ts";
+import { readSettings, isEnabled, getSetting, DISPATCHER_DIR } from "../shared/settings.ts";
 
 export function isFirstTurn(transcript: string): boolean {
   let promptCount = 0;
@@ -76,25 +75,16 @@ export function findUnnamedFiles(files: string[], replyText: string): string[] {
   return unnamed;
 }
 
-export async function isReaderEnabled(): Promise<boolean> {
-  const listPath = resolve(import.meta.dirname, "..", readEnvValue("CLAUDE_HOOKS_LIST"));
-  const { HOOKS }: { HOOKS: HookEntry[] } = await import(listPath);
-  for (const hook of HOOKS) {
-    const isReaderEntry = hook.event === "UserPromptSubmit" && hook.command[hook.command.length - 1].endsWith("idle-state-reader.ts");
-    const isEnabled = hook.enabled;
-    const isEnabledReader = isReaderEntry && isEnabled;
-    if (isEnabledReader)
-      return true;
-  }
-  return false;
+export function isReaderEnabled(dispatcherDir = DISPATCHER_DIR): boolean {
+  return isEnabled(readSettings(dispatcherDir), "idle-state-reader", "UserPromptSubmit");
 }
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  const readerEnabled = await isReaderEnabled();
+  const readerEnabled = isReaderEnabled();
   if (!readerEnabled)
     process.exit(0);
-  const state = readSessionState(getSessionStatePath(input.transcript_path));
+  const state = readSessionState(getSessionStatePath(input.transcript_path, getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR")));
   const files = state.idleStateFiles ?? [];
   if (files.length === 0)
     process.exit(0);

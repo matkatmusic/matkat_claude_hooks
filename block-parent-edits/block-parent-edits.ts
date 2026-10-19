@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { readEnvValue } from "../shared/env.ts";
+import { getSetting } from "../shared/settings.ts";
+// import { readEnvValue } from "../shared/env.ts";
 import { isBashEdit } from "../block-bash-edits/block-bash-edits.ts";
 // PreToolUse: blocks file edits from the parent (claude-fable-* or claude-opus-5 and later) session. Subagents may edit.
 
@@ -63,7 +64,6 @@ const SAVED_EDIT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const BASH_BLOCK_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, fileCommand, outputFlag, sdOrSedInPlace, teeCommand));
 // isBashContentWrite now lives in ../shared/bash-content-write.ts
-// const BASH_CONTENT_WRITE_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, outputFlag, sdOrSedInPlace, teeCommand));
 
 export function isBlockedParentModel(transcriptPath: string): boolean {
   const lines = readFileSync(transcriptPath, "utf8").split("\n");
@@ -105,11 +105,6 @@ function removeOldSavedEdits(dir: string): void {
   }
 }
 
-// export function isBashContentWrite(command: string): boolean {
-//   const strippedCommand = command.replace(/'[^']*'|"[^"]*"/g, "");
-//   return BASH_CONTENT_WRITE_PATTERN.test(strippedCommand);
-// }
-
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
   const isSubagent = typeof input.agent_id === "string" || typeof input.agent_type === "string";
@@ -146,7 +141,7 @@ if (import.meta.main) {
   if (blocked) {
     let finalDenyReason = denyReason;
     if (isBlockedParent) {
-      const dir = readEnvValue("CLAUDE_HOOKS_BLOCKED_EDITS_DIR");
+      const dir = getSetting(input, "CLAUDE_HOOKS_BLOCKED_EDITS_DIR");
       mkdirSync(dir, { recursive: true });
       removeOldSavedEdits(dir);
       const savedPath = join(dir, `${input.session_id}-${Date.now()}.json`);

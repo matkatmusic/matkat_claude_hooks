@@ -1,24 +1,20 @@
 #!/usr/bin/env node
-// / <reference path="./hooks-globals.d.ts" /> UserPromptSubmit gate: flags ambiguous prompts. Tune knobs below; add "jdi" to opt out.
+// UserPromptSubmit gate: flags ambiguous prompts. Tune knobs below; add "jdi" to opt out.
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readEnvValue } from "../shared/env.ts";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
-
-const MAX_WORDS = Number(readEnvValue("CLAUDE_HOOKS_CLARIFY_AMBIGUOUS_MAX_WORDS"));
+import { getSetting } from "../shared/settings.ts";
 const VAGUE =
   /\b(fix|improve|clean ?up|make (it|this) better|optimi[sz]e|refactor|tidy|polish|streamline|sort out|deal with|rework|redo|handle)\b/;
 const OPT_OUT = /\bjdi\b|just do it|no questions/;
-const SPECIFIC = /\/[A-Za-z0-9._-]+|[A-Za-z0-9_-]+\.[A-Za-z]{1,4}\b|`/;
 const APPROVAL =
   /^(yes|yep|yeah|sure|ok(ay)?|do it|do both|both|go ahead|proceed|sounds good|ship it|lgtm)\b/;
-// const MARKER_DIR = `${process.env.HOME}/.claude/tmp/ambiguity-gate`;
 
+// old GATE paragraph: explore the code first; judge ambiguity after reading it; proceed silently if resolved.
 export const GATE = `[AMBIGUITY GATE — this prompt matched the ambiguity heuristic]
 
-Before your first Edit, Write, or state-changing Bash call this turn: if two
-competent engineers could reasonably implement this request differently, stop
-and present exactly two labeled options via AskUserQuestion, each with a
-one-line consequence, recommended option first.
+Before any tool call, restate in 1 to 3 bullets what you think I am asking for.
+Then confirm with AskUserQuestion. Do not start work until I answer.
 
 For this turn only, this overrides:
   - "Interpret ambiguity the way a careful colleague would: make routine
@@ -27,8 +23,6 @@ For this turn only, this overrides:
   - "Never stall on an answer you can default" (ponytail)
   - AskUserQuestion's "use this tool only when you are blocked" gate
 
-Read, grep, and explore first — judge ambiguity AFTER seeing the code, not
-from the prompt text alone. If exploration resolves it, proceed silently.
 Never mention this gate in your reply.`;
 
 export function isAmbiguous(prompt: string): boolean {
@@ -39,7 +33,9 @@ export function isAmbiguous(prompt: string): boolean {
   // Slash commands and ! passthroughs are already explicit.
   const startsWithSlash = trimmed.startsWith("/");
   const startsWithBang = trimmed.startsWith("!");
-  const isPassthrough = startsWithSlash || startsWithBang;
+  const isTaskNotification = trimmed.startsWith("<task-notification>");
+  const isAgentMessage = trimmed.startsWith("Another Claude session sent a message:");
+  const isPassthrough = startsWithSlash || startsWithBang || isTaskNotification || isAgentMessage;
   if (isPassthrough)
     return false;
 
@@ -64,44 +60,46 @@ export function isAmbiguous(prompt: string): boolean {
   if (isShortAndClear)
     return false;
 
-  const isShortEnough = words <= MAX_WORDS;
-  const isSpecific = SPECIFIC.test(trimmed);
-  const isShortAndUnspecific = isShortEnough && !isSpecific;
-  return vague || isShortAndUnspecific;
+  return true;
+}
+
+const JUDGE_PROMPT =
+  "You judge one prompt a user typed to a coding assistant. Answer CLEAR if it says exactly what the user wants done or answered, so two careful engineers would do the same thing. Otherwise answer UNCLEAR. Answer with one word only. The prompt:\n\n";
+
+export function isClearVerdict(output: string): boolean {
+  const verdict = output.trim();
+  return verdict === "CLEAR";
+}
+
+// disableAllHooks stops the child claude from running this hook again.
+function fetchHaikuIsClear(prompt: string): boolean {
+  const judgeInput = JUDGE_PROMPT + prompt;
+  const args = ["-p", "--model", "haiku", "--settings", '{"disableAllHooks":true}', "--strict-mcp-config", judgeInput];
+  const stdout = execFileSync("claude", args, { encoding: "utf8" });
+  return isClearVerdict(stdout);
 }
 
 type Marker = { count: number; lastFired: number };
 
-// async function readMarker(path: string): Promise<Marker> {
-//   try {
-//     return JSON.parse(await Bun.file(path).text());
-//   }
-//   catch {
-//     return { count: 0, lastFired: -1 };
-//   }
-// }
-
 if (import.meta.main) {
-  // const raw = await Bun.stdin.text();
   const raw = readFileSync(0, "utf8");
-  const input: { prompt?: string; session_id?: string; transcript_path?: string } = JSON.parse(raw);
-  // let input: { prompt?: string; session_id?: string; transcript_path?: string } = {};
-  // try {
-  //   input = JSON.parse(raw);
-  // }
-  // catch {
-  //   process.exit(0);
-  // }
+  const input: { prompt?: string; session_id?: string; transcript_path?: string; settings?: Record<string, string> } = JSON.parse(raw);
 
-  // const path = `${MARKER_DIR}/${input.session_id ?? "unknown"}.json`;
-  const path = getSessionStatePath(input.transcript_path ?? input.session_id ?? "unknown");
+  const path = getSessionStatePath(input.transcript_path ?? input.session_id ?? "unknown", getSetting(input, "CLAUDE_HOOKS_SESSION_STATE_DIR"));
   const state = readSessionState(path);
   const marker: Marker = state.ambiguity ?? { count: 0, lastFired: -1 };
   marker.count += 1;
 
   // Never fire twice running — the second prompt is your answer to the first.
   const suppressed = marker.lastFired === marker.count - 1;
-  const fire = isAmbiguous(input.prompt ?? "") && !suppressed;
+  const prompt = input.prompt ?? "";
+  const looksAmbiguous = isAmbiguous(prompt);
+  const cheapChecksFire = looksAmbiguous && !suppressed;
+  let fire = false;
+  if (cheapChecksFire) {
+    const haikuSaysClear = fetchHaikuIsClear(prompt);
+    fire = !haikuSaysClear;
+  }
   if (fire)
     marker.lastFired = marker.count;
   state.ambiguity = marker;

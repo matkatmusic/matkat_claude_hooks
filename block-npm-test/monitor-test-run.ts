@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { setTimeout } from "node:timers/promises";
-// import { readEnvValue } from "../shared/env.ts";
 // Default wait: a sub-agent's prompt cache lives 5 minutes, so each wait must end before that.
 const MONITOR_WAIT_SECONDS = 240;
 const MONITOR_POLL_SECONDS = 2;
