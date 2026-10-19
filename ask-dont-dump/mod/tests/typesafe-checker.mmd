@@ -1,0 +1,30 @@
+flowchart TD
+    start([For each line of the reply]) --> q1{does = question,<br/>offer, or choices?}
+    q1 -- yes --> ASK
+    q1 -- no --> q2{who = user<br/>and when = later?}
+    q2 -- yes --> q2a{Did the user ask<br/>for this?}
+    q2a -- yes --> OK
+    q2a -- no --> ASK
+    q2 -- no --> q3{does = guess-or-gap?}
+    q3 -- yes --> ASK
+    q3 -- no --> q4{who = me<br/>and when = later?}
+    q4 -- yes --> onList{Already on the<br/>task list?}
+    q4 -- no --> q5{does = plan, who = me,<br/>and when = now?}
+    q5 -- yes --> onList
+    q5 -- no --> q6{who = helper<br/>and when = now?}
+    q6 -- yes --> OK
+    q6 -- no --> OK
+    onList -- yes --> OK
+    onList -- no --> TASK
+
+    ASK[ASK: block, use AskUserQuestion]
+    TASK[TASK: block, use TaskCreate]
+    OK[OK: no block]
+
+    ASK --> reply
+    TASK --> reply
+    OK --> reply
+    reply{Reply result:<br/>any ASK line?} -- yes --> blockAsk([Block: ask the user])
+    reply -- no --> anyTask{Any TASK line?}
+    anyTask -- yes --> blockTask([Block: add tasks])
+    anyTask -- no --> pass([Do not block])

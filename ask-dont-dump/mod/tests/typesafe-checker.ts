@@ -49,7 +49,7 @@ const replyCategories: Record<string, { label: string; definition: string }> = {
 */
 
 type LabeledReply = { id: string; text: { category: string[]; text: string }[] };
-type ScoredReply = { id: string; reply: string[]; matched?: string[]; typesafe?: string[]; missed?: string[]; scores?: Record<string, number> };
+type ScoredReply = { id: string; reply: string[]; matched?: string[]; typesafe?: Record<string, string>; missed?: Record<string, string>; scores?: Record<string, number> };
 const categoryLabels: { categories: Record<string, string>; replies: LabeledReply[] } =
   await Bun.file(`${import.meta.dir}/category-labels.json`).json();
 const replyCategories = categoryLabels.categories;
@@ -117,11 +117,11 @@ if (import.meta.main) {
       const matched = results[index].categories;
       const missed: string[] = [];
       const extra: string[] = [];
-      const expectedAndFound: string[] = [];
+      // const expectedAndFound: string[] = [];
       for (const category of reply.expected) {
         const isMatched = matched.includes(category);
         if (isMatched) {
-          expectedAndFound.push(category);
+          // expectedAndFound.push(category);
           tallies[category].truePositives++;
         }
         else {
@@ -138,7 +138,19 @@ if (import.meta.main) {
       }
       const scored = { id: reply.id, expected: reply.expected, matched, missed, extra, scores: results[index].scores };
       console.log(JSON.stringify(scored));
-      const entry: ScoredReply = { id: reply.id, reply: reply.lineTexts, matched: expectedAndFound, typesafe: extra, missed };
+      const entry: ScoredReply = { id: reply.id, reply: reply.lineTexts };
+      const hasExtra = extra.length > 0;
+      if (hasExtra) {
+        entry.typesafe = {};
+        for (const category of extra)
+          entry.typesafe[category] = replyCategories[category];
+      }
+      const hasMissed = missed.length > 0;
+      if (hasMissed) {
+        entry.missed = {};
+        for (const category of missed)
+          entry.missed[category] = replyCategories[category];
+      }
       if (isWritingScores)
         entry.scores = results[index].scores;
       scoredReplies.push(entry);
