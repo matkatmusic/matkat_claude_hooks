@@ -1129,7 +1129,7 @@ function executeThirdSession(rows: Row[], bed: string, config: string, second: S
   // Row 53: a value changed mid-session moves the next saved call to the new folder.
   const movedFolder = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER);
   setValue(clone, "block-parent-edits", "CLAUDE_HOOKS_BLOCKED_EDITS_DIR", movedFolder);
-  executeFullTurn(session, "Create a file other.txt that says hello.");
+  executeFullTurn(session, "Use the Write tool to create a file other.txt that says hello. Do not use a subagent.");
   const oldFolderCount = listFilesWithSuffix(path.join(bed, "blocked-edits"), ".json").length;
   const movedFiles = listFilesWithSuffix(movedFolder, ".json");
   const landedInNewFolder = movedFiles.length > 0 && oldFolderCount === blockedFiles.length;
