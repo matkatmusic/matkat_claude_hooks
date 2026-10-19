@@ -180,6 +180,34 @@ export function setValue(clone: string, section: string, key: string, value: str
   writeFileSync(userDispatchPath, JSON.stringify(userDispatch, null, 2) + "\n");
 }
 
+export function readDispatchTexts(clone: string): string[] {
+  const defaultsText = readFileSync(path.join(clone, "dispatcher", "dispatch.json"), "utf8");
+  const userText = readFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), "utf8");
+  return [defaultsText, userText];
+}
+
+export function restoreDispatchTexts(clone: string, texts: string[]): void {
+  writeFileSync(path.join(clone, "dispatcher", "dispatch.json"), texts[0]!);
+  writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), texts[1]!);
+}
+
+// Removes one hook event from both files, so the dispatcher finds no enablement for it.
+export function removeEnablement(clone: string, hook: string, event: string): void {
+  for (const fileName of ["dispatch.json", "user-dispatch.json"]) {
+    const filePath = path.join(clone, "dispatcher", fileName);
+    const settings = JSON.parse(readFileSync(filePath, "utf8"));
+    delete settings.enablements[hook][event];
+    writeFileSync(filePath, JSON.stringify(settings, null, 2) + "\n");
+  }
+}
+
+export function addUnknownHook(clone: string, hook: string): void {
+  const userDispatchPath = path.join(clone, "dispatcher", "user-dispatch.json");
+  const userDispatch = JSON.parse(readFileSync(userDispatchPath, "utf8"));
+  userDispatch.enablements[hook] = { Stop: true };
+  writeFileSync(userDispatchPath, JSON.stringify(userDispatch, null, 2) + "\n");
+}
+
 // Disabled: the idle minutes now come from user-dispatch.json values (see writeUserDispatch).
 // export function modifyIdleMinutes(clone: string): void {
 //   const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
