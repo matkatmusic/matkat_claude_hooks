@@ -3,11 +3,18 @@ import { test, expect } from 'claude-code/testing'
 const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
 const DEFAULT_TOAST_MS = 4000
 
-function watchContext($: any, on: any, startPercent: number, dispatchText = '{ "enablements": { "context-exit": { "turn.complete": true } } }') {
+const DISPATCH_WITH_PERCENTS = '{ "enablements": { "context-exit": { "turn.complete": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80" } } }'
+
+function watchContext($: any, on: any, startPercent: number, dispatchText = DISPATCH_WITH_PERCENTS, userText?: string) {
   const toasts: { text: string; timeoutMs?: number }[] = []
   const context = { percent: startPercent }
-  on('fs.exists', () => ({ value: false }))
-  on('fs.read', () => ({ value: dispatchText }))
+  on('fs.exists', () => ({ value: userText !== undefined }))
+  on('fs.read', (_$: any, e: any) => {
+    const isUserFile = e.path.endsWith('user-dispatch.json')
+    if (isUserFile)
+      return { value: userText }
+    return { value: dispatchText }
+  })
   on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: context.percent, window: 200000 } } }))
   on('ui.toast', (_$: any, e: any) => {
     toasts.push({ text: e.text, timeoutMs: e.timeoutMs })
@@ -60,6 +67,20 @@ test('the message stays on screen longer than the default', async ($, on) => {
 
 test('turn.complete disabled in dispatch.json shows no message', async ($, on) => {
   const { toasts } = watchContext($, on, 85, '{ "enablements": { "context-exit": { "turn.complete": false } } }')
+  await $.turn.complete(ANSWER)
+  expect(toasts).toEqual([])
+})
+
+test('percents in user-dispatch.json win over dispatch.json', async ($, on) => {
+  const userText = '{ "enablements": {}, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "10,20" } } }'
+  const { toasts } = watchContext($, on, 12, DISPATCH_WITH_PERCENTS, userText)
+  await $.turn.complete(ANSWER)
+  expect(toasts).toHaveLength(1)
+  expect(toasts[0]?.text).toContain('above 10%')
+})
+
+test('dispatch.json without the percents value shows no message', async ($, on) => {
+  const { toasts } = watchContext($, on, 31, '{ "enablements": { "context-exit": { "turn.complete": true } }, "values": {} }')
   await $.turn.complete(ANSWER)
   expect(toasts).toEqual([])
 })

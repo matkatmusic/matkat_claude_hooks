@@ -6,7 +6,7 @@ import { validateNudgeQuotedWords, validatePlanFileReminder, validatePonytailSki
 import { validateStatusTurnCounterNotWired, validateStatusUnknownModel, validateSubagentStatusLine } from "./stranger_direct_status_rows.ts";
 import { validateTypecheckOtherFiles, validateTypecheckRepeatStops, validateTypecheckStartFailure, validateTypecheckTsx, validateUnlistedQuotedAndReworded, validateUnlistedSharedWords } from "./stranger_direct_stop_rows.ts";
 import { validateDebtRatchetChain, validateIdleCheckReadTool, validateIdleReaderSubfolder } from "./stranger_direct_state_rows.ts";
-import { validateContextExitMod, validateIdleStateMod } from "./stranger_direct_mod_rows.ts";
+// import { validateContextExitMod, validateIdleStateMod } from "./stranger_direct_mod_rows.ts";
 
 const SYNC_CHECKS: ((context: DirectContext) => DirectResult)[] = [
   validateBlockBashEdits, validateNpmTestOtherReporter, validateNpmTestTypedRunner, validateNpmTestShellAndLaterRuns, validateNpmTestMissingFolder,
@@ -23,7 +23,7 @@ export async function executeDirectRows(bed: string, config: string): Promise<Di
   const results: DirectResult[] = [];
   for (const check of SYNC_CHECKS)
     results.push(check(context));
-  results.push(await validateContextExitMod(context));
-  results.push(await validateIdleStateMod(context));
+  // results.push(await validateContextExitMod(context));
+  // results.push(await validateIdleStateMod(context));
   return results;
 }

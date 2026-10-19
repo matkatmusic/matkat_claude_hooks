@@ -1,4 +1,4 @@
-// Stranger test: 41 hook rows, 14 live in tmux and 27 direct; run with bun.
+// Stranger test: 43 hook rows, 18 live in tmux and 25 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -41,6 +41,19 @@ const HOOK_FLUSH_S = 4;
 const BUSY_RE = /^\S \w+…|…\s*\(\d+[ms]|esc to interrupt/m;
 const TURNS_RE = /(\d+) turns/;
 const SUBAGENT_LINE_RE = /\[[^\n]*:\w\] [^\n·]+ · [^\n·]+ · \d+:\d\d · \d\S*/;
+const CONTEXT_PERCENT_RE = /(\d+)% \| 🔄/;
+const CONTEXT_WARNING_RE = /above (\d+)%/;
+const TOAST_BOX_RE = /│ context-exit\s+│/;
+const CONTEXT_LEVEL_SPACING = 3;
+const FILLER_FILES = 12;
+const FILLER_LINES = 1200;
+const FILLER_COLUMNS = 8;
+const TOAST_GONE_WAIT_S = 90;
+const TOAST_POLL_S = 3;
+const CHECKER_WAIT_S = 20;
+const ASK_DONT_DUMP_PROMPT = "Name the files in this folder in one short line. Then end your reply with this last line: Task #20 is still open.";
+const IDLE_PROGRAM_SCRIPT = "server+80.sh";
+const IDLE_PROGRAM_PATTERN = "server\\+80\\.sh";
 
 // (row, hook, prompt, text the hook must produce, hook event or null for a tool error)
 const SESSION_ONE_ROWS: HookRow[] = [
@@ -121,6 +134,9 @@ export function writeUserDispatch(clone: string, bed: string, config: string): v
     "debt-ratchet": { Stop: true, SubagentStop: true },
     "idle-state-reader": { UserPromptSubmit: true },
     "idle-state-check": { Stop: true },
+    "ask-dont-dump": { "prompt.submit": true, "turn.complete": true },
+    "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
+    "context-exit": { "turn.complete": true },
   };
   const values: Record<string, Record<string, string>> = {
     shared: { CLAUDE_HOOKS_SESSION_STATE_DIR: path.join(bed, "state") },
@@ -129,6 +145,8 @@ export function writeUserDispatch(clone: string, bed: string, config: string): v
     "block-parent-edits": { CLAUDE_HOOKS_BLOCKED_EDITS_DIR: path.join(bed, "blocked-edits") },
     "block-npm-test": { CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR: path.join(bed, "npm-test-logs") },
     "debt-ratchet": { CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: path.join(bed, "array-debt") },
+    "idle-state": { CLAUDE_HOOKS_IDLE_MINUTES: String(IDLE_MS / 60000) },
+    "context-exit": { CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS: "30,50,80" },
   };
   writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify({ enablements, values }, null, 2) + "\n");
 }
@@ -147,15 +165,21 @@ export function setValue(clone: string, section: string, key: string, value: str
   writeFileSync(userDispatchPath, JSON.stringify(userDispatch, null, 2) + "\n");
 }
 
-export function modifyIdleMinutes(clone: string): void {
-  const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
-  const source = readFileSync(registerPath, "utf8");
-  const original = "const IDLE_MINUTES = 55;";
-  const hasOriginal = source.includes(original);
-  if (!hasOriginal) {
-    throw new Error(`idle-state mod has no line: ${original}`);
-  }
-  writeFileSync(registerPath, source.replace(original, `const IDLE_MINUTES = ${IDLE_MS / 60000};`));
+// Disabled: the idle minutes now come from user-dispatch.json values (see writeUserDispatch).
+// export function modifyIdleMinutes(clone: string): void {
+//   const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
+//   const source = readFileSync(registerPath, "utf8");
+//   const original = "const IDLE_MINUTES = 55;";
+//   const hasOriginal = source.includes(original);
+//   if (!hasOriginal) {
+//     throw new Error(`idle-state mod has no line: ${original}`);
+//   }
+//   writeFileSync(registerPath, source.replace(original, `const IDLE_MINUTES = ${IDLE_MS / 60000};`));
+// }
+
+function copyUncommittedChanges(clone: string): void {
+  const patch = execFileSync("git", ["diff", "HEAD", "--binary"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 });
+  execFileSync("git", ["apply", "--allow-empty"], { cwd: clone, input: patch });
 }
 
 export function createProject(project: string): void {
@@ -200,10 +224,11 @@ function buildBed(bed: string, config: string): void {
   const clone = path.join(bed, "claude_hooks");
   mkdirSync(bed, { recursive: true });
   executeCommand(["git", "clone", "-q", REPO, clone]);
+  copyUncommittedChanges(clone);
   executeCommand(["npm", "install"], clone);
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
   writeUserDispatch(clone, bed, config);
-  modifyIdleMinutes(clone);
+  // modifyIdleMinutes(clone);
   createProject(path.join(bed, "project"));
   writeSettings(config, clone);
   installPlugins(clone, config);
@@ -228,7 +253,8 @@ function launchSession(model: string, bed: string, config: string): Session {
     "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; " +
     `cd ${wrapShellWord(project)}; ` +
     `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} exec ${wrapShellWord(claude)} --model ${model} ` +
-    `--plugin-dir ${wrapShellWord(clone)} --plugin-dir ${wrapShellWord(path.join(clone, "idle-state", "mod"))}`;
+    `--plugin-dir ${wrapShellWord(clone)} --plugin-dir ${wrapShellWord(path.join(clone, "idle-state", "mod"))} ` +
+    `--plugin-dir ${wrapShellWord(path.join(clone, "context-exit", "mod"))} --plugin-dir ${wrapShellWord(path.join(clone, "ask-dont-dump", "mod"))}`;
   const pane = tmux_lib.tmux_splitWorkerPane(getTmuxPane(), project, "bash -c " + wrapShellWord(script));
   if (pane === undefined) {
     throw new Error("tmux could not open a pane for Claude");
@@ -478,6 +504,177 @@ function getPaneTurns(name: string): number | null {
   return Number(found[1]);
 }
 
+function getPaneContextPercent(name: string): number {
+  const found = CONTEXT_PERCENT_RE.exec(tmux_lib.tmux_capturePane(name));
+  if (found === null) {
+    throw new Error(`no context percent on the screen of pane ${name}`);
+  }
+  return Number(found[1]);
+}
+
+// The context-exit mod keeps its latest warning on the status line, so the screen shows the last level.
+function readWarningLevel(screen: string): number | null {
+  for (const line of screen.split("\n")) {
+    const isWarningLine = line.includes("context-exit:");
+    if (!isWarningLine) {
+      continue;
+    }
+    const found = CONTEXT_WARNING_RE.exec(line);
+    if (found !== null) {
+      return Number(found[1]);
+    }
+  }
+  return null;
+}
+
+function createFillerWord(fileIndex: number, line: number, column: number): string {
+  let number = (line * 7919 + column * 104729 + fileIndex * 1000003 + 12345) % 11881376;
+  let word = "";
+  for (let letter = 0; letter < 5; letter++) {
+    word += String.fromCharCode(97 + (number % 26));
+    number = Math.floor(number / 26);
+  }
+  return word;
+}
+
+function writeFillerFiles(project: string): void {
+  for (let fileIndex = 1; fileIndex <= FILLER_FILES; fileIndex++) {
+    let text = "";
+    for (let line = 0; line < FILLER_LINES; line++) {
+      const words: string[] = [];
+      for (let column = 0; column < FILLER_COLUMNS; column++) {
+        words.push(createFillerWord(fileIndex, line, column));
+      }
+      text += words.join(" ") + "\n";
+    }
+    writeFileSync(path.join(project, `filler${fileIndex}.txt`), text);
+  }
+}
+
+function waitForToastGone(name: string): void {
+  for (let waited = 0; waited < TOAST_GONE_WAIT_S; waited += TOAST_POLL_S) {
+    const hasToast = TOAST_BOX_RE.test(tmux_lib.tmux_capturePane(name));
+    if (!hasToast) {
+      return;
+    }
+    tmux_lib.sleep(TOAST_POLL_S);
+  }
+  throw new Error(`the context-exit toast stayed on the screen of pane ${name}`);
+}
+
+// Row 43: set three levels just above the current context percent, then read files until each level warns once.
+function executeContextExitRow(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  writeFillerFiles(path.join(bed, "project"));
+  setEnablement(clone, "idle-state", "turn.complete", false);
+  const startPercent = getPaneContextPercent(session.name);
+  const levels: number[] = [];
+  for (let step = 1; step <= 3; step++) {
+    levels.push(startPercent + step * CONTEXT_LEVEL_SPACING);
+  }
+  setValue(clone, "context-exit", "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS", levels.join(","));
+  const seenLevels: number[] = [];
+  let lastShown = readWarningLevel(tmux_lib.tmux_capturePane(session.name));
+  let fillerIndex = 0;
+  let toastOnEachCrossing = true;
+  let noRepeat = true;
+  for (const level of levels) {
+    let hasCrossed = false;
+    while (!hasCrossed) {
+      fillerIndex++;
+      if (fillerIndex > FILLER_FILES) {
+        throw new Error(`context-exit: ${FILLER_FILES} filler files did not reach level ${level}`);
+      }
+      executeTurn(session, `Read the file filler${fillerIndex}.txt in this folder and reply with only the word read.`);
+      const screen = tmux_lib.tmux_capturePane(session.name);
+      const shown = readWarningLevel(screen);
+      hasCrossed = shown !== lastShown;
+      if (hasCrossed) {
+        seenLevels.push(shown!);
+        lastShown = shown;
+        const hasToast = TOAST_BOX_RE.test(screen);
+        toastOnEachCrossing = toastOnEachCrossing && hasToast;
+      }
+    }
+    waitForToastGone(session.name);
+    executeTurn(session, "say hi");
+    const laterScreen = tmux_lib.tmux_capturePane(session.name);
+    const hasNewToast = TOAST_BOX_RE.test(laterScreen);
+    const levelChanged = readWarningLevel(laterScreen) !== lastShown;
+    noRepeat = noRepeat && !hasNewToast && !levelChanged;
+  }
+  setEnablement(clone, "idle-state", "turn.complete", true);
+  const isInOrder = seenLevels.join(",") === levels.join(",");
+  const ok = isInOrder && toastOnEachCrossing && noRepeat;
+  addRow(rows, 43, "context-exit", getSessionModel(session), ok, `context ${startPercent}%, levels set ${levels.join(",")}; warnings seen in order: ${seenLevels.join(",")}; toast shown at each crossing: ${toastOnEachCrossing ? "True" : "False"}; no second toast on a later turn at the same level: ${noRepeat ? "True" : "False"}; files read: ${fillerIndex}`);
+}
+
+function findPluginPromptRecord(records: JsonRecord[], pluginName: string): JsonRecord | undefined {
+  for (const record of records) {
+    const isUser = record.type === "user";
+    if (!isUser) {
+      continue;
+    }
+    const isFromPlugin = record.origin?.kind === "plugin" && record.origin.name === pluginName;
+    if (isFromPlugin) {
+      return record;
+    }
+  }
+  return undefined;
+}
+
+function readRecordText(record: JsonRecord): string {
+  const content = record.message.content;
+  if (typeof content === "string") {
+    return content;
+  }
+  let text = "";
+  for (const block of content) {
+    if (block.type === "text") {
+      text += block.text;
+    }
+  }
+  return text;
+}
+
+function containsAssistantText(records: JsonRecord[], needle: string): boolean {
+  for (const record of records) {
+    const content = record.message?.content;
+    const isAssistantWithBlocks = record.type === "assistant" && Array.isArray(content);
+    if (!isAssistantWithBlocks) {
+      continue;
+    }
+    for (const block of content) {
+      const hasNeedle = block.type === "text" && block.text.includes(needle);
+      if (hasNeedle) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Rows 45 and 46: an open item gets a mod follow-up when on, none when off.
+function executeAskDontDumpRows(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  const onBaseline = readRecords(session).length;
+  executeTurn(session, ASK_DONT_DUMP_PROMPT);
+  tmux_lib.sleep(HOOK_FLUSH_S);
+  const followUp = findPluginPromptRecord(readRecords(session).slice(onBaseline), "ask-dont-dump");
+  const followUpText = followUp !== undefined ? readRecordText(followUp) : "no message from the ask-dont-dump plugin";
+  addRow(rows, 45, "ask-dont-dump", getSessionModel(session), followUp !== undefined, followUpText);
+
+  setEnablement(clone, "ask-dont-dump", "turn.complete", false);
+  const offBaseline = readRecords(session).length;
+  executeTurn(session, ASK_DONT_DUMP_PROMPT);
+  tmux_lib.sleep(CHECKER_WAIT_S);
+  const offRecords = readRecords(session).slice(offBaseline);
+  const offFollowUp = findPluginPromptRecord(offRecords, "ask-dont-dump");
+  const repliedWithOpenItem = containsAssistantText(offRecords, "Task #20 is still open");
+  const isSilent = offFollowUp === undefined && repliedWithOpenItem;
+  addRow(rows, 46, "ask-dont-dump (off)", getSessionModel(session), isSilent, `reply ended with the open item: ${repliedWithOpenItem ? "True" : "False"}; message from the plugin with the switch off: ${offFollowUp === undefined ? "absent" : "PRESENT"}`);
+}
+
 function executeFirstSession(rows: Row[], bed: string, config: string): Session {
   const session = launchSession(SONNET, bed, config);
   const name = session.name;
@@ -518,6 +715,8 @@ function executeFirstSession(rows: Row[], bed: string, config: string): Session 
       lastRow.evidence += ` | log files: ${logFiles.length}`;
     }
   }
+  executeAskDontDumpRows(rows, session, bed);
+  executeContextExitRow(rows, session, bed);
   return session;
 }
 
@@ -543,8 +742,37 @@ function executeSecondSession(rows: Row[], bed: string, config: string): Session
   const clarifyOk = gateFound !== undefined && gateInOptOut === undefined;
   addRow(rows, 11, "clarify-ambiguous", getSessionModel(session), clarifyOk, `gate on 'fix it': ${gateFound !== undefined ? "True" : "False"}; gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`);
 
+  writeFileSync(path.join(project, IDLE_PROGRAM_SCRIPT), "sleep 3000\n");
+  executeTurn(session, `Use the Bash tool with run_in_background set to true to run exactly this command: bash ./${IDLE_PROGRAM_SCRIPT}`);
+  const programFound = spawnSync("pgrep", ["-f", IDLE_PROGRAM_PATTERN]);
+  if (programFound.status !== 0) {
+    throw new Error(`the background program ${IDLE_PROGRAM_SCRIPT} is not running in session ${session.name}`);
+  }
+
   executeTurn(session, "say hi");
   return session;
+}
+
+// Row 44: the idle-state mod searches for the running programs of the state file with escaped regex characters.
+function addIdleProgramRow(rows: Row[], second: Session, stateFiles: string[]): void {
+  let command = "none";
+  let hasProgram = false;
+  let isRunning = false;
+  let pidCount = 0;
+  for (const stateFile of stateFiles) {
+    const state = JSON.parse(readFileSync(stateFile, "utf8"));
+    for (const program of state.runningPrograms) {
+      const isIdleProgram = program.command.includes(IDLE_PROGRAM_SCRIPT);
+      if (isIdleProgram) {
+        hasProgram = true;
+        command = program.command;
+        isRunning = program.isRunning;
+        pidCount = program.pids.length;
+      }
+    }
+  }
+  const ok = hasProgram && isRunning && pidCount > 0;
+  addRow(rows, 44, "idle-state (regex chars)", getSessionModel(second), ok, `state file lists "${command}": listed: ${hasProgram ? "True" : "False"}; found running by pgrep: ${isRunning ? "True" : "False"}; process ids: ${pidCount}`);
 }
 
 function executeThirdSession(rows: Row[], bed: string, config: string, second: Session, stateFiles: string[], hasExited: boolean): Session {
@@ -589,12 +817,14 @@ async function executeMain(): Promise<void> {
     const second = executeSecondSession(rows, bed, config);
     const hasExited = tmux_lib.tmux_waitForPaneClose(second.name, IDLE_MS / 1000 + IDLE_MARGIN_S);
     const stateFiles = listFilesWithSuffix(path.join(bed, "project", ".idleState"), ".json");
+    addIdleProgramRow(rows, second, stateFiles);
     executeThirdSession(rows, bed, config, second, stateFiles, hasExited);
     for (const result of await executeDirectRows(bed, config)) {
       addRow(rows, result.number, result.hook, null, result.ok, result.evidence);
     }
   }
   finally {
+    spawnSync("pkill", ["-f", IDLE_PROGRAM_PATTERN]);
     tmux_lib.tmux_killOtherPanes(getTmuxPane());
     printTable(rows);
   }

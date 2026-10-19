@@ -1,4 +1,5 @@
-// Direct rows 41 and 42: the context-exit and idle-state mods, run on a fake engine.
+// Disabled fake-engine rows 41 and 42: live rows 43 to 46 replace them.
+/*
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -133,3 +134,4 @@ export async function validateIdleStateMod(context: DirectContext): Promise<Dire
   const ok = deniesTools && escapesPattern && rejectsWrapped;
   return buildResult(42, "idle-state (mod)", ok, `tools denied while the state prompt is pending, allowed after: ${formatFlag(deniesTools)}; pgrep gets an escaped pattern: ${formatFlag(escapesPattern)}; reply wrapped in text throws: ${formatFlag(rejectsWrapped)}`);
 }
+*/
