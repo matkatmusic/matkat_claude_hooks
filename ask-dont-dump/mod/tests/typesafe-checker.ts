@@ -6,6 +6,7 @@ const client = new TypeSafeClient();
 const CATEGORY_THRESHOLD = 0.5;
 const isPrintingRequests = process.argv.includes("--dry-run");
 
+/*
 const replyCategories: Record<string, { label: string; definition: string }> = {
   describesIssue: {
     label: "describes an issue",
@@ -44,14 +45,19 @@ const replyCategories: Record<string, { label: string; definition: string }> = {
     definition: "the reply says that work is not finished in this turn: parts are left to do, or the work continues later",
   },
 };
+*/
+
+type LabeledReply = { id: string; text: { category: string[]; text: string }[] };
+const categoryLabels: { categories: Record<string, string>; replies: LabeledReply[] } =
+  await Bun.file(`${import.meta.dir}/category-labels.json`).json();
+const replyCategories = categoryLabels.categories;
 
 // one yes/no per category, so the categories do not compete
 function createCategoryCheck(category: string) {
   return noul({
     reply: "`reply.text`",
-    category: `\`categories.${category}.label\``,
-    catDef: `\`categories.${category}.definition\``,
-    question: "`reply` is a message an AI assistant wrote to the user at the end of its turn. Is `reply` in the category `category`, defined as `catDef`?",
+    catDef: `\`categories.${category}\``,
+    question: "`reply` is a message an AI assistant wrote to the user at the end of its turn. Is `reply` in the category defined as `catDef`?",
   } as any);
 }
 
@@ -77,21 +83,56 @@ export async function computeReplyScores(text: string) {
   return { scores, categories: matchedCategories };
 }
 
-// bun mod/tests/typesafe-checker.ts [--dry-run]; scores every reply in samples.json
+// bun mod/tests/typesafe-checker.ts [--dry-run]; scores every reply in category-labels.json
 if (import.meta.main) {
-  const samples: { id: string; text: string }[] = await Bun.file(`${import.meta.dir}/samples.json`).json();
+  const replies: { id: string; text: string; expected: string[] }[] = [];
+  for (const reply of categoryLabels.replies) {
+    const lineTexts: string[] = [];
+    const expectedSet = new Set<string>();
+    for (const line of reply.text) {
+      lineTexts.push(line.text);
+      for (const category of line.category)
+        expectedSet.add(category);
+    }
+    replies.push({ id: reply.id, text: lineTexts.join("\n"), expected: [...expectedSet] });
+  }
   if (isPrintingRequests) {
-    console.log(JSON.stringify(buildReplyRequest(samples[0].text), null, 2));
+    console.log(JSON.stringify(buildReplyRequest(replies[0].text), null, 2));
     process.exit(0);
   }
+  const tallies: Record<string, { category: string; truePositives: number; falsePositives: number; falseNegatives: number }> = {};
+  for (const category of Object.keys(replyCategories))
+    tallies[category] = { category, truePositives: 0, falsePositives: 0, falseNegatives: 0 };
   // ponytail: 4 replies at a time; the SDK retries 429s
-  for (let i = 0; i < samples.length; i += 4) {
-    const batch = samples.slice(i, i + 4);
+  for (let i = 0; i < replies.length; i += 4) {
+    const batch = replies.slice(i, i + 4);
     const pending: ReturnType<typeof computeReplyScores>[] = [];
-    for (const sample of batch)
-      pending.push(computeReplyScores(sample.text));
+    for (const reply of batch)
+      pending.push(computeReplyScores(reply.text));
     const results = await Promise.all(pending);
-    for (const [index, sample] of batch.entries())
-      console.log(JSON.stringify({ id: sample.id, ...results[index] }));
+    for (const [index, reply] of batch.entries()) {
+      const matched = results[index].categories;
+      const missed: string[] = [];
+      const extra: string[] = [];
+      for (const category of reply.expected) {
+        const isMatched = matched.includes(category);
+        if (isMatched)
+          tallies[category].truePositives++;
+        else {
+          missed.push(category);
+          tallies[category].falseNegatives++;
+        }
+      }
+      for (const category of matched) {
+        const isExpected = reply.expected.includes(category);
+        if (!isExpected) {
+          extra.push(category);
+          tallies[category].falsePositives++;
+        }
+      }
+      console.log(JSON.stringify({ id: reply.id, expected: reply.expected, matched, missed, extra, scores: results[index].scores }));
+    }
   }
+  for (const category of Object.keys(tallies))
+    console.log(JSON.stringify(tallies[category]));
 }
