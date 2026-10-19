@@ -1,23 +1,110 @@
 flowchart TD
-    start([TypeSafe rates the whole reply]) --> askUser{Does the reply ask the user a question,<br/>offer to do something, or give choices<br/>with no pick?}
-    askUser -- yes --> needAsk
-    askUser -- no --> tellsUser{Does the reply tell the user<br/>to do something after this turn?}
-    tellsUser -- yes --> userAsked{Did the user ask for that instruction,<br/>for example &quot;give me the command&quot;?}
-    userAsked -- no --> needAsk
-    userAsked -- yes --> guess
-    tellsUser -- no --> guess{Does the reply guess at a result,<br/>or say that something was not checked<br/>or not confirmed?}
-    guess -- yes --> needAsk
-    guess -- no --> noAsk
+    start(Agent reply) --> q1{What is the reply about?}
+    start --> q2{What does the reply do?}
 
-    needAsk[Mark: ask the user] --> laterWork
-    noAsk[No questions for the user] --> laterWork
+    choice_1a[work or task]
+    choice_1b[a check or test]
+    choice_1c[the code]
+    choice_1d[a question or decision]
+    choice_1e[a helper]
+    choice_1f[the task list]
 
-    laterWork{Does the reply say that Claude<br/>will do more work after this turn?}
-    laterWork -- yes --> onList
-    laterWork -- no --> startsSteps{Does the reply say that Claude<br/>starts work with several steps now?}
-    startsSteps -- yes --> onList
-    startsSteps -- no --> noTask
-    onList{Is that work already<br/>on the task list?}
+    q1 --> choice_1a --> score_1a
+    q1 --> choice_1b --> score_1b
+    q1 --> choice_1c --> score_1c
+    q1 --> choice_1d --> score_1d
+    q1 --> choice_1e --> score_1e
+    q1 --> choice_1f --> score_1f
+
+    score_1a{ value > threshold }
+    score_1b{ value > threshold }
+    score_1c{ value > threshold }
+    score_1d{ value > threshold }
+    score_1e{ value > threshold }
+    score_1f{ value > threshold }
+
+    choice_2a[states a fact]
+    choice_2b[asks a question]
+    choice_2c[offers to do something or asks for approval]
+    choice_2d[gives choices with no pick]
+    choice_2e[records a decision the user made]
+    choice_2f[answers a question]
+    choice_2g[tells the user to do something]
+    choice_2h[states a guess or a gap]
+
+    q2 --> choice_2a --> score_2a
+    q2 --> choice_2b --> score_2b
+    q2 --> choice_2c --> score_2c
+    q2 --> choice_2d --> score_2d
+    q2 --> choice_2e --> score_2e
+    q2 --> choice_2f --> score_2f
+    q2 --> choice_2g --> score_2g
+    q2 --> choice_2h --> score_2h
+
+    score_2a{ value > threshold }
+    score_2b{ value > threshold }
+    score_2c{ value > threshold }
+    score_2d{ value > threshold }
+    score_2e{ value > threshold }
+    score_2f{ value > threshold }
+    score_2g{ value > threshold }
+    score_2h{ value > threshold }
+
+    askGate[Ask gate opens]
+    taskGate[Task gate opens]
+    noGate[No gate opens from this answer]
+
+    score_1a -- yes --> taskGate
+    score_1b -- yes --> askGate
+    score_1c -- yes --> noGate
+    score_1d -- yes --> askGate
+    score_1e -- yes --> noGate
+    score_1f -- yes --> taskGate
+
+    score_2a -- yes --> noGate
+    score_2b -- yes --> askGate
+    score_2c -- yes --> askGate
+    score_2d -- yes --> askGate
+    score_2e -- yes --> noGate
+    score_2f -- yes --> noGate
+    score_2g -- yes --> askGate
+    score_2h -- yes --> askGate
+
+    score_1a -- no --> noGate
+    score_1b -- no --> noGate
+    score_1c -- no --> noGate
+    score_1d -- no --> noGate
+    score_1e -- no --> noGate
+    score_1f -- no --> noGate
+    score_2a -- no --> noGate
+    score_2b -- no --> noGate
+    score_2c -- no --> noGate
+    score_2d -- no --> noGate
+    score_2e -- no --> noGate
+    score_2f -- no --> noGate
+    score_2g -- no --> noGate
+    score_2h -- no --> noGate
+
+    askGate --> gates
+    taskGate --> gates
+    noGate --> gates
+    gates{Is the ask gate or the task gate open?}
+    gates -- no --> passEarly([Do not block. Send no second request.])
+    gates -- yes --> step2["Step 2: one TypeSafe request, choice questions<br/><br/>Who must act next? Claude / a helper / the user / nobody<br/>When? already done / during this turn / after this turn<br/>Did the user ask for this? yes / no<br/>Is the work on the task list? yes / no"]
+
+    step2 --> askOpen{Is the ask gate open?}
+    askOpen -- yes --> userAsked{Did the user ask for this?}
+    userAsked -- no --> needAsk[Mark: ask the user]
+    userAsked -- yes --> noAsk[No questions for the user]
+    askOpen -- no --> noAsk
+
+    needAsk --> taskOpen
+    noAsk --> taskOpen
+    taskOpen{Is the task gate open?}
+    taskOpen -- yes --> claudeActs{Must Claude act next,<br/>during this turn or after this turn?}
+    taskOpen -- no --> noTask
+    claudeActs -- yes --> onList{Is the work on the task list?}
+    claudeActs -- no --> noTask
     onList -- no --> needTask[Mark: add tasks]
     onList -- yes --> noTask[No new tasks]
 
