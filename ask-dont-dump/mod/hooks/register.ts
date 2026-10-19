@@ -7,21 +7,35 @@ const RUBRIC_FILE_NAME = 'ask-dont-dump-prompt.md';
 const ARGUMENTS_PLACEHOLDER = '$ARGUMENTS';
 const DISPATCHER_DIR = '../../dispatcher';
 
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+  return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
+}
+
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+  const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
+  const hasUserFile = await $.fs.exists(userPath);
+  if (!hasUserFile)
+    return undefined;
+  return JSON.parse(await $.fs.read(userPath));
+}
+
+function getEnablement(file: { enablements: Record<string, Record<string, boolean>> }, pluginName: string, event: string): boolean | undefined {
+  return file.enablements[pluginName]?.[event];
+}
+
 async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
-  const defaults = JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
-  const defaultValue = defaults.enablements[pluginName]?.[event];
+  const defaults = await parseDefaultFile($);
+  const defaultValue = getEnablement(defaults, pluginName, event);
   if (defaultValue === undefined)
     throw new Error(`dispatch.json has no enablement for ${pluginName} ${event}`);
   return defaultValue;
 }
 
 async function readUser($: EngineInterface, pluginName: string, event: string): Promise<boolean | undefined> {
-  const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
-  const hasUserFile = await $.fs.exists(userPath);
-  if (!hasUserFile)
+  const user = await parseUserFile($);
+  if (user === undefined)
     return undefined;
-  const user: { enablements: Record<string, Record<string, boolean>> } = JSON.parse(await $.fs.read(userPath));
-  return user.enablements[pluginName]?.[event];
+  return getEnablement(user, pluginName, event);
 }
 
 async function isEventEnabled($: EngineInterface, pluginName: string, event: string): Promise<boolean> {

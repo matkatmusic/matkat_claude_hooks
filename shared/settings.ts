@@ -18,13 +18,18 @@ export type Settings = {
   hooks: HookEntry[];
 };
 
-export function readSettings(dispatcherDir: string): { defaults: Settings; user: Settings; dispatcherDir: string } {
+export function parseSettingsFiles(dispatcherDir: string): { defaults: Settings; user: Settings } {
   const defaults: Settings = JSON.parse(readFileSync(`${dispatcherDir}/dispatch.json`, "utf8"));
   let user: Settings = { enablements: {}, values: {}, hooks: [] };
   const userPath = `${dispatcherDir}/user-dispatch.json`;
   const hasUserFile = existsSync(userPath);
   if (hasUserFile)
     user = JSON.parse(readFileSync(userPath, "utf8"));
+  return { defaults, user };
+}
+
+export function readSettings(dispatcherDir: string): { defaults: Settings; user: Settings; dispatcherDir: string } {
+  const { defaults, user } = parseSettingsFiles(dispatcherDir);
   defaults.hooks ??= [];
   user.hooks ??= [];
   const userHookNames: string[] = [];

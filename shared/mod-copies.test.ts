@@ -11,7 +11,7 @@ const REGISTER_PATHS = [
 
 function extractCopy(path: string): string {
   const lines = readFileSync(new URL(`../${path}`, import.meta.url), "utf8").split("\n");
-  const functionNames = ["readDefault", "readUser", "isEventEnabled"];
+  const functionNames = ["parseDefaultFile", "parseUserFile", "getEnablement", "readDefault", "readUser", "isEventEnabled"];
   let dirLine = "";
   for (let i = 0; i < lines.length; i++) {
     const isDirLine = lines[i].startsWith("const DISPATCHER_DIR");
@@ -24,7 +24,9 @@ function extractCopy(path: string): string {
     let functionStart = -1;
     let functionEnd = -1;
     for (let i = 0; i < lines.length; i++) {
-      const isFunctionStart = lines[i].startsWith(`async function ${functionNames[n]}`);
+      const isAsyncFunctionStart = lines[i].startsWith(`async function ${functionNames[n]}(`);
+      const isSyncFunctionStart = lines[i].startsWith(`function ${functionNames[n]}(`);
+      const isFunctionStart = isAsyncFunctionStart || isSyncFunctionStart;
       if (isFunctionStart)
         functionStart = i;
       const isFunctionEnd = functionStart !== -1 && lines[i] === "}";
@@ -39,7 +41,7 @@ function extractCopy(path: string): string {
   return copy;
 }
 
-test("DISPATCHER_DIR, readDefault, readUser and isEventEnabled copies are identical in all three mods", () => {
+test("DISPATCHER_DIR, parse, look-up, readDefault, readUser and isEventEnabled copies are identical in all three mods", () => {
   const sourceCopy = extractCopy(REGISTER_PATHS[0]);
   for (let i = 1; i < REGISTER_PATHS.length; i++) {
     const otherCopy = extractCopy(REGISTER_PATHS[i]);
