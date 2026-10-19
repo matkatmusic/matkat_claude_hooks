@@ -11,6 +11,9 @@ flowchart TD
     choice_1d[a question or decision]
     choice_1e[a helper]
     choice_1f[the task list]
+    choice_1g[the method or plan]
+    choice_1h[another session]
+    choice_1i[a bug or problem]
 %% %% Layer 1 rating
     score_1a{ value > threshold }
     score_1b{ value > threshold }
@@ -18,6 +21,9 @@ flowchart TD
     score_1d{ value > threshold }
     score_1e{ value > threshold }
     score_1f{ value > threshold }
+    score_1g{ value > threshold }
+    score_1h{ value > threshold }
+    score_1i{ value > threshold }
 %% %% Layer 1 rating result
     do_not_block[Do not block reply]
     score_1a_no[No]
@@ -26,12 +32,18 @@ flowchart TD
     score_1d_no[No]
     score_1e_no[No]
     score_1f_no[No]
+    score_1g_no[No]
+    score_1h_no[No]
+    score_1i_no[No]
     score_1a_yes[Yes]
     score_1b_yes[Yes]
     score_1c_yes[Yes]
     score_1d_yes[Yes]
     score_1e_yes[Yes]
     score_1f_yes[Yes]
+    score_1g_yes[Yes]
+    score_1h_yes[Yes]
+    score_1i_yes[Yes]
     
 %% %% Layer 1 logic
     start --> q1
@@ -41,6 +53,9 @@ flowchart TD
     q1 --> choice_1d --> score_1d
     q1 --> choice_1e --> score_1e
     q1 --> choice_1f --> score_1f
+    q1 --> choice_1g --> score_1g
+    q1 --> choice_1h --> score_1h
+    q1 --> choice_1i --> score_1i
 
     score_1a --> score_1a_no
     score_1a --> score_1a_yes
@@ -54,6 +69,12 @@ flowchart TD
     score_1e --> score_1e_yes
     score_1f --> score_1f_no
     score_1f --> score_1f_yes
+    score_1g --> score_1g_no
+    score_1g --> score_1g_yes
+    score_1h --> score_1h_no
+    score_1h --> score_1h_yes
+    score_1i --> score_1i_no
+    score_1i --> score_1i_yes
 
     %% %% all scores below threshold go to 'do not block'
     score_1a_no --> do_not_block
@@ -62,6 +83,9 @@ flowchart TD
     score_1d_no --> do_not_block
     score_1e_no --> do_not_block
     score_1f_no --> do_not_block
+    score_1g_no --> do_not_block
+    score_1h_no --> do_not_block
+    score_1i_no --> do_not_block
     %% %% all scores above threshold advance to next question
     score_1a_yes --> q2
     score_1b_yes --> q2
@@ -69,6 +93,9 @@ flowchart TD
     score_1d_yes --> q2
     score_1e_yes --> q2
     score_1f_yes --> q2
+    score_1g_yes --> q2
+    score_1h_yes --> q2
+    score_1i_yes --> q2
 
 %% %% Layer 2 choices
     choice_2a[states a fact]
@@ -76,9 +103,9 @@ flowchart TD
     choice_2c[offers to do something or asks for approval]
     choice_2d[gives choices with no pick]
     choice_2e[records a decision the user made]
-    choice_2f[answers a question]
+    choice_2f[answers a question with a confirmed answer]
     choice_2g[tells the user to do something]
-    choice_2h[states a guess or a gap]
+    choice_2h[states a guess, a gap, or an unconfirmed answer]
 %% %% Layer 2 rating
     score_2a{ value > threshold }
     score_2b{ value > threshold }
@@ -156,6 +183,7 @@ flowchart TD
     choice_3g[no, the user did not ask for it]
     choice_3h[yes, it is on the task list]
     choice_3i[no, it is not on the task list]
+    choice_3j[nobody yet: the work is still open]
 %% %% Layer 3 rating
     score_3a{ value > threshold }
     score_3b{ value > threshold }
@@ -166,6 +194,7 @@ flowchart TD
     score_3g{ value > threshold }
     score_3h{ value > threshold }
     score_3i{ value > threshold }
+    score_3j{ value > threshold }
 %% %% Layer 3 rating result
     score_3a_yes[Yes]
     score_3a_no[No]
@@ -185,6 +214,8 @@ flowchart TD
     score_3h_no[No]
     score_3i_yes[Yes]
     score_3i_no[No]
+    score_3j_yes[Yes]
+    score_3j_no[No]
     block_ask[Block reply: use AskUserQuestion]
     block_task[Block reply: use TaskCreate]
 %% %% Layer 3 logic
@@ -215,6 +246,7 @@ flowchart TD
     q3_who --> choice_3c --> score_3c
     q3_who --> choice_3d --> score_3d
     q3_who --> choice_3e --> score_3e
+    q3_who --> choice_3j --> score_3j
     score_3a --> score_3a_no
     score_3a --> score_3a_yes
     score_3b --> score_3b_no
@@ -225,11 +257,14 @@ flowchart TD
     score_3d --> score_3d_yes
     score_3e --> score_3e_no
     score_3e --> score_3e_yes
+    score_3j --> score_3j_no
+    score_3j --> score_3j_yes
     score_3a_yes --> q3_listed
     score_3b_yes --> q3_listed
     score_3c_yes --> do_not_block
     score_3d_yes --> q3_asked
     score_3e_yes --> do_not_block
+    score_3j_yes --> q3_listed
 
     %% %% work that Claude owes blocks, unless it is on the task list
     q3_listed --> choice_3h --> score_3h
@@ -251,6 +286,7 @@ flowchart TD
     score_3g_no --> do_not_block
     score_3h_no --> do_not_block
     score_3i_no --> do_not_block
+    score_3j_no --> do_not_block
 
 
 
