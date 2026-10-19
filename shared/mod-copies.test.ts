@@ -9,9 +9,13 @@ const REGISTER_PATHS = [
   "context-exit/mod/hooks/register.ts",
 ];
 
-function extractCopy(path: string): string {
+const VALUE_REGISTER_PATHS = [
+  "idle-state/mod/hooks/register.ts",
+  "context-exit/mod/hooks/register.ts",
+];
+
+function extractCopy(path: string, functionNames = ["parseDefaultFile", "parseUserFile", "getEnablement", "readDefault", "readUser", "isEventEnabled"]): string {
   const lines = readFileSync(new URL(`../${path}`, import.meta.url), "utf8").split("\n");
-  const functionNames = ["parseDefaultFile", "parseUserFile", "getEnablement", "readDefault", "readUser", "isEventEnabled"];
   let dirLine = "";
   for (let i = 0; i < lines.length; i++) {
     const isDirLine = lines[i].startsWith("const DISPATCHER_DIR");
@@ -47,4 +51,10 @@ test("DISPATCHER_DIR, parse, look-up, readDefault, readUser and isEventEnabled c
     const otherCopy = extractCopy(REGISTER_PATHS[i]);
     assert.equal(otherCopy, sourceCopy, `${REGISTER_PATHS[0]} and ${REGISTER_PATHS[i]} differ`);
   }
+});
+
+test("getValue and readValue copies are identical in the idle-state and context-exit mods", () => {
+  const sourceCopy = extractCopy(VALUE_REGISTER_PATHS[0], ["getValue", "readValue"]);
+  const otherCopy = extractCopy(VALUE_REGISTER_PATHS[1], ["getValue", "readValue"]);
+  assert.equal(otherCopy, sourceCopy, `${VALUE_REGISTER_PATHS[0]} and ${VALUE_REGISTER_PATHS[1]} differ`);
 });

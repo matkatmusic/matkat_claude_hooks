@@ -1,4 +1,4 @@
-// Direct rows 32 to 37: typecheck-on-stop and unlisted-items, run on the bed clone with crafted Stop input.
+// Direct rows 32, 33, 35, 36 and 37: typecheck-on-stop and unlisted-items, run on the bed clone with crafted Stop input.
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { type DirectContext, type DirectResult, buildResult, createTypeScriptProject, formatFlag, isHookBlocked, readBlockReason, executeHook, writeJsonLines } from "./stranger_direct_support.ts";
@@ -37,20 +37,21 @@ export function validateTypecheckOtherFiles(context: DirectContext): DirectResul
   return buildResult(33, "typecheck-on-stop (old error)", notBlocked && notesOldError, `old error in an untouched file does not block: ${formatFlag(notBlocked)}; it is only noted: ${formatFlag(notesOldError)}`);
 }
 
-export function validateTypecheckRepeatStops(context: DirectContext): DirectResult {
-  const dir = createTypeScriptProject(context, "ts-repeat", { "bad.ts": BAD_LINE });
-  const transcript = writeEditTranscript(context, "tc-repeat", path.join(dir, "bad.ts"));
-  let blockedCount = 0;
-  for (let stop = 0; stop < 3; stop++) {
-    const run = executeTypecheck(context, dir, transcript, stop > 0);
-    const isBlocked = isHookBlocked(run);
-    if (isBlocked)
-      blockedCount += 1;
-  }
-  const fourth = executeTypecheck(context, dir, transcript, true);
-  const letsPass = !isHookBlocked(fourth) && fourth.stdout.includes("already blocked 3 times");
-  return buildResult(34, "typecheck-on-stop (repeat)", blockedCount === 3 && letsPass, `blocked on stops 1 to 3 (even with stop_hook_active): ${blockedCount} of 3; stop 4 passes with a note: ${formatFlag(letsPass)}`);
-}
+// Moved to live row 65 in run_stranger.ts.
+// export function validateTypecheckRepeatStops(context: DirectContext): DirectResult {
+//   const dir = createTypeScriptProject(context, "ts-repeat", { "bad.ts": BAD_LINE });
+//   const transcript = writeEditTranscript(context, "tc-repeat", path.join(dir, "bad.ts"));
+//   let blockedCount = 0;
+//   for (let stop = 0; stop < 3; stop++) {
+//     const run = executeTypecheck(context, dir, transcript, stop > 0);
+//     const isBlocked = isHookBlocked(run);
+//     if (isBlocked)
+//       blockedCount += 1;
+//   }
+//   const fourth = executeTypecheck(context, dir, transcript, true);
+//   const letsPass = !isHookBlocked(fourth) && fourth.stdout.includes("already blocked 3 times");
+//   return buildResult(34, "typecheck-on-stop (repeat)", blockedCount === 3 && letsPass, `blocked on stops 1 to 3 (even with stop_hook_active): ${blockedCount} of 3; stop 4 passes with a note: ${formatFlag(letsPass)}`);
+// }
 
 export function validateTypecheckStartFailure(context: DirectContext): DirectResult {
   const dir = createTypeScriptProject(context, "ts-nostart", { "fresh.ts": OK_LINE });

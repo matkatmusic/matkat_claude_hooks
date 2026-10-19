@@ -1,10 +1,11 @@
-// Direct rows 29 to 31: status-line and subagentStatusLine, run on the bed clone with crafted input.
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { type DirectContext, type DirectResult, buildResult, formatFlag, executeHook, writeFiles } from "./stranger_direct_support.ts";
+// Direct rows 29 and 30: status-line, run on the bed clone with crafted input. Row 31 is now live row 64.
+// import { readFileSync } from "node:fs";
+// import path from "node:path";
+// import { type DirectContext, type DirectResult, buildResult, formatFlag, executeHook, writeFiles } from "./stranger_direct_support.ts";
+import { type DirectContext, type DirectResult, buildResult, formatFlag, executeHook } from "./stranger_direct_support.ts";
 
 const STATUS_SCRIPT = "status-line/status.ts";
-const SUBAGENT_SCRIPT = "status-line/subagentStatusLine.ts";
+// const SUBAGENT_SCRIPT = "status-line/subagentStatusLine.ts";
 
 function executeStatus(context: DirectContext, sessionId: string, displayName: string) {
   const input = { session_id: sessionId, model: { id: "x", display_name: displayName }, workspace: { current_dir: context.direct } };
@@ -30,23 +31,24 @@ export function validateStatusUnknownModel(context: DirectContext): DirectResult
   return buildResult(30, "status-line (model)", ok, `exit ${run.status}; line 1 shows "Nova 9" in red: ${formatFlag(namesModel && hasRed)}; the other lines still print: ${formatFlag(keepsOtherLines)}`);
 }
 
-function readRefreshInterval(file: string, key: string): number {
-  return JSON.parse(readFileSync(file, "utf8"))[key].refreshInterval;
-}
-
-export function validateSubagentStatusLine(context: DirectContext): DirectResult {
-  const dir = path.join(context.direct, "subagent-status");
-  const subagentsDir = path.join(dir, "t", "subagents");
-  writeFiles(subagentsDir, { "agent-a1.jsonl": '{"effort":"high"}', "agent-a1.meta.json": JSON.stringify({ agentType: "general" }) });
-  const task = { id: "a1", description: "work", startTime: Date.now(), model: "claude-nope-9", tokenCount: 5 };
-  const run = executeHook(context, SUBAGENT_SCRIPT, { transcript_path: path.join(dir, "t.jsonl"), tasks: [task] }, dir);
-  const row = JSON.parse(run.stdout.trim());
-  const namesModel = row.content.includes("claude-nope-9") && row.content.includes("\x1b[31m");
-  const settingsPath = path.join(context.config, "settings.json");
-  const bedStatus = readRefreshInterval(settingsPath, "statusLine");
-  const bedSubagent = readRefreshInterval(settingsPath, "subagentStatusLine");
-  const cloneSubagent = readRefreshInterval(path.join(context.clone, "status-line", "hooks.json"), "subagentStatusLine");
-  const refreshes = bedStatus === 3 && bedSubagent === 3 && cloneSubagent === 3;
-  const ok = row.id === "a1" && namesModel && refreshes;
-  return buildResult(31, "status-line (subagent)", ok, `unknown model id shown in red, row still printed: ${formatFlag(namesModel)}; refreshInterval bed statusLine=${bedStatus} subagentStatusLine=${bedSubagent}, clone subagent=${cloneSubagent}`);
-}
+// Moved to live row 64 in run_stranger.ts.
+// function readRefreshInterval(file: string, key: string): number {
+//   return JSON.parse(readFileSync(file, "utf8"))[key].refreshInterval;
+// }
+//
+// export function validateSubagentStatusLine(context: DirectContext): DirectResult {
+//   const dir = path.join(context.direct, "subagent-status");
+//   const subagentsDir = path.join(dir, "t", "subagents");
+//   writeFiles(subagentsDir, { "agent-a1.jsonl": '{"effort":"high"}', "agent-a1.meta.json": JSON.stringify({ agentType: "general" }) });
+//   const task = { id: "a1", description: "work", startTime: Date.now(), model: "claude-nope-9", tokenCount: 5 };
+//   const run = executeHook(context, SUBAGENT_SCRIPT, { transcript_path: path.join(dir, "t.jsonl"), tasks: [task] }, dir);
+//   const row = JSON.parse(run.stdout.trim());
+//   const namesModel = row.content.includes("claude-nope-9") && row.content.includes("\x1b[31m");
+//   const settingsPath = path.join(context.config, "settings.json");
+//   const bedStatus = readRefreshInterval(settingsPath, "statusLine");
+//   const bedSubagent = readRefreshInterval(settingsPath, "subagentStatusLine");
+//   const cloneSubagent = readRefreshInterval(path.join(context.clone, "status-line", "hooks.json"), "subagentStatusLine");
+//   const refreshes = bedStatus === 3 && bedSubagent === 3 && cloneSubagent === 3;
+//   const ok = row.id === "a1" && namesModel && refreshes;
+//   return buildResult(31, "status-line (subagent)", ok, `unknown model id shown in red, row still printed: ${formatFlag(namesModel)}; refreshInterval bed statusLine=${bedStatus} subagentStatusLine=${bedSubagent}, clone subagent=${cloneSubagent}`);
+// }

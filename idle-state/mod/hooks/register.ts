@@ -3,14 +3,14 @@ import type { Register, Hook, EngineInterface } from 'claude-code';
 const PLUGIN_NAME = 'idle-state';
 const DISPATCHER_DIR = '../../dispatcher';
 const MS_PER_MINUTE = 60 * 1000;
-const IDLE_MINUTES = 55;
+// const IDLE_MINUTES = 55;
+const IDLE_MINUTES_KEY = 'CLAUDE_HOOKS_IDLE_MINUTES';
 const LATE_LIMIT_MINUTES = 58;
 const EXIT_KEY_DELAY_MINUTES = 1 / 60;
 const IDLE_STATE_FOLDER_NAME = '.idleState';
 const REGEX_SPECIAL_CHARACTERS = '\\^$.|?*+()[]{}';
 const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/tty', os.O_RDWR)\nfor key in b'2\\r':\n    fcntl.ioctl(fd, termios.TIOCSTI, bytes([key]))";
 
-async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
@@ -27,6 +27,7 @@ function getEnablement(file: { enablements: Record<string, Record<string, boolea
   return file.enablements[pluginName]?.[event];
 }
 
+async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
   const defaults = await parseDefaultFile($);
   const defaultValue = getEnablement(defaults, pluginName, event);
   if (defaultValue === undefined)
@@ -46,6 +47,24 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   if (userValue !== undefined)
     return userValue;
   return await readDefault($, pluginName, event);
+}
+
+function getValue(file: { values?: Record<string, Record<string, string>> }, section: string, key: string): string | undefined {
+  return file.values?.[section]?.[key];
+}
+
+async function readValue($: EngineInterface, section: string, key: string): Promise<string> {
+  const user = await parseUserFile($);
+  if (user !== undefined) {
+    const userValue = getValue(user, section, key);
+    if (userValue !== undefined)
+      return userValue;
+  }
+  const defaults = await parseDefaultFile($);
+  const defaultValue = getValue(defaults, section, key);
+  if (defaultValue === undefined)
+    throw new Error(`dispatch.json has no value for ${section} ${key}`);
+  return defaultValue;
 }
 
 function formatTwoDigits(n: number): string {
@@ -220,15 +239,16 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
     }
     return next(e);
   }
+  const idleMinutes = Number(await readValue($, PLUGIN_NAME, IDLE_MINUTES_KEY));
   lastAnswerAt = await $.clock.now();
   async function sendStatePromptUnlessLate() {
-    const lateMs = (await $.clock.now()) - lastAnswerAt - IDLE_MINUTES * MS_PER_MINUTE;
+    const lateMs = (await $.clock.now()) - lastAnswerAt - idleMinutes * MS_PER_MINUTE;
     if (lateMs > LATE_LIMIT_MINUTES * MS_PER_MINUTE)
       // computer went to sleep
       return;
     await sendStatePrompt($);
   }
-  idleTimer = $.clock.after(IDLE_MINUTES * MS_PER_MINUTE, sendStatePromptUnlessLate);
+  idleTimer = $.clock.after(idleMinutes * MS_PER_MINUTE, sendStatePromptUnlessLate);
   return next(e);
 };
 

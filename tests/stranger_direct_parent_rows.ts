@@ -1,11 +1,11 @@
-// Direct rows 21 to 24: block-parent-edits, check-task-list-id, clarify-ambiguous.
-import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
+// Direct rows 21, 23 and 24: block-parent-edits, check-task-list-id, clarify-ambiguous. Row 22 is now live row 61.
+// import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { type DirectContext, type DirectResult, buildResult, formatFlag, isHookDenied, readDenyReason, executeHook, writeJsonLines } from "./stranger_direct_support.ts";
 
 const PARENT_SCRIPT = "block-parent-edits/block-parent-edits.ts";
 const CLARIFY_SCRIPT = "clarify-ambiguous/clarify-ambiguous.ts";
-const TWO_DAYS_SECONDS = 2 * 24 * 60 * 60;
+// const TWO_DAYS_SECONDS = 2 * 24 * 60 * 60;
 const LONG_PREFIX_PROMPT = "Please add the new prefix to every column name in the report table and then explain how the final names look afterwards";
 
 function writeModelTranscript(context: DirectContext, name: string, model: string | null): string {
@@ -34,22 +34,23 @@ export function validateParentModels(context: DirectContext): DirectResult {
   return buildResult(21, "block-parent-edits (model)", ok, `claude-opus-6 blocked: ${formatFlag(blocksNewOpus)}; sonnet allowed: ${formatFlag(allowsSonnet)}; no model fails loudly: ${formatFlag(failsLoudly)}`);
 }
 
-export function validateParentIdleStateAndCleanup(context: DirectContext): DirectResult {
-  const transcript = writeModelTranscript(context, "opus-idle", "claude-opus-6-0");
-  const editsDir = path.join(context.direct, "blocked-edits");
-  mkdirSync(editsDir, { recursive: true });
-  const oldSavedEdit = path.join(editsDir, "old-session-1.json");
-  writeFileSync(oldSavedEdit, "{}");
-  const twoDaysAgo = Date.now() / 1000 - TWO_DAYS_SECONDS;
-  utimesSync(oldSavedEdit, twoDaysAgo, twoDaysAgo);
-  const idleStateWrite = executeParentTool(context, transcript, "Bash", { command: `echo hi > ${context.direct}/.idleState/x.json` });
-  const otherWrite = executeParentTool(context, transcript, "Bash", { command: `echo hi > ${context.direct}/out.txt` });
-  const allowsIdleState = !isHookDenied(idleStateWrite);
-  const deniesOther = isHookDenied(otherWrite);
-  const removedOldEdit = !existsSync(oldSavedEdit);
-  const ok = allowsIdleState && deniesOther && removedOldEdit;
-  return buildResult(22, "block-parent-edits (files)", ok, `redirect into .idleState allowed: ${formatFlag(allowsIdleState)}; other redirect denied: ${formatFlag(deniesOther)}; 2 day old saved edit removed: ${formatFlag(removedOldEdit)}`);
-}
+// Moved to live row 61 in run_stranger.ts.
+// export function validateParentIdleStateAndCleanup(context: DirectContext): DirectResult {
+//   const transcript = writeModelTranscript(context, "opus-idle", "claude-opus-6-0");
+//   const editsDir = path.join(context.direct, "blocked-edits");
+//   mkdirSync(editsDir, { recursive: true });
+//   const oldSavedEdit = path.join(editsDir, "old-session-1.json");
+//   writeFileSync(oldSavedEdit, "{}");
+//   const twoDaysAgo = Date.now() / 1000 - TWO_DAYS_SECONDS;
+//   utimesSync(oldSavedEdit, twoDaysAgo, twoDaysAgo);
+//   const idleStateWrite = executeParentTool(context, transcript, "Bash", { command: `echo hi > ${context.direct}/.idleState/x.json` });
+//   const otherWrite = executeParentTool(context, transcript, "Bash", { command: `echo hi > ${context.direct}/out.txt` });
+//   const allowsIdleState = !isHookDenied(idleStateWrite);
+//   const deniesOther = isHookDenied(otherWrite);
+//   const removedOldEdit = !existsSync(oldSavedEdit);
+//   const ok = allowsIdleState && deniesOther && removedOldEdit;
+//   return buildResult(22, "block-parent-edits (files)", ok, `redirect into .idleState allowed: ${formatFlag(allowsIdleState)}; other redirect denied: ${formatFlag(deniesOther)}; 2 day old saved edit removed: ${formatFlag(removedOldEdit)}`);
+// }
 
 export function validateTaskListIdName(context: DirectContext): DirectResult {
   const tooShort = executeHook(context, "check-task-list-id/check-task-list-id.ts", "", context.direct, { CLAUDE_CODE_TASK_LIST_ID: "x" });

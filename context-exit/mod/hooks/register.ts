@@ -1,13 +1,13 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 
 const PLUGIN_NAME = 'context-exit';
-const WARNING_PERCENTS = [30, 50, 80];
+const WARNING_PERCENTS_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS';
+// const WARNING_PERCENTS = [30, 50, 80];
 const TOAST_MS = 60000;
 const DISPATCHER_DIR = '../../dispatcher';
 
 const warnedPercentRef = { plugin: 'context-exit', key: 'warnedPercent' } as const;
 
-async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
@@ -24,6 +24,7 @@ function getEnablement(file: { enablements: Record<string, Record<string, boolea
   return file.enablements[pluginName]?.[event];
 }
 
+async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
   const defaults = await parseDefaultFile($);
   const defaultValue = getEnablement(defaults, pluginName, event);
   if (defaultValue === undefined)
@@ -45,6 +46,24 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
+function getValue(file: { values?: Record<string, Record<string, string>> }, section: string, key: string): string | undefined {
+  return file.values?.[section]?.[key];
+}
+
+async function readValue($: EngineInterface, section: string, key: string): Promise<string> {
+  const user = await parseUserFile($);
+  if (user !== undefined) {
+    const userValue = getValue(user, section, key);
+    if (userValue !== undefined)
+      return userValue;
+  }
+  const defaults = await parseDefaultFile($);
+  const defaultValue = getValue(defaults, section, key);
+  if (defaultValue === undefined)
+    throw new Error(`dispatch.json has no value for ${section} ${key}`);
+  return defaultValue;
+}
+
 const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'turn.complete');
   if (!enabled)
@@ -54,8 +73,10 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
   if (percent === undefined)
     return next(e);
   const { value: warnedPercent = 0 } = await $.state.get(warnedPercentRef);
+  const percentsText = await readValue($, PLUGIN_NAME, WARNING_PERCENTS_KEY);
   let crossedPercent = 0;
-  for (const warningPercent of WARNING_PERCENTS) {
+  for (const warningPercentText of percentsText.split(',')) {
+    const warningPercent = Number(warningPercentText);
     if (percent >= warningPercent)
       crossedPercent = warningPercent;
   }

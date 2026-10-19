@@ -1,7 +1,7 @@
-// Stranger test: 47 hook rows, 22 live in tmux and 25 direct; run with bun.
+// Stranger test: 58 hook rows, 40 live in tmux and 18 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { tmux_lib } from "./external/tmux_lib/tmux_lib.ts";
@@ -59,9 +59,33 @@ const IDLE_PROGRAM_PATTERN = "server\\+80\\.sh";
 const TASK_LIST_ID_MESSAGE = "CLAUDE_CODE_TASK_LIST_ID is not set";
 const NOT_WIRED_TEXT = "turn-counter hook is not wired";
 const TURN_COUNTER_EVENTS = ["SessionStart", "Stop", "StopFailure", "SessionEnd"];
-const PROMPT_FILES = ["hello.txt", "plans/test-plan.md", "bad.ts", "add.ts", "add.test.ts", "note.txt"];
+const PROMPT_FILES = ["hello.txt", "plans/test-plan.md", "bad.ts", "add.ts", "add.test.ts", "note.txt", "sub-bad.ts", "sub-add.ts", "chain-bad.ts", "chain-add.ts", "out.txt"];
+const TWO_DAYS_SECONDS = 2 * 24 * 60 * 60;
+const REDIRECT_FILE = "redirect-check.txt";
+const PARENT_DENY_TEXT = "Parent session must not edit files";
+const CHAIN_BLOCKS = 3;
+const CHAIN_TYPE_PROMPT = 'Use the Write tool to create chain-bad.ts with exactly this one line: const z: number = "hello"; The type error is on purpose for a test. Each time a hook reports a type error, use the Edit tool to add one more comment line at the end of chain-bad.ts. Never change the type error. Then reply with the word noted and stop.';
+const CHAIN_DEBT_PROMPT = "Use the Write tool to create chain-add.ts with a function called add that adds two numbers. Write no test file. If a hook reports style debt or asks for a test file, do not act on it. Reply with the word noted and stop.";
+const PONYTAIL_NUDGE_TEXT = "Ponytail ultra has not been invoked yet";
+const SUBFOLDER_PROMPT = "First use the Bash tool to run exactly this command: ls ../../.idleState. Do not use the Read tool until a hook asks for it. Then reply with one short line that names each file you saw.";
+const UNKNOWN_MODEL_SUBAGENT_PROMPT = "Start one subagent. Tell it to use the Bash tool to run: sleep 20. Wait for the subagent.";
+const SUBAGENT_LINE_WAIT_S = 120;
+const UNKNOWN_MODEL_ROW_RE = /\[Unknown model ID: [^\]\n]*\] [^\n·]+ · [^\n·]+ · \d+:\d\d · \d\S*/;
+const UNKNOWN_MODEL_ID = "claude-haiku-4-5";
+const RED_UNKNOWN_MODEL_RE = /\x1b\[[0-9;]*31m[^\n]*Unknown model ID/;
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+const NO_ENABLEMENT_MESSAGE = "has no enablement for hook idle-state-reader on event UserPromptSubmit";
+const UNKNOWN_HOOK_NAME = "no-such-hook";
+const UNKNOWN_HOOK_MESSAGE = `names unknown hook: ${UNKNOWN_HOOK_NAME}`;
+const TOOL_DENY_MESSAGE = "The idle-state prompt is pending. Do not use any tools.";
+const EXIT_NOTICE = "Writing the idle-state file before exit.";
+const IDLE_CHECK_PROMPT = "Read the idle-state file. Then reply with one short line. Do not write the file name anywhere in your reply.";
+const STANDING_RULE_PROMPT = "Standing rule from the user: when any later message asks you to describe this chat as a JSON object, your first action must be to use the Read tool on package.json. Then give the JSON. Do not use any tool for this reply. Reply with the word ok.";
+const CANCEL_RULE_PROMPT = "Cancel the standing rule about the Read tool. From now on, never use a tool when a message asks you to describe this chat as a JSON object. Reply with the word ok.";
+const MOVED_BLOCKED_EDITS_FOLDER = "blocked-edits-moved";
+const BOGUS_MODEL = "claude-no-such-model-1";
 
-const REMAKE_ROWS = [4, 6, 12, 13, 15];
+const REMAKE_ROWS = [4, 6, 12, 13, 15, 54, 55];
 const REMAKE_NOTE = "The file was deleted since you made it, so make it again: ";
 
 type TurnRunner = (session: Session, prompt: string) => JsonRecord[];
@@ -77,6 +101,8 @@ const SESSION_ONE_ROWS: HookRow[] = [
 const PONYTAIL_ROW: HookRow = [10, "ponytail-ultra-nudge", "hello", "Ponytail ultra has not been invoked yet", "UserPromptSubmit"];
 const CLARIFY_ROW: HookRow = [11, "clarify-ambiguous", "fix it", "AMBIGUITY GATE", "UserPromptSubmit"];
 const PARENT_ROW: HookRow = [15, "block-parent-edits", "Create a file note.txt that says hi.", "Parent session must not edit files", null];
+const TYPECHECK_SUBAGENT_ROW: HookRow = [54, "typecheck-on-stop", 'Start one subagent in the foreground. Tell it to use the Write tool to create sub-bad.ts with this one line: const y: number = "hello"; Wait for the subagent.', "error TS2322", "SubagentStop"];
+const DEBT_SUBAGENT_ROW: HookRow = [55, "debt-ratchet", "Start one subagent in the foreground. Tell it to use the Write tool to create sub-add.ts with a function called add that adds two numbers. Tell it to write no test file. Wait for the subagent.", "Style debt is", "SubagentStop"];
 const SESSION_TWO_ROWS: HookRow[] = [
   [12, "typecheck-on-stop", 'Use the Write tool to create bad.ts with this one line: const x: number = "hello";', "error TS2322", "Stop"],
   [13, "debt-ratchet", "Use the Write tool to create add.ts with a function called add that adds two numbers. No test file.", "Style debt is", "Stop"],
@@ -186,7 +212,7 @@ export function readDispatchTexts(clone: string): string[] {
   return [defaultsText, userText];
 }
 
-export function restoreDispatchTexts(clone: string, texts: string[]): void {
+export function writeDispatchTexts(clone: string, texts: string[]): void {
   writeFileSync(path.join(clone, "dispatcher", "dispatch.json"), texts[0]!);
   writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), texts[1]!);
 }
@@ -295,10 +321,10 @@ function getProjectSlug(project: string): string {
   return realpathSync(project).replace(/[^A-Za-z0-9]/g, "-");
 }
 
-function launchSession(model: string, bed: string, config: string): Session {
-  const project = path.join(bed, "project");
+function launchSession(model: string, bed: string, config: string, workDir: string = path.join(bed, "project"), subagentModel: string | null = null): Session {
   const clone = path.join(bed, "claude_hooks");
-  const projectsDir = path.join(config, "projects", getProjectSlug(project));
+  const projectsDir = path.join(config, "projects", getProjectSlug(workDir));
+  const subagentModelAssignment = subagentModel === null ? "" : `CLAUDE_CODE_SUBAGENT_MODEL=${subagentModel} `;
   const whichResult = spawnSync("which", ["claude"], { encoding: "utf8" });
   if (whichResult.status !== 0) {
     throw new Error("claude is not on PATH");
@@ -307,11 +333,11 @@ function launchSession(model: string, bed: string, config: string): Session {
   const sessionId = randomUUID();
   const script =
     "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; " +
-    `cd ${wrapShellWord(project)}; ` +
-    `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} exec ${wrapShellWord(claude)} --model ${model} --session-id ${sessionId} ` +
+    `cd ${wrapShellWord(workDir)}; ` +
+    `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} ${subagentModelAssignment}exec ${wrapShellWord(claude)} --model ${model} --session-id ${sessionId} ` +
     `--plugin-dir ${wrapShellWord(clone)} --plugin-dir ${wrapShellWord(path.join(clone, "idle-state", "mod"))} ` +
     `--plugin-dir ${wrapShellWord(path.join(clone, "context-exit", "mod"))} --plugin-dir ${wrapShellWord(path.join(clone, "ask-dont-dump", "mod"))}`;
-  const pane = tmux_lib.tmux_splitWorkerPane(getTmuxPane(), project, "bash -c " + wrapShellWord(script));
+  const pane = tmux_lib.tmux_splitWorkerPane(getTmuxPane(), workDir, "bash -c " + wrapShellWord(script));
   if (pane === undefined) {
     throw new Error("tmux could not open a pane for Claude");
   }
@@ -406,15 +432,17 @@ function containsPromptRecord(records: JsonRecord[], prompt: string): boolean {
       continue;
     }
     const content = record.message.content;
+    const isSlashPrompt = prompt.startsWith("/");
+    const recordedPrompt = isSlashPrompt ? `<command-args>${prompt.slice(prompt.indexOf(" ") + 1)}</command-args>` : prompt;
     if (typeof content === "string") {
-      const hasText = content.includes(prompt);
+      const hasText = content.includes(recordedPrompt);
       if (hasText) {
         return true;
       }
       continue;
     }
     for (const block of content) {
-      const hasText = block.type === "text" && block.text.includes(prompt);
+      const hasText = block.type === "text" && block.text.includes(recordedPrompt);
       if (hasText) {
         return true;
       }
@@ -531,6 +559,19 @@ function findEvidence(records: JsonRecord[], needle: string, event: string | nul
     }
   }
   return undefined;
+}
+
+function countEvidence(records: JsonRecord[], needle: string, event: string | null = null): number {
+  let count = 0;
+  for (const record of records) {
+    for (const text of collectRecordTexts(record, event)) {
+      const hasNeedle = text.includes(needle);
+      if (hasNeedle) {
+        count++;
+      }
+    }
+  }
+  return count;
 }
 
 function addRow(rows: Row[], number: number, hook: string, model: string | null, ok: boolean, evidence: string): void {
@@ -831,6 +872,171 @@ function addSessionOffRows(rows: Row[], session: Session): void {
   addRow(rows, 48, "turn-counter (off)", getSessionModel(session), turnCounterOff, `session ran with the hook off: turn count on screen: ${hasTurnCount ? "PRESENT" : "absent"}; not-wired note on screen: ${hasNotWiredText ? "present" : "ABSENT"}`);
 }
 
+function listSubagentFiles(session: Session): string[] {
+  return listFilesWithSuffix(path.join(session.projectsDir, session.id, "subagents"), ".jsonl");
+}
+
+function readSubagentRecords(files: string[]): JsonRecord[] {
+  const records: JsonRecord[] = [];
+  for (const file of files) {
+    const allLines = readFileSync(file, "utf8").split("\n");
+    const completeLines = allLines.slice(0, -1);
+    for (const line of completeLines) {
+      records.push(JSON.parse(line));
+    }
+  }
+  return records;
+}
+
+// The SubagentStop hook records go to the subagent transcript, so this turn returns those too.
+function executeSubagentTurn(session: Session, prompt: string): JsonRecord[] {
+  const knownFiles = listSubagentFiles(session);
+  const records = executeFullTurn(session, prompt);
+  tmux_lib.sleep(HOOK_FLUSH_S);
+  const newFiles: string[] = [];
+  for (const file of listSubagentFiles(session)) {
+    const isKnown = knownFiles.includes(file);
+    if (!isKnown) {
+      newFiles.push(file);
+    }
+  }
+  return [...records, ...readSubagentRecords(newFiles)];
+}
+
+// Rows 54 and 55: the Stop switches stay off, so only SubagentStop can make the message.
+function executeSubagentStopRows(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  for (const hook of ["typecheck-on-stop", "debt-ratchet"]) {
+    setEnablement(clone, hook, "Stop", false);
+    setEnablement(clone, hook, "SubagentStop", false);
+  }
+  const typecheckRow = executeOffOnPair(rows, session, bed, TYPECHECK_SUBAGENT_ROW, executeSubagentTurn);
+  typecheckRow.hook = "typecheck-on-stop (subagent)";
+  removePromptFiles(bed);
+  setEnablement(clone, "typecheck-on-stop", "SubagentStop", false);
+  const debtRow = executeOffOnPair(rows, session, bed, DEBT_SUBAGENT_ROW, executeSubagentTurn);
+  debtRow.hook = "debt-ratchet (subagent)";
+  removePromptFiles(bed);
+  for (const hook of ["typecheck-on-stop", "debt-ratchet"]) {
+    setEnablement(clone, hook, "Stop", true);
+    setEnablement(clone, hook, "SubagentStop", true);
+  }
+  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", true);
+}
+
+// Rows 51 and 52: a missing enablement and an unknown hook name must show their errors in the session.
+function executeDispatchErrorRows(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  const savedTexts = readDispatchTexts(clone);
+  removeEnablement(clone, "idle-state-reader", "UserPromptSubmit");
+  const missingRecords = executePromptOnlyTurn(session, "say hello");
+  writeDispatchTexts(clone, savedTexts);
+  addHookRow(rows, session, 51, "dispatcher (no enablement)", missingRecords, NO_ENABLEMENT_MESSAGE, "UserPromptSubmit");
+  addUnknownHook(clone, UNKNOWN_HOOK_NAME);
+  const unknownRecords = executePromptOnlyTurn(session, "say hello again");
+  writeDispatchTexts(clone, savedTexts);
+  addHookRow(rows, session, 52, "dispatcher (unknown hook)", unknownRecords, UNKNOWN_HOOK_MESSAGE, "UserPromptSubmit");
+}
+
+// Rows 65 and 66: the model ignores the hook text, so each hook blocks three stops in a row, then lets the fourth pass.
+function executeChainRows(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  const ledgerPath = path.join(bed, "array-debt", `${session.id}.json`);
+  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  setEnablement(clone, "debt-ratchet", "Stop", false);
+  const typeRecords = executeFullTurn(session, CHAIN_TYPE_PROMPT);
+  setEnablement(clone, "debt-ratchet", "Stop", true);
+  removePromptFiles(bed);
+  const typeBlocks = countEvidence(typeRecords, 'blockingError":"Type errors remain');
+  const hasPassNote = findEvidence(typeRecords, "already blocked 3 times") !== undefined;
+  const typeOk = typeBlocks === CHAIN_BLOCKS && hasPassNote;
+  addRow(rows, 65, "typecheck-on-stop (repeat)", getSessionModel(session), typeOk, `stops blocked while the model ignored the hook: ${typeBlocks} of ${CHAIN_BLOCKS}; next stop passes with the note: ${hasPassNote ? "True" : "False"}`);
+
+  setEnablement(clone, "typecheck-on-stop", "Stop", false);
+  rmSync(ledgerPath, { force: true });
+  const debtRecords = executeFullTurn(session, CHAIN_DEBT_PROMPT);
+  setEnablement(clone, "typecheck-on-stop", "Stop", true);
+  removePromptFiles(bed);
+  const debtBlocks = countEvidence(debtRecords, "Style debt is");
+  const saysOrFewer = findEvidence(debtRecords, "or fewer") !== undefined;
+  const ledgerSaved = existsSync(ledgerPath);
+  const debtOk = debtBlocks === CHAIN_BLOCKS && saysOrFewer && ledgerSaved;
+  addRow(rows, 66, "debt-ratchet (chain)", getSessionModel(session), debtOk, `stops blocked while the model ignored the hook: ${debtBlocks} of ${CHAIN_BLOCKS}; text says "or fewer": ${saysOrFewer ? "True" : "False"}; ledger saved on the block: ${ledgerSaved ? "True" : "False"}`);
+  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", true);
+}
+
+function readUltraFlag(bed: string, session: Session): boolean {
+  const state = JSON.parse(readFileSync(path.join(bed, "state", `${session.id}.json`), "utf8"));
+  return state.ponytailUltraInvoked === true;
+}
+
+// Starts the nudge over: the flag goes back to false and the transcript scan skips the lines written so far.
+function resetUltraFlag(bed: string, session: Session): void {
+  const statePath = path.join(bed, "state", `${session.id}.json`);
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  state.ponytailUltraInvoked = false;
+  state.ponytailTranscriptOffset = getJsonlSize(session);
+  writeFileSync(statePath, JSON.stringify(state));
+}
+
+// Rows 62 and 63: typed ponytail commands and a real Skill call decide whether the next prompts get the nudge.
+function executePonytailRows(rows: Row[], session: Session, bed: string): void {
+  resetUltraFlag(bed, session);
+  const notUltraRecords = executeFullTurn(session, "/ponytail:ponytail not ultra");
+  const notUltraNudged = findEvidence(notUltraRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
+  const notUltraFlag = readUltraFlag(bed, session);
+  resetUltraFlag(bed, session);
+  const shortRecords = executeFullTurn(session, "/ponytail ultra");
+  const shortNudged = findEvidence(shortRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
+  const shortFlag = readUltraFlag(bed, session);
+  resetUltraFlag(bed, session);
+  const fullRecords = executeFullTurn(session, "/ponytail:ponytail ultra");
+  const fullNudged = findEvidence(fullRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
+  const fullFlag = readUltraFlag(bed, session);
+  const notUltraOk = notUltraNudged && !notUltraFlag;
+  const shortOk = !shortNudged && shortFlag;
+  const fullOk = !fullNudged && fullFlag;
+  addRow(rows, 62, "ponytail-ultra-nudge (typed)", getSessionModel(session), notUltraOk && shortOk && fullOk, `/ponytail:ponytail ultra counts on the same prompt: ${fullOk ? "True" : "False"}; /ponytail ultra counts: ${shortOk ? "True" : "False"}; "not ultra" still nudges: ${notUltraOk ? "True" : "False"}`);
+
+  resetUltraFlag(bed, session);
+  const skillRecords = executeFullTurn(session, "Use the Skill tool to call ponytail:ponytail with the args ultra. Then reply with the word ok.");
+  const skillPromptNudged = findEvidence(skillRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
+  const nextRecords = executeFullTurn(session, "hello");
+  const nextNudged = findEvidence(nextRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
+  const skillFlag = readUltraFlag(bed, session);
+  const skillOk = skillPromptNudged && !nextNudged && skillFlag;
+  addRow(rows, 63, "ponytail-ultra-nudge (skill)", getSessionModel(session), skillOk, `prompt before the Skill call nudged: ${skillPromptNudged ? "True" : "False"}; next prompt after Skill call with ultra gets no nudge: ${!nextNudged ? "True" : "False"}; flag set: ${skillFlag ? "True" : "False"}`);
+}
+
+// Row 61: an Opus parent may redirect into .idleState, other redirects are denied, and a denial removes saved edits older than a day.
+function executeParentFilesRow(rows: Row[], session: Session, bed: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  const savedEditsDir = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER);
+  const oldSavedEdit = path.join(savedEditsDir, "old-session-1.json");
+  const redirectFile = path.join(bed, "project", ".idleState", REDIRECT_FILE);
+  mkdirSync(savedEditsDir, { recursive: true });
+  mkdirSync(path.dirname(redirectFile), { recursive: true });
+  writeFileSync(oldSavedEdit, "{}");
+  const twoDaysAgo = Date.now() / 1000 - TWO_DAYS_SECONDS;
+  utimesSync(oldSavedEdit, twoDaysAgo, twoDaysAgo);
+  setEnablement(clone, "block-bash-edits", "PreToolUse", false);
+  const allowedRecords = executeFullTurn(session, `Use the Bash tool to run exactly this command: echo hi > ./.idleState/${REDIRECT_FILE}`);
+  const allowedDenial = findEvidence(allowedRecords, PARENT_DENY_TEXT);
+  const wroteRedirect = existsSync(redirectFile);
+  const keptOldEdit = existsSync(oldSavedEdit);
+  const deniedRecords = executeFullTurn(session, "Use the Bash tool to run exactly this command: echo hi > out.txt. If the tool is denied, reply with the word denied and stop.");
+  const deniedEvidence = findEvidence(deniedRecords, PARENT_DENY_TEXT);
+  const removedOldEdit = !existsSync(oldSavedEdit);
+  setEnablement(clone, "block-bash-edits", "PreToolUse", true);
+  rmSync(redirectFile, { force: true });
+  removePromptFiles(bed);
+  const allowsRedirect = allowedDenial === undefined && wroteRedirect;
+  const deniesOther = deniedEvidence !== undefined;
+  const ok = allowsRedirect && keptOldEdit && deniesOther && removedOldEdit;
+  addRow(rows, 61, "block-parent-edits (files)", getSessionModel(session), ok, `redirect into .idleState allowed and written: ${allowsRedirect ? "True" : "False"}; other redirect denied: ${deniesOther ? "True" : "False"}; 2 day old saved edit kept after the allowed call: ${keptOldEdit ? "True" : "False"}; removed after the denial: ${removedOldEdit ? "True" : "False"}`);
+}
+
 function executeSecondSession(rows: Row[], bed: string, config: string): Session {
   const project = path.join(bed, "project");
   const clone = path.join(bed, "claude_hooks");
@@ -847,12 +1053,15 @@ function executeSecondSession(rows: Row[], bed: string, config: string): Session
     executeOffOnPair(rows, session, bed, hookRow, executeFullTurn);
     removePromptFiles(bed);
   }
+  executeChainRows(rows, session, bed);
+  executeSubagentStopRows(rows, session, bed);
 
-  const clarifyRow = executeOffOnPair(rows, session, bed, CLARIFY_ROW, executePromptOnlyTurn);
+  const clarifyRow =executeOffOnPair(rows, session, bed, CLARIFY_ROW, executePromptOnlyTurn);
   const fixItJdiRecords = executePromptOnlyTurn(session, "fix it jdi");
   const gateInOptOut = findEvidence(fixItJdiRecords, "AMBIGUITY GATE", "UserPromptSubmit");
   clarifyRow.ok = clarifyRow.ok && gateInOptOut === undefined;
   clarifyRow.evidence += ` | gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`;
+  executeDispatchErrorRows(rows, session, bed);
 
   writeFileSync(path.join(project, IDLE_PROGRAM_SCRIPT), "sleep 3000\n");
   executeTurn(session, `Use the Bash tool with run_in_background set to true to run exactly this command: bash ./${IDLE_PROGRAM_SCRIPT}`);
@@ -895,6 +1104,9 @@ function executeThirdSession(rows: Row[], bed: string, config: string, second: S
   }
   const session = launchSession(OPUS, bed, config);
   const turnsBefore = getPaneTurns(session.name);
+  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  const idleCheckRecords = executeFullTurn(session, IDLE_CHECK_PROMPT);
+  addHookRow(rows, session, 60, "idle-state-check", idleCheckRecords, "Before you end your first turn", "Stop");
   const parentRow = executeOffOnPair(rows, session, bed, PARENT_ROW, executeFullTurn);
   const model = validateSessionModel(session, "claude-opus-5");
   const blockedFiles = listFilesWithSuffix(path.join(bed, "blocked-edits"), ".json");
@@ -913,7 +1125,209 @@ function executeThirdSession(rows: Row[], bed: string, config: string, second: S
   const readerFound = findEvidence(readRecords(session), "Tell me about the recent work", "UserPromptSubmit");
   const idleOk = stateFiles.length > 0 && hasExited && readerFound !== undefined;
   addRow(rows, 14, "idle-state", getSessionModel(second), idleOk, `state files: ${stateFiles.length}; claude exited: ${hasExited ? "True" : "False"}; next start context: ${readerFound !== undefined ? "True" : "False"}`);
+
+  // Row 53: a value changed mid-session moves the next saved call to the new folder.
+  const movedFolder = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER);
+  setValue(clone, "block-parent-edits", "CLAUDE_HOOKS_BLOCKED_EDITS_DIR", movedFolder);
+  executeFullTurn(session, "Create a file other.txt that says hello.");
+  const oldFolderCount = listFilesWithSuffix(path.join(bed, "blocked-edits"), ".json").length;
+  const movedFiles = listFilesWithSuffix(movedFolder, ".json");
+  const landedInNewFolder = movedFiles.length > 0 && oldFolderCount === blockedFiles.length;
+  addRow(rows, 53, "block-parent-edits (value)", model, landedInNewFolder, `value changed mid-session: saved calls in the new folder: ${movedFiles.length}; saved calls in the old folder: ${oldFolderCount} (was ${blockedFiles.length})`);
   return session;
+}
+
+function waitForRecordText(session: Session, needle: string, timeoutSeconds: number): boolean {
+  for (let waited = 0; waited < timeoutSeconds; waited += 2) {
+    const text = JSON.stringify(readRecords(session));
+    const hasNeedle = text.includes(needle);
+    if (hasNeedle) {
+      return true;
+    }
+    tmux_lib.sleep(2);
+  }
+  return false;
+}
+
+function waitForIdleScreen(session: Session, timeoutSeconds: number): boolean {
+  let idleChecks = 0;
+  for (let waited = 0; waited < timeoutSeconds; waited += 2) {
+    const isIdle = isScreenIdle(tmux_lib.tmux_capturePane(session.name));
+    idleChecks = isIdle ? idleChecks + 1 : 0;
+    if (idleChecks >= 3) {
+      return true;
+    }
+    tmux_lib.sleep(2);
+  }
+  return false;
+}
+
+function readSittingEnd(bed: string, session: Session): number | "" {
+  const statePath = path.join(bed, "state", `${session.id}.json`);
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  const sittings = state.sittings;
+  return sittings[sittings.length - 1].end;
+}
+
+function readSittingTurns(bed: string, session: Session): number {
+  const statePath = path.join(bed, "state", `${session.id}.json`);
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  const sittings = state.sittings;
+  return sittings[sittings.length - 1].turns;
+}
+
+// Rows 56, 58 and 59: a tool call during the state prompt is denied, /exit writes the state file, SessionEnd fires.
+function executeExitRows(rows: Row[], session: Session, bed: string): void {
+  const model = getSessionModel(session);
+  executeFullTurn(session, STANDING_RULE_PROMPT);
+  tmux_lib.tmux_sendAndSubmit(session.name, "/exit");
+  const sawDenyMessage = waitForRecordText(session, TOOL_DENY_MESSAGE, 150);
+  const wentIdle = waitForIdleScreen(session, 120);
+  tmux_lib.sleep(HOOK_FLUSH_S);
+  const firstRecords = readRecords(session);
+  const denyEvidence = findEvidence(firstRecords, TOOL_DENY_MESSAGE);
+  const sawExitNotice = JSON.stringify(firstRecords).includes(EXIT_NOTICE);
+  const closedEarly = tmux_lib.tmux_waitForPaneClose(session.name, 1);
+  const toolDenied = sawDenyMessage && denyEvidence !== undefined && !closedEarly;
+  addRow(rows, 58, "idle-state (tool.call)", model, toolDenied, `model tried a tool during the state prompt: error in the tool result: ${denyEvidence !== undefined ? denyEvidence : "ABSENT"}; screen went idle: ${wentIdle ? "True" : "False"}`);
+
+  executeFullTurn(session, CANCEL_RULE_PROMPT);
+  tmux_lib.tmux_sendAndSubmit(session.name, "/exit");
+  const hasExited = tmux_lib.tmux_waitForPaneClose(session.name, 180);
+  tmux_lib.sleep(HOOK_FLUSH_S);
+  const sessionPrefix = session.id.slice(0, 8);
+  const stateFiles: string[] = [];
+  for (const stateFile of listFilesWithSuffix(path.join(bed, "project", ".idleState"), ".json")) {
+    const isThisSession = stateFile.includes(sessionPrefix);
+    if (isThisSession) {
+      stateFiles.push(stateFile);
+    }
+  }
+  const exitOk = sawExitNotice && !closedEarly && stateFiles.length > 0 && hasExited;
+  addRow(rows, 59, "idle-state (command.run)", model, exitOk, `first /exit showed the notice and kept the session open: ${sawExitNotice && !closedEarly ? "True" : "False"}; state files for this session: ${stateFiles.length}; second /exit closed the pane: ${hasExited ? "True" : "False"}`);
+
+  const endTime = readSittingEnd(bed, session);
+  const hasEndTime = endTime !== "";
+  addRow(rows, 56, "turn-counter (SessionEnd)", model, hasEndTime, `session state file after exit: end time ${hasEndTime ? "set (" + endTime + ")" : "EMPTY"}`);
+}
+
+// The subagent runs on its own after the turn ends; its end sends a message that starts one more turn.
+function waitForSubagentLineGone(session: Session): void {
+  for (let waited = 0; waited < SUBAGENT_LINE_WAIT_S; waited += 2) {
+    const screen = tmux_lib.tmux_capturePane(session.name);
+    const hasSubagentLine = screen.includes("Unknown model ID");
+    if (!hasSubagentLine) {
+      break;
+    }
+    tmux_lib.sleep(2);
+  }
+  tmux_lib.sleep(SETTLE_S);
+  const wentIdle = waitForIdleScreen(session, TURN_TIMEOUT_S);
+  if (!wentIdle) {
+    throw new Error(`pane ${session.name} did not go idle after the subagent ended`);
+  }
+}
+
+// Polls the colored pane while the prompt runs; returns the subagent line if it shows an unknown model id in red.
+function executeRedLineTurn(session: Session, prompt: string): string | undefined {
+  clearToIdlePrompt(session);
+  tmux_lib.tmux_sendAndSubmit(session.name, prompt + " ");
+  let redLine: string | undefined = undefined;
+  for (let waited = 0; waited < SUBAGENT_LINE_WAIT_S; waited += 2) {
+    const coloredRun = spawnSync("tmux", ["capture-pane", "-e", "-p", "-t", session.name], { encoding: "utf8" });
+    const redMatch = RED_UNKNOWN_MODEL_RE.exec(coloredRun.stdout);
+    const plainScreen = coloredRun.stdout.replace(ANSI_RE, "");
+    const hasFullRow = UNKNOWN_MODEL_ROW_RE.test(plainScreen);
+    const hasRedModel = redMatch !== null;
+    const isRedRow = hasRedModel && hasFullRow;
+    if (isRedRow) {
+      redLine = UNKNOWN_MODEL_ROW_RE.exec(plainScreen)![0];
+      break;
+    }
+    tmux_lib.sleep(2);
+  }
+  waitForSubagentLineGone(session);
+  return redLine;
+}
+
+function readRefreshInterval(file: string, key: string): number {
+  return JSON.parse(readFileSync(file, "utf8"))[key].refreshInterval;
+}
+
+function listReadPaths(record: JsonRecord): string[] {
+  const readPaths: string[] = [];
+  const content = record.message?.content;
+  const isAssistantWithBlocks = record.type === "assistant" && Array.isArray(content);
+  if (!isAssistantWithBlocks) {
+    return readPaths;
+  }
+  for (const block of content) {
+    const isRead = block.type === "tool_use" && block.name === "Read";
+    if (isRead) {
+      readPaths.push(block.input.file_path);
+    }
+  }
+  return readPaths;
+}
+
+// Rows 62, 63, 64, 67 and 68: a session started two folders below the repo root, with a subagent on a model the status line does not know.
+function executeSubfolderSession(rows: Row[], bed: string, config: string): void {
+  const project = path.join(bed, "project");
+  const deepDir = path.join(project, "src", "deep");
+  mkdirSync(deepDir, { recursive: true });
+  setEnablement(path.join(bed, "claude_hooks"), "clarify-ambiguous", "UserPromptSubmit", false);
+  const session = launchSession(SONNET, bed, config, deepDir, UNKNOWN_MODEL_ID);
+  const records = executeFullTurn(session, SUBFOLDER_PROMPT);
+  const model = getSessionModel(session);
+  const idleFolder = path.join(realpathSync(project), ".idleState");
+  const readerSnippet = findEvidence(records, `Tell me about the recent work written in the state files ${idleFolder}/`, "UserPromptSubmit");
+  addRow(rows, 67, "idle-state (reader subfolder)", model, readerSnippet !== undefined, `session started in src/deep finds the .idleState folder at the repo root: ${readerSnippet !== undefined ? "True" : "False"}`);
+
+  let firstBlock = -1;
+  let lastBlock = -1;
+  let lastRead = -1;
+  for (let index = 0; index < records.length; index++) {
+    const blockCount = countEvidence([records[index]!], "Before you end your first turn", "Stop");
+    if (blockCount > 0) {
+      firstBlock = firstBlock === -1 ? index : firstBlock;
+      lastBlock = index;
+    }
+    for (const readPath of listReadPaths(records[index]!)) {
+      const isStateFile = readPath.includes("/.idleState/");
+      if (isStateFile) {
+        lastRead = index;
+      }
+    }
+  }
+  const notReadSnippet = findEvidence(records, "Not read yet", "Stop");
+  const blockedAfterList = firstBlock !== -1 && notReadSnippet !== undefined;
+  const passesAfterRead = lastRead > firstBlock && lastBlock < lastRead;
+  addRow(rows, 68, "idle-state (check ls)", model, blockedAfterList && passesAfterRead, `an ls that shows the file names does not count as a read: ${blockedAfterList ? "True" : "False"}; stop passes after the Read of the state files: ${passesAfterRead ? "True" : "False"}`);
+
+  const redLine = executeRedLineTurn(session, UNKNOWN_MODEL_SUBAGENT_PROMPT);
+  const settingsPath = path.join(config, "settings.json");
+  const statusInterval = readRefreshInterval(settingsPath, "statusLine");
+  const subagentInterval = readRefreshInterval(settingsPath, "subagentStatusLine");
+  const cloneInterval = readRefreshInterval(path.join(bed, "claude_hooks", "status-line", "hooks.json"), "subagentStatusLine");
+  const refreshOk = statusInterval === 3 && subagentInterval === 3 && cloneInterval === 3;
+  addRow(rows, 64, "status-line (subagent model)", model, redLine !== undefined && refreshOk, `real subagent on an unknown model id shows the id in red: ${redLine !== undefined ? redLine : "NOT SEEN"}; refreshInterval bed statusLine=${statusInterval} subagentStatusLine=${subagentInterval}, clone subagent=${cloneInterval}`);
+  executePonytailRows(rows, session, bed);
+  tmux_lib.tmux_killPane(session.name);
+}
+
+// Row 57: a model name that does not exist makes every turn fail, so only StopFailure can count the turn.
+function executeStopFailureRow(rows: Row[], bed: string, config: string): void {
+  const clone = path.join(bed, "claude_hooks");
+  setEnablement(clone, "turn-counter", "StopFailure", false);
+  const session = launchSession(BOGUS_MODEL, bed, config);
+  executeTurn(session, "say hi");
+  const turnsOff = readSittingTurns(bed, session);
+  setEnablement(clone, "turn-counter", "StopFailure", true);
+  executeTurn(session, "say hi again");
+  const turnsOn = readSittingTurns(bed, session);
+  tmux_lib.tmux_killPane(session.name);
+  const countOk = turnsOff === 0 && turnsOn === 1;
+  addRow(rows, 57, "turn-counter (StopFailure)", null, countOk, `failed turn with StopFailure off: counted turns ${turnsOff}; failed turn with StopFailure on: counted turns ${turnsOn}`);
 }
 
 async function executeMain(): Promise<void> {
@@ -944,7 +1358,11 @@ async function executeMain(): Promise<void> {
     const hasExited = tmux_lib.tmux_waitForPaneClose(second.name, IDLE_MS / 1000 + IDLE_MARGIN_S);
     const stateFiles = listFilesWithSuffix(path.join(bed, "project", ".idleState"), ".json");
     addIdleProgramRow(rows, second, stateFiles);
-    executeThirdSession(rows, bed, config, second, stateFiles, hasExited);
+    const third = executeThirdSession(rows, bed, config, second, stateFiles, hasExited);
+    executeParentFilesRow(rows, third, bed);
+    executeExitRows(rows, third, bed);
+    executeSubfolderSession(rows, bed, config);
+    executeStopFailureRow(rows, bed, config);
     for (const result of await executeDirectRows(bed, config)) {
       addRow(rows, result.number, result.hook, null, result.ok, result.evidence);
     }
@@ -963,7 +1381,6 @@ async function executeMain(): Promise<void> {
   process.exit(allPassed ? 0 : 1);
 }
 
-export { buildBed, launchSession, readRecords, executeTurn, executePromptOnlyTurn, clearToIdlePrompt, findEvidence }; // TEMP-EXPERIMENT
 if (import.meta.main) {
   await executeMain();
 }

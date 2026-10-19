@@ -15,8 +15,8 @@ const STATE_OBJECT = {
 }
 const TEMPLATE_TEXT = '{ "work": ["what this chat worked on"] }'
 const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
-const DISPATCH_ALL_ON = '{ "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } } }'
-const DISPATCH_ALL_OFF = '{ "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } } }'
+const DISPATCH_ALL_ON = '{ "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }'
+const DISPATCH_ALL_OFF = '{ "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }'
 
 function stubFs(on: any, dispatchText = DISPATCH_ALL_ON) {
   on('fs.exists', () => ({ value: false }))
