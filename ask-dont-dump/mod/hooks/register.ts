@@ -7,20 +7,28 @@ const RUBRIC_FILE_NAME = 'ask-dont-dump-prompt.md';
 const ARGUMENTS_PLACEHOLDER = '$ARGUMENTS';
 const DISPATCHER_DIR = '../../dispatcher';
 
-async function isEventEnabled($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
+async function readDefault($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
   const defaults = JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
-  const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
-  const hasUserFile = await $.fs.exists(userPath);
-  let user: { enablements: Record<string, Record<string, boolean>> } = { enablements: {} };
-  if (hasUserFile)
-    user = JSON.parse(await $.fs.read(userPath));
-  const userValue = user.enablements[pluginName]?.[event];
-  if (userValue !== undefined)
-    return userValue;
   const defaultValue = defaults.enablements[pluginName]?.[event];
   if (defaultValue === undefined)
     throw new Error(`dispatch.json has no enablement for ${pluginName} ${event}`);
   return defaultValue;
+}
+
+async function readUser($: EngineInterface, pluginName: string, event: string): Promise<boolean | undefined> {
+  const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
+  const hasUserFile = await $.fs.exists(userPath);
+  if (!hasUserFile)
+    return undefined;
+  const user: { enablements: Record<string, Record<string, boolean>> } = JSON.parse(await $.fs.read(userPath));
+  return user.enablements[pluginName]?.[event];
+}
+
+async function isEventEnabled($: EngineInterface, pluginName: string, event: string): Promise<boolean> {
+  const userValue = await readUser($, pluginName, event);
+  if (userValue !== undefined)
+    return userValue;
+  return await readDefault($, pluginName, event);
 }
 
 let isAnsweringCheckerReason = false;
