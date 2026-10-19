@@ -1,5 +1,6 @@
 // Stranger test: 43 hook rows, 18 live in tmux and 25 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -10,6 +11,7 @@ type JsonRecord = Record<string, any>;
 
 interface Session {
   name: string;
+  id: string;
   model: string;
   projectsDir: string;
   knownJsonlFiles: Set<string>;
@@ -46,7 +48,7 @@ const CONTEXT_WARNING_RE = /above (\d+)%/;
 const TOAST_BOX_RE = /│ context-exit\s+│/;
 const CONTEXT_LEVEL_SPACING = 3;
 const FILLER_FILES = 12;
-const FILLER_LINES = 1200;
+const FILLER_LINES = 700;
 const FILLER_COLUMNS = 8;
 const TOAST_GONE_WAIT_S = 90;
 const TOAST_POLL_S = 3;
@@ -134,7 +136,8 @@ export function writeUserDispatch(clone: string, bed: string, config: string): v
     "debt-ratchet": { Stop: true, SubagentStop: true },
     "idle-state-reader": { UserPromptSubmit: true },
     "idle-state-check": { Stop: true },
-    "ask-dont-dump": { "prompt.submit": true, "turn.complete": true },
+    // turn.complete starts off: its follow-up dialog stalls the other rows; row 45 turns it on.
+    "ask-dont-dump": { "prompt.submit": true, "turn.complete": false },
     "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
     "context-exit": { "turn.complete": true },
   };
@@ -249,10 +252,11 @@ function launchSession(model: string, bed: string, config: string): Session {
     throw new Error("claude is not on PATH");
   }
   const claude = whichResult.stdout.trim();
+  const sessionId = randomUUID();
   const script =
     "for v in $(compgen -v | grep -E '^(CLAUDE_HOOKS_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$)'); do unset \"$v\"; done; " +
     `cd ${wrapShellWord(project)}; ` +
-    `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} exec ${wrapShellWord(claude)} --model ${model} ` +
+    `CLAUDE_CONFIG_DIR=${wrapShellWord(config)} exec ${wrapShellWord(claude)} --model ${model} --session-id ${sessionId} ` +
     `--plugin-dir ${wrapShellWord(clone)} --plugin-dir ${wrapShellWord(path.join(clone, "idle-state", "mod"))} ` +
     `--plugin-dir ${wrapShellWord(path.join(clone, "context-exit", "mod"))} --plugin-dir ${wrapShellWord(path.join(clone, "ask-dont-dump", "mod"))}`;
   const pane = tmux_lib.tmux_splitWorkerPane(getTmuxPane(), project, "bash -c " + wrapShellWord(script));
@@ -265,6 +269,7 @@ function launchSession(model: string, bed: string, config: string): Session {
   }
   const session: Session = {
     name: pane,
+    id: sessionId,
     model,
     projectsDir,
     knownJsonlFiles: new Set(listFilesWithSuffix(projectsDir, ".jsonl")),
@@ -279,14 +284,19 @@ function launchSession(model: string, bed: string, config: string): Session {
   return session;
 }
 
+// The session id is fixed at launch, so helper sessions of the hooks never get picked by mistake.
 function findJsonl(session: Session): string | null {
   if (session.jsonlPath === null) {
-    for (const jsonlFile of listFilesWithSuffix(session.projectsDir, ".jsonl")) {
-      const isKnown = session.knownJsonlFiles.has(jsonlFile);
-      if (!isKnown) {
-        session.jsonlPath = jsonlFile;
-      }
+    const expectedPath = path.join(session.projectsDir, `${session.id}.jsonl`);
+    if (existsSync(expectedPath)) {
+      session.jsonlPath = expectedPath;
     }
+    // for (const jsonlFile of listFilesWithSuffix(session.projectsDir, ".jsonl")) {
+    //   const isKnown = session.knownJsonlFiles.has(jsonlFile);
+    //   if (!isKnown) {
+    //     session.jsonlPath = jsonlFile;
+    //   }
+    // }
   }
   return session.jsonlPath;
 }
@@ -657,6 +667,7 @@ function containsAssistantText(records: JsonRecord[], needle: string): boolean {
 // Rows 45 and 46: an open item gets a mod follow-up when on, none when off.
 function executeAskDontDumpRows(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
+  setEnablement(clone, "ask-dont-dump", "turn.complete", true);
   const onBaseline = readRecords(session).length;
   executeTurn(session, ASK_DONT_DUMP_PROMPT);
   tmux_lib.sleep(HOOK_FLUSH_S);
@@ -665,6 +676,8 @@ function executeAskDontDumpRows(rows: Row[], session: Session, bed: string): voi
   addRow(rows, 45, "ask-dont-dump", getSessionModel(session), followUp !== undefined, followUpText);
 
   setEnablement(clone, "ask-dont-dump", "turn.complete", false);
+  clearToIdlePrompt(session);
+  tmux_lib.sleep(SETTLE_S);
   const offBaseline = readRecords(session).length;
   executeTurn(session, ASK_DONT_DUMP_PROMPT);
   tmux_lib.sleep(CHECKER_WAIT_S);
