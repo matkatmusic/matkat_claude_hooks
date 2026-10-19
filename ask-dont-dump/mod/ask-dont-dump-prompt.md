@@ -14,6 +14,7 @@ Your question: Does the agent's reply leave any of the following types of expres
 - open TaskList items.
 - asked a question ('?'), including a question that gave choices.
 - wrote "say the word"-style items.
+- wrote "next action:"-style items.
 - wrote "not checked" or similar prose.
 Examples of a dropped issue:
 - "Task #20 is still open.".
