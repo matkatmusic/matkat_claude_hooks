@@ -1,7 +1,10 @@
 import { readFileSync, writeFileSync, mkdirSync } from "fs";
 
 /*
-  Usage by model: claude-opus-5-5:  2.6k input, 24.3k output, 6.3m cache read, 209.2k cache write ($3.43) claude-sonnet-5-5:  16.7k input, 24.9k output, 2.2m cache read, 164.1k cache write ($0.92) claude-haiku-5-5:  247 input, 2.8k output, 141.1k cache read, 33.5k cache write ($0.0070)
+*   Usage by model:
+*        claude-opus-5-5:  2.6k input, 24.3k output, 6.3m cache read, 209.2k cache write ($3.43)
+*       claude-sonnet-5-5:  16.7k input, 24.9k output, 2.2m cache read, 164.1k cache write ($0.92)
+*       claude-haiku-5-5:  247 input, 2.8k output, 141.1k cache read, 33.5k cache write ($0.0070)
 */
 
 
