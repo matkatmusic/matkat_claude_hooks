@@ -1,24 +1,24 @@
 flowchart TD
     start(Agent reply)
-%%%% Layer 1 query
+%% %% Layer 1 query
     q1{What is the reply about?}
-%%%% Layer 2 query
+%% %% Layer 2 query
     q2{What does the reply do?}
-%%%% Layer 1 choices
+%% %% Layer 1 choices
     choice_1a[work or task]
     choice_1b[a check or test]
     choice_1c[the code]
     choice_1d[a question or decision]
     choice_1e[a helper]
     choice_1f[the task list]
-%%%% Layer 1 rating
+%% %% Layer 1 rating
     score_1a{ value > threshold }
     score_1b{ value > threshold }
     score_1c{ value > threshold }
     score_1d{ value > threshold }
     score_1e{ value > threshold }
     score_1f{ value > threshold }
-%%%% Layer 1 rating result
+%% %% Layer 1 rating result
     do_not_block[Do not block reply]
     score_1a_no[No]
     score_1b_no[No]
@@ -33,7 +33,7 @@ flowchart TD
     score_1e_yes[Yes]
     score_1f_yes[Yes]
     
-%%%% Layer 1 logic
+%% %% Layer 1 logic
     start --> q1
     q1 --> choice_1a --> score_1a
     q1 --> choice_1b --> score_1b
@@ -55,14 +55,14 @@ flowchart TD
     score_1f --> score_1f_no
     score_1f --> score_1f_yes
 
-    %%%% all scores below threshold go to 'do not block'
+    %% %% all scores below threshold go to 'do not block'
     score_1a_no --> do_not_block
     score_1b_no --> do_not_block
     score_1c_no --> do_not_block
     score_1d_no --> do_not_block
     score_1e_no --> do_not_block
     score_1f_no --> do_not_block
-    %%%% all scores above threshold advance to next question
+    %% %% all scores above threshold advance to next question
     score_1a_yes --> q2
     score_1b_yes --> q2
     score_1c_yes --> q2
@@ -70,7 +70,7 @@ flowchart TD
     score_1e_yes --> q2
     score_1f_yes --> q2
 
-%%%% Layer 2 choices
+%% %% Layer 2 choices
     choice_2a[states a fact]
     choice_2b[asks a question]
     choice_2c[offers to do something or asks for approval]
@@ -79,7 +79,7 @@ flowchart TD
     choice_2f[answers a question]
     choice_2g[tells the user to do something]
     choice_2h[states a guess or a gap]
-%%%% Layer 2 rating
+%% %% Layer 2 rating
     score_2a{ value > threshold }
     score_2b{ value > threshold }
     score_2c{ value > threshold }
@@ -88,7 +88,7 @@ flowchart TD
     score_2f{ value > threshold }
     score_2g{ value > threshold }
     score_2h{ value > threshold }
-%%%% Layer 2 rating result
+%% %% Layer 2 rating result
     score_2a_yes[Yes]
     score_2a_no[No]
     score_2b_yes[Yes]
@@ -105,7 +105,7 @@ flowchart TD
     score_2g_no[No]
     score_2h_yes[Yes]
     score_2h_no[No]
-%%%% Layer 2 logic 
+%% %% Layer 2 logic
     q2 --> choice_2a --> score_2a
     q2 --> choice_2b --> score_2b
     q2 --> choice_2c --> score_2c
@@ -132,68 +132,129 @@ flowchart TD
     score_2h --> score_2h_no
     score_2h --> score_2h_yes
 
+    %% all layer 2 scores below threshold go to 'do not block'
+    score_2a_no --> do_not_block
+    score_2b_no --> do_not_block
+    score_2c_no --> do_not_block
+    score_2d_no --> do_not_block
+    score_2e_no --> do_not_block
+    score_2f_no --> do_not_block
+    score_2g_no --> do_not_block
+    score_2h_no --> do_not_block
+
+%% %% Layer 3 queries
+    q3_who{Who must act next, and when?}
+    q3_asked{Did the user ask for this instruction?}
+    q3_listed{Is that work already on the task list?}
+%% %% Layer 3 choices
+    choice_3a[Claude, starting work with several steps now]
+    choice_3b[Claude, after this turn]
+    choice_3c[a helper, during this turn]
+    choice_3d[the user, after this turn]
+    choice_3e[nobody: the work is done]
+    choice_3f[yes, the user asked for it]
+    choice_3g[no, the user did not ask for it]
+    choice_3h[yes, it is on the task list]
+    choice_3i[no, it is not on the task list]
+%% %% Layer 3 rating
+    score_3a{ value > threshold }
+    score_3b{ value > threshold }
+    score_3c{ value > threshold }
+    score_3d{ value > threshold }
+    score_3e{ value > threshold }
+    score_3f{ value > threshold }
+    score_3g{ value > threshold }
+    score_3h{ value > threshold }
+    score_3i{ value > threshold }
+%% %% Layer 3 rating result
+    score_3a_yes[Yes]
+    score_3a_no[No]
+    score_3b_yes[Yes]
+    score_3b_no[No]
+    score_3c_yes[Yes]
+    score_3c_no[No]
+    score_3d_yes[Yes]
+    score_3d_no[No]
+    score_3e_yes[Yes]
+    score_3e_no[No]
+    score_3f_yes[Yes]
+    score_3f_no[No]
+    score_3g_yes[Yes]
+    score_3g_no[No]
+    score_3h_yes[Yes]
+    score_3h_no[No]
+    score_3i_yes[Yes]
+    score_3i_no[No]
+    block_ask[Block reply: use AskUserQuestion]
+    block_task[Block reply: use TaskCreate]
+%% %% Layer 3 logic
+    %% %% a question, an offer, choices with no pick, or a guess always needs AskUserQuestion
+    score_2b_yes --> block_ask
+    score_2c_yes --> block_ask
+    score_2d_yes --> block_ask
+    score_2h_yes --> block_ask
+    %% %% a recorded user decision or an answer needs nothing
+    score_2e_yes --> do_not_block
+    score_2f_yes --> do_not_block
+
+    %% %% an instruction to the user blocks, unless the user asked for it
+    score_2g_yes --> q3_asked
+    q3_asked --> choice_3f --> score_3f
+    q3_asked --> choice_3g --> score_3g
+    score_3f --> score_3f_no
+    score_3f --> score_3f_yes
+    score_3g --> score_3g_no
+    score_3g --> score_3g_yes
+    score_3f_yes --> do_not_block
+    score_3g_yes --> block_ask
+
+    %% %% a fact can still say that Claude owes more work
+    score_2a_yes --> q3_who
+    q3_who --> choice_3a --> score_3a
+    q3_who --> choice_3b --> score_3b
+    q3_who --> choice_3c --> score_3c
+    q3_who --> choice_3d --> score_3d
+    q3_who --> choice_3e --> score_3e
+    score_3a --> score_3a_no
+    score_3a --> score_3a_yes
+    score_3b --> score_3b_no
+    score_3b --> score_3b_yes
+    score_3c --> score_3c_no
+    score_3c --> score_3c_yes
+    score_3d --> score_3d_no
+    score_3d --> score_3d_yes
+    score_3e --> score_3e_no
+    score_3e --> score_3e_yes
+    score_3a_yes --> q3_listed
+    score_3b_yes --> q3_listed
+    score_3c_yes --> do_not_block
+    score_3d_yes --> q3_asked
+    score_3e_yes --> do_not_block
+
+    %% %% work that Claude owes blocks, unless it is on the task list
+    q3_listed --> choice_3h --> score_3h
+    q3_listed --> choice_3i --> score_3i
+    score_3h --> score_3h_no
+    score_3h --> score_3h_yes
+    score_3i --> score_3i_no
+    score_3i --> score_3i_yes
+    score_3h_yes --> do_not_block
+    score_3i_yes --> block_task
+
+    %% %% all layer 3 scores below threshold go to 'do not block'
+    score_3a_no --> do_not_block
+    score_3b_no --> do_not_block
+    score_3c_no --> do_not_block
+    score_3d_no --> do_not_block
+    score_3e_no --> do_not_block
+    score_3f_no --> do_not_block
+    score_3g_no --> do_not_block
+    score_3h_no --> do_not_block
+    score_3i_no --> do_not_block
+
 
 
     askGate[Ask gate opens]
     taskGate[Task gate opens]
     noGate[No gate opens from this answer]
 
-    %%score_1a -- yes --> taskGate
-    %%score_1b -- yes --> askGate
-    %%score_1c -- yes --> noGate
-    %%score_1d -- yes --> askGate
-    %%score_1e -- yes --> noGate
-    %%score_1f -- yes --> taskGate
-
-    %%score_2a -- yes --> noGate
-    %%score_2b -- yes --> askGate
-    %%score_2c -- yes --> askGate
-    %%score_2d -- yes --> askGate
-    %%score_2e -- yes --> noGate
-    %%score_2f -- yes --> noGate
-    %%score_2g -- yes --> askGate
-    %%score_2h -- yes --> askGate
-
-    %%score_1a -- no --> noGate
-    %%score_1b -- no --> noGate
-    %%score_1c -- no --> noGate
-    %%score_1d -- no --> noGate
-    %%score_1e -- no --> noGate
-    %%score_1f -- no --> noGate
-    %%score_2a -- no --> noGate
-    %%score_2b -- no --> noGate
-    %%score_2c -- no --> noGate
-    %%score_2d -- no --> noGate
-    %%score_2e -- no --> noGate
-    %%score_2f -- no --> noGate
-    %%score_2g -- no --> noGate
-    %%score_2h -- no --> noGate
-
-    %%askGate --> gates
-    %%taskGate --> gates
-    %%noGate --> gates
-    %%gates{Is the ask gate or the task gate open?}
-    %%gates -- no --> passEarly([Do not block. Send no second request.])
-    %%gates -- yes --> step2["Step 2: one TypeSafe request, choice questions<br/><br/>Who must act next? Claude / a helper / the user / nobody<br/>When? already done / during this turn / after this turn<br/>Did the user ask for this? yes / no<br/>Is the work on the task list? yes / no"]
-
-    %%step2 --> askOpen{Is the ask gate open?}
-    %%askOpen -- yes --> userAsked{Did the user ask for this?}
-    %%userAsked -- no --> needAsk[Mark: ask the user]
-    %%userAsked -- yes --> noAsk[No questions for the user]
-    %%askOpen -- no --> noAsk
-
-    %%needAsk --> taskOpen
-    %%noAsk --> taskOpen
-    %%taskOpen{Is the task gate open?}
-    %%taskOpen -- yes --> claudeActs{Must Claude act next,<br/>during this turn or after this turn?}
-    %%taskOpen -- no --> noTask
-    %%claudeActs -- yes --> onList{Is the work on the task list?}
-    %%claudeActs -- no --> noTask
-    %%onList -- no --> needTask[Mark: add tasks]
-    %%onList -- yes --> noTask[No new tasks]
-
-    %%needTask --> result
-    %%noTask --> result
-    %%result{Is any mark set?}
-    %%result -- no --> pass([Do not block])
-    %%result -- yes --> block([Block the reply:<br/>ask the user with AskUserQuestion for an ask mark,<br/>add tasks with TaskCreate for a task mark])
