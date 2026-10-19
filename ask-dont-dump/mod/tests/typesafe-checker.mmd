@@ -1,296 +1,296 @@
 flowchart TD
-    start(Agent reply)
+    B_AGENT_REPLY["Agent reply"]
 %% %% Layer 1 query
-    q1{What is the reply about?}
+    Q_ABOUT{"What is the reply about?"}
 %% %% Layer 2 query
-    q2{What does the reply do?}
+    Q_DOES{"What does the reply do?"}
 %% %% Layer 1 choices
-    choice_1a[work or task]
-    choice_1b[a check or test]
-    choice_1c[the code]
-    choice_1d[a question or decision]
-    choice_1e[a helper]
-    choice_1f[the task list]
-    choice_1g[the method or plan]
-    choice_1h[another session]
-    choice_1i[a bug or problem]
+    Q_CHOICE_ABOUT_WORK["work or task"]
+    Q_CHOICE_ABOUT_CHECK["a check or test"]
+    Q_CHOICE_ABOUT_CODE["the code"]
+    Q_CHOICE_ABOUT_DECISION["a question or decision"]
+    Q_CHOICE_ABOUT_HELPER["a helper"]
+    Q_CHOICE_ABOUT_TASK_LIST["the task list"]
+    Q_CHOICE_ABOUT_PLAN["the method or plan"]
+    Q_CHOICE_ABOUT_OTHER_SESSION["another session"]
+    Q_CHOICE_ABOUT_BUG["a bug or problem"]
 %% %% Layer 1 rating
-    score_1a{ value > threshold }
-    score_1b{ value > threshold }
-    score_1c{ value > threshold }
-    score_1d{ value > threshold }
-    score_1e{ value > threshold }
-    score_1f{ value > threshold }
-    score_1g{ value > threshold }
-    score_1h{ value > threshold }
-    score_1i{ value > threshold }
+    Q_ABOUT_WORK_SCORE{"value > threshold"}
+    Q_ABOUT_CHECK_SCORE{"value > threshold"}
+    Q_ABOUT_CODE_SCORE{"value > threshold"}
+    Q_ABOUT_DECISION_SCORE{"value > threshold"}
+    Q_ABOUT_HELPER_SCORE{"value > threshold"}
+    Q_ABOUT_TASK_LIST_SCORE{"value > threshold"}
+    Q_ABOUT_PLAN_SCORE{"value > threshold"}
+    Q_ABOUT_OTHER_SESSION_SCORE{"value > threshold"}
+    Q_ABOUT_BUG_SCORE{"value > threshold"}
 %% %% Layer 1 rating result
-    do_not_block[Do not block reply]
-    score_1a_no[No]
-    score_1b_no[No]
-    score_1c_no[No]
-    score_1d_no[No]
-    score_1e_no[No]
-    score_1f_no[No]
-    score_1g_no[No]
-    score_1h_no[No]
-    score_1i_no[No]
-    score_1a_yes[Yes]
-    score_1b_yes[Yes]
-    score_1c_yes[Yes]
-    score_1d_yes[Yes]
-    score_1e_yes[Yes]
-    score_1f_yes[Yes]
-    score_1g_yes[Yes]
-    score_1h_yes[Yes]
-    score_1i_yes[Yes]
-    
-%% %% Layer 1 logic
-    start --> q1
-    q1 --> choice_1a --> score_1a
-    q1 --> choice_1b --> score_1b
-    q1 --> choice_1c --> score_1c
-    q1 --> choice_1d --> score_1d
-    q1 --> choice_1e --> score_1e
-    q1 --> choice_1f --> score_1f
-    q1 --> choice_1g --> score_1g
-    q1 --> choice_1h --> score_1h
-    q1 --> choice_1i --> score_1i
+    B_DO_NOT_BLOCK["Do not block reply"]
+    Q_CHOICE_ABOUT_WORK_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_CHECK_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_CODE_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_DECISION_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_HELPER_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_TASK_LIST_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_PLAN_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_BUG_SCORE_NO["No"]
+    Q_CHOICE_ABOUT_WORK_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_CHECK_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_CODE_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_DECISION_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_HELPER_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_TASK_LIST_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_PLAN_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_YES["Yes"]
+    Q_CHOICE_ABOUT_BUG_SCORE_YES["Yes"]
 
-    score_1a --> score_1a_no
-    score_1a --> score_1a_yes
-    score_1b --> score_1b_no
-    score_1b --> score_1b_yes
-    score_1c --> score_1c_no
-    score_1c --> score_1c_yes
-    score_1d --> score_1d_no
-    score_1d --> score_1d_yes
-    score_1e --> score_1e_no
-    score_1e --> score_1e_yes
-    score_1f --> score_1f_no
-    score_1f --> score_1f_yes
-    score_1g --> score_1g_no
-    score_1g --> score_1g_yes
-    score_1h --> score_1h_no
-    score_1h --> score_1h_yes
-    score_1i --> score_1i_no
-    score_1i --> score_1i_yes
+%% %% Layer 1 logic
+    B_AGENT_REPLY --> Q_ABOUT
+    Q_ABOUT --> Q_CHOICE_ABOUT_WORK --> Q_ABOUT_WORK_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_CHECK --> Q_ABOUT_CHECK_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_CODE --> Q_ABOUT_CODE_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_DECISION --> Q_ABOUT_DECISION_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_HELPER --> Q_ABOUT_HELPER_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_TASK_LIST --> Q_ABOUT_TASK_LIST_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_PLAN --> Q_ABOUT_PLAN_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_OTHER_SESSION --> Q_ABOUT_OTHER_SESSION_SCORE
+    Q_ABOUT --> Q_CHOICE_ABOUT_BUG --> Q_ABOUT_BUG_SCORE
+
+    Q_ABOUT_WORK_SCORE --> Q_CHOICE_ABOUT_WORK_SCORE_NO
+    Q_ABOUT_WORK_SCORE --> Q_CHOICE_ABOUT_WORK_SCORE_YES
+    Q_ABOUT_CHECK_SCORE --> Q_CHOICE_ABOUT_CHECK_SCORE_NO
+    Q_ABOUT_CHECK_SCORE --> Q_CHOICE_ABOUT_CHECK_SCORE_YES
+    Q_ABOUT_CODE_SCORE --> Q_CHOICE_ABOUT_CODE_SCORE_NO
+    Q_ABOUT_CODE_SCORE --> Q_CHOICE_ABOUT_CODE_SCORE_YES
+    Q_ABOUT_DECISION_SCORE --> Q_CHOICE_ABOUT_DECISION_SCORE_NO
+    Q_ABOUT_DECISION_SCORE --> Q_CHOICE_ABOUT_DECISION_SCORE_YES
+    Q_ABOUT_HELPER_SCORE --> Q_CHOICE_ABOUT_HELPER_SCORE_NO
+    Q_ABOUT_HELPER_SCORE --> Q_CHOICE_ABOUT_HELPER_SCORE_YES
+    Q_ABOUT_TASK_LIST_SCORE --> Q_CHOICE_ABOUT_TASK_LIST_SCORE_NO
+    Q_ABOUT_TASK_LIST_SCORE --> Q_CHOICE_ABOUT_TASK_LIST_SCORE_YES
+    Q_ABOUT_PLAN_SCORE --> Q_CHOICE_ABOUT_PLAN_SCORE_NO
+    Q_ABOUT_PLAN_SCORE --> Q_CHOICE_ABOUT_PLAN_SCORE_YES
+    Q_ABOUT_OTHER_SESSION_SCORE --> Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_NO
+    Q_ABOUT_OTHER_SESSION_SCORE --> Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_YES
+    Q_ABOUT_BUG_SCORE --> Q_CHOICE_ABOUT_BUG_SCORE_NO
+    Q_ABOUT_BUG_SCORE --> Q_CHOICE_ABOUT_BUG_SCORE_YES
 
     %% %% all scores below threshold go to 'do not block'
-    score_1a_no --> do_not_block
-    score_1b_no --> do_not_block
-    score_1c_no --> do_not_block
-    score_1d_no --> do_not_block
-    score_1e_no --> do_not_block
-    score_1f_no --> do_not_block
-    score_1g_no --> do_not_block
-    score_1h_no --> do_not_block
-    score_1i_no --> do_not_block
+    Q_CHOICE_ABOUT_WORK_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_CHECK_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_CODE_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_DECISION_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_HELPER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_TASK_LIST_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_PLAN_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ABOUT_BUG_SCORE_NO --> B_DO_NOT_BLOCK
     %% %% all scores above threshold advance to next question
-    score_1a_yes --> q2
-    score_1b_yes --> q2
-    score_1c_yes --> q2
-    score_1d_yes --> q2
-    score_1e_yes --> q2
-    score_1f_yes --> q2
-    score_1g_yes --> q2
-    score_1h_yes --> q2
-    score_1i_yes --> q2
+    Q_CHOICE_ABOUT_WORK_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_CHECK_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_CODE_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_DECISION_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_HELPER_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_TASK_LIST_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_PLAN_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_OTHER_SESSION_SCORE_YES --> Q_DOES
+    Q_CHOICE_ABOUT_BUG_SCORE_YES --> Q_DOES
 
 %% %% Layer 2 choices
-    choice_2a[states a fact]
-    choice_2b[asks a question]
-    choice_2c[offers to do something or asks for approval]
-    choice_2d[gives choices with no pick]
-    choice_2e[records a decision the user made]
-    choice_2f[answers a question with a confirmed answer]
-    choice_2g[tells the user to do something]
-    choice_2h[states a guess, a gap, or an unconfirmed answer]
+    Q_CHOICE_DOES_FACT["states a fact"]
+    Q_CHOICE_DOES_QUESTION["asks a question"]
+    Q_CHOICE_DOES_OFFER["offers to do something or asks for approval"]
+    Q_CHOICE_DOES_CHOICES["gives choices with no pick"]
+    Q_CHOICE_DOES_DECISION["records a decision the user made"]
+    Q_CHOICE_DOES_ANSWER["answers a question with a confirmed answer"]
+    Q_CHOICE_DOES_INSTRUCTION["tells the user to do something"]
+    Q_CHOICE_DOES_GUESS["states a guess, a gap, or an unconfirmed answer"]
 %% %% Layer 2 rating
-    score_2a{ value > threshold }
-    score_2b{ value > threshold }
-    score_2c{ value > threshold }
-    score_2d{ value > threshold }
-    score_2e{ value > threshold }
-    score_2f{ value > threshold }
-    score_2g{ value > threshold }
-    score_2h{ value > threshold }
+    Q_DOES_FACT_SCORE{"value > threshold"}
+    Q_DOES_QUESTION_SCORE{"value > threshold"}
+    Q_DOES_OFFER_SCORE{"value > threshold"}
+    Q_DOES_CHOICES_SCORE{"value > threshold"}
+    Q_DOES_DECISION_SCORE{"value > threshold"}
+    Q_DOES_ANSWER_SCORE{"value > threshold"}
+    Q_DOES_INSTRUCTION_SCORE{"value > threshold"}
+    Q_DOES_GUESS_SCORE{"value > threshold"}
 %% %% Layer 2 rating result
-    score_2a_yes[Yes]
-    score_2a_no[No]
-    score_2b_yes[Yes]
-    score_2b_no[No]
-    score_2c_yes[Yes]
-    score_2c_no[No]
-    score_2d_yes[Yes]
-    score_2d_no[No]
-    score_2e_yes[Yes]
-    score_2e_no[No]
-    score_2f_yes[Yes]
-    score_2f_no[No]
-    score_2g_yes[Yes]
-    score_2g_no[No]
-    score_2h_yes[Yes]
-    score_2h_no[No]
+    Q_CHOICE_DOES_FACT_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_FACT_SCORE_NO["No"]
+    Q_CHOICE_DOES_QUESTION_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_QUESTION_SCORE_NO["No"]
+    Q_CHOICE_DOES_OFFER_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_OFFER_SCORE_NO["No"]
+    Q_CHOICE_DOES_CHOICES_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_CHOICES_SCORE_NO["No"]
+    Q_CHOICE_DOES_DECISION_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_DECISION_SCORE_NO["No"]
+    Q_CHOICE_DOES_ANSWER_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_ANSWER_SCORE_NO["No"]
+    Q_CHOICE_DOES_INSTRUCTION_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_INSTRUCTION_SCORE_NO["No"]
+    Q_CHOICE_DOES_GUESS_SCORE_YES["Yes"]
+    Q_CHOICE_DOES_GUESS_SCORE_NO["No"]
 %% %% Layer 2 logic
-    q2 --> choice_2a --> score_2a
-    q2 --> choice_2b --> score_2b
-    q2 --> choice_2c --> score_2c
-    q2 --> choice_2d --> score_2d
-    q2 --> choice_2e --> score_2e
-    q2 --> choice_2f --> score_2f
-    q2 --> choice_2g --> score_2g
-    q2 --> choice_2h --> score_2h
+    Q_DOES --> Q_CHOICE_DOES_FACT --> Q_DOES_FACT_SCORE
+    Q_DOES --> Q_CHOICE_DOES_QUESTION --> Q_DOES_QUESTION_SCORE
+    Q_DOES --> Q_CHOICE_DOES_OFFER --> Q_DOES_OFFER_SCORE
+    Q_DOES --> Q_CHOICE_DOES_CHOICES --> Q_DOES_CHOICES_SCORE
+    Q_DOES --> Q_CHOICE_DOES_DECISION --> Q_DOES_DECISION_SCORE
+    Q_DOES --> Q_CHOICE_DOES_ANSWER --> Q_DOES_ANSWER_SCORE
+    Q_DOES --> Q_CHOICE_DOES_INSTRUCTION --> Q_DOES_INSTRUCTION_SCORE
+    Q_DOES --> Q_CHOICE_DOES_GUESS --> Q_DOES_GUESS_SCORE
 
-    score_2a --> score_2a_no
-    score_2a --> score_2a_yes
-    score_2b --> score_2b_no
-    score_2b --> score_2b_yes
-    score_2c --> score_2c_no
-    score_2c --> score_2c_yes
-    score_2d --> score_2d_no
-    score_2d --> score_2d_yes
-    score_2e --> score_2e_no
-    score_2e --> score_2e_yes
-    score_2f --> score_2f_no
-    score_2f --> score_2f_yes
-    score_2g --> score_2g_no
-    score_2g --> score_2g_yes
-    score_2h --> score_2h_no
-    score_2h --> score_2h_yes
+    Q_DOES_FACT_SCORE --> Q_CHOICE_DOES_FACT_SCORE_NO
+    Q_DOES_FACT_SCORE --> Q_CHOICE_DOES_FACT_SCORE_YES
+    Q_DOES_QUESTION_SCORE --> Q_CHOICE_DOES_QUESTION_SCORE_NO
+    Q_DOES_QUESTION_SCORE --> Q_CHOICE_DOES_QUESTION_SCORE_YES
+    Q_DOES_OFFER_SCORE --> Q_CHOICE_DOES_OFFER_SCORE_NO
+    Q_DOES_OFFER_SCORE --> Q_CHOICE_DOES_OFFER_SCORE_YES
+    Q_DOES_CHOICES_SCORE --> Q_CHOICE_DOES_CHOICES_SCORE_NO
+    Q_DOES_CHOICES_SCORE --> Q_CHOICE_DOES_CHOICES_SCORE_YES
+    Q_DOES_DECISION_SCORE --> Q_CHOICE_DOES_DECISION_SCORE_NO
+    Q_DOES_DECISION_SCORE --> Q_CHOICE_DOES_DECISION_SCORE_YES
+    Q_DOES_ANSWER_SCORE --> Q_CHOICE_DOES_ANSWER_SCORE_NO
+    Q_DOES_ANSWER_SCORE --> Q_CHOICE_DOES_ANSWER_SCORE_YES
+    Q_DOES_INSTRUCTION_SCORE --> Q_CHOICE_DOES_INSTRUCTION_SCORE_NO
+    Q_DOES_INSTRUCTION_SCORE --> Q_CHOICE_DOES_INSTRUCTION_SCORE_YES
+    Q_DOES_GUESS_SCORE --> Q_CHOICE_DOES_GUESS_SCORE_NO
+    Q_DOES_GUESS_SCORE --> Q_CHOICE_DOES_GUESS_SCORE_YES
 
     %% all layer 2 scores below threshold go to 'do not block'
-    score_2a_no --> do_not_block
-    score_2b_no --> do_not_block
-    score_2c_no --> do_not_block
-    score_2d_no --> do_not_block
-    score_2e_no --> do_not_block
-    score_2f_no --> do_not_block
-    score_2g_no --> do_not_block
-    score_2h_no --> do_not_block
+    Q_CHOICE_DOES_FACT_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_QUESTION_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_OFFER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_CHOICES_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_DECISION_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_ANSWER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_INSTRUCTION_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_GUESS_SCORE_NO --> B_DO_NOT_BLOCK
 
 %% %% Layer 3 queries
-    q3_who{Who must act next, and when?}
-    q3_asked{Did the user ask for this instruction?}
-    q3_listed{Is that work already on the task list?}
+    Q_WHO{"Who must act next, and when?"}
+    Q_ASKED{"Did the user ask for this instruction?"}
+    Q_LISTED{"Is that work already on the task list?"}
 %% %% Layer 3 choices
-    choice_3a[Claude, starting work with several steps now]
-    choice_3b[Claude, after this turn]
-    choice_3c[a helper, during this turn]
-    choice_3d[the user, after this turn]
-    choice_3e[nobody: the work is done]
-    choice_3f[yes, the user asked for it]
-    choice_3g[no, the user did not ask for it]
-    choice_3h[yes, it is on the task list]
-    choice_3i[no, it is not on the task list]
-    choice_3j[nobody yet: the work is still open]
+    Q_CHOICE_WHO_CLAUDE_NOW["Claude, starting work with several steps now"]
+    Q_CHOICE_WHO_CLAUDE_LATER["Claude, after this turn"]
+    Q_CHOICE_WHO_HELPER["a helper, during this turn"]
+    Q_CHOICE_WHO_USER["the user, after this turn"]
+    Q_CHOICE_WHO_NOBODY_DONE["nobody: the work is done"]
+    Q_CHOICE_ASKED_YES["yes, the user asked for it"]
+    Q_CHOICE_ASKED_NO["no, the user did not ask for it"]
+    Q_CHOICE_LISTED_YES["yes, it is on the task list"]
+    Q_CHOICE_LISTED_NO["no, it is not on the task list"]
+    Q_CHOICE_WHO_NOBODY_OPEN["nobody yet: the work is still open"]
 %% %% Layer 3 rating
-    score_3a{ value > threshold }
-    score_3b{ value > threshold }
-    score_3c{ value > threshold }
-    score_3d{ value > threshold }
-    score_3e{ value > threshold }
-    score_3f{ value > threshold }
-    score_3g{ value > threshold }
-    score_3h{ value > threshold }
-    score_3i{ value > threshold }
-    score_3j{ value > threshold }
+    Q_WHO_CLAUDE_NOW_SCORE{"value > threshold"}
+    Q_WHO_CLAUDE_LATER_SCORE{"value > threshold"}
+    Q_WHO_HELPER_SCORE{"value > threshold"}
+    Q_WHO_USER_SCORE{"value > threshold"}
+    Q_WHO_NOBODY_DONE_SCORE{"value > threshold"}
+    Q_ASKED_YES_SCORE{"value > threshold"}
+    Q_ASKED_NO_SCORE{"value > threshold"}
+    Q_LISTED_YES_SCORE{"value > threshold"}
+    Q_LISTED_NO_SCORE{"value > threshold"}
+    Q_WHO_NOBODY_OPEN_SCORE{"value > threshold"}
 %% %% Layer 3 rating result
-    score_3a_yes[Yes]
-    score_3a_no[No]
-    score_3b_yes[Yes]
-    score_3b_no[No]
-    score_3c_yes[Yes]
-    score_3c_no[No]
-    score_3d_yes[Yes]
-    score_3d_no[No]
-    score_3e_yes[Yes]
-    score_3e_no[No]
-    score_3f_yes[Yes]
-    score_3f_no[No]
-    score_3g_yes[Yes]
-    score_3g_no[No]
-    score_3h_yes[Yes]
-    score_3h_no[No]
-    score_3i_yes[Yes]
-    score_3i_no[No]
-    score_3j_yes[Yes]
-    score_3j_no[No]
-    block_ask[Block reply: use AskUserQuestion]
-    block_task[Block reply: use TaskCreate]
+    Q_CHOICE_WHO_CLAUDE_NOW_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_CLAUDE_NOW_SCORE_NO["No"]
+    Q_CHOICE_WHO_CLAUDE_LATER_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_CLAUDE_LATER_SCORE_NO["No"]
+    Q_CHOICE_WHO_HELPER_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_HELPER_SCORE_NO["No"]
+    Q_CHOICE_WHO_USER_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_USER_SCORE_NO["No"]
+    Q_CHOICE_WHO_NOBODY_DONE_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_NOBODY_DONE_SCORE_NO["No"]
+    Q_CHOICE_ASKED_YES_SCORE_YES["Yes"]
+    Q_CHOICE_ASKED_YES_SCORE_NO["No"]
+    Q_CHOICE_ASKED_NO_SCORE_YES["Yes"]
+    Q_CHOICE_ASKED_NO_SCORE_NO["No"]
+    Q_CHOICE_LISTED_YES_SCORE_YES["Yes"]
+    Q_CHOICE_LISTED_YES_SCORE_NO["No"]
+    Q_CHOICE_LISTED_NO_SCORE_YES["Yes"]
+    Q_CHOICE_LISTED_NO_SCORE_NO["No"]
+    Q_CHOICE_WHO_NOBODY_OPEN_SCORE_YES["Yes"]
+    Q_CHOICE_WHO_NOBODY_OPEN_SCORE_NO["No"]
+    B_BLOCK_ASK["Block reply: use AskUserQuestion"]
+    B_BLOCK_TASK["Block reply: use TaskCreate"]
 %% %% Layer 3 logic
     %% %% a question, an offer, choices with no pick, or a guess always needs AskUserQuestion
-    score_2b_yes --> block_ask
-    score_2c_yes --> block_ask
-    score_2d_yes --> block_ask
-    score_2h_yes --> block_ask
+    Q_CHOICE_DOES_QUESTION_SCORE_YES --> B_BLOCK_ASK
+    Q_CHOICE_DOES_OFFER_SCORE_YES --> B_BLOCK_ASK
+    Q_CHOICE_DOES_CHOICES_SCORE_YES --> B_BLOCK_ASK
+    Q_CHOICE_DOES_GUESS_SCORE_YES --> B_BLOCK_ASK
     %% %% a recorded user decision or an answer needs nothing
-    score_2e_yes --> do_not_block
-    score_2f_yes --> do_not_block
+    Q_CHOICE_DOES_DECISION_SCORE_YES --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_ANSWER_SCORE_YES --> B_DO_NOT_BLOCK
 
     %% %% an instruction to the user blocks, unless the user asked for it
-    score_2g_yes --> q3_asked
-    q3_asked --> choice_3f --> score_3f
-    q3_asked --> choice_3g --> score_3g
-    score_3f --> score_3f_no
-    score_3f --> score_3f_yes
-    score_3g --> score_3g_no
-    score_3g --> score_3g_yes
-    score_3f_yes --> do_not_block
-    score_3g_yes --> block_ask
+    Q_CHOICE_DOES_INSTRUCTION_SCORE_YES --> Q_ASKED
+    Q_ASKED --> Q_CHOICE_ASKED_YES --> Q_ASKED_YES_SCORE
+    Q_ASKED --> Q_CHOICE_ASKED_NO --> Q_ASKED_NO_SCORE
+    Q_ASKED_YES_SCORE --> Q_CHOICE_ASKED_YES_SCORE_NO
+    Q_ASKED_YES_SCORE --> Q_CHOICE_ASKED_YES_SCORE_YES
+    Q_ASKED_NO_SCORE --> Q_CHOICE_ASKED_NO_SCORE_NO
+    Q_ASKED_NO_SCORE --> Q_CHOICE_ASKED_NO_SCORE_YES
+    Q_CHOICE_ASKED_YES_SCORE_YES --> B_DO_NOT_BLOCK
+    Q_CHOICE_ASKED_NO_SCORE_YES --> B_BLOCK_ASK
 
     %% %% a fact can still say that Claude owes more work
-    score_2a_yes --> q3_who
-    q3_who --> choice_3a --> score_3a
-    q3_who --> choice_3b --> score_3b
-    q3_who --> choice_3c --> score_3c
-    q3_who --> choice_3d --> score_3d
-    q3_who --> choice_3e --> score_3e
-    q3_who --> choice_3j --> score_3j
-    score_3a --> score_3a_no
-    score_3a --> score_3a_yes
-    score_3b --> score_3b_no
-    score_3b --> score_3b_yes
-    score_3c --> score_3c_no
-    score_3c --> score_3c_yes
-    score_3d --> score_3d_no
-    score_3d --> score_3d_yes
-    score_3e --> score_3e_no
-    score_3e --> score_3e_yes
-    score_3j --> score_3j_no
-    score_3j --> score_3j_yes
-    score_3a_yes --> q3_listed
-    score_3b_yes --> q3_listed
-    score_3c_yes --> do_not_block
-    score_3d_yes --> q3_asked
-    score_3e_yes --> do_not_block
-    score_3j_yes --> q3_listed
+    Q_CHOICE_DOES_FACT_SCORE_YES --> Q_WHO
+    Q_WHO --> Q_CHOICE_WHO_CLAUDE_NOW --> Q_WHO_CLAUDE_NOW_SCORE
+    Q_WHO --> Q_CHOICE_WHO_CLAUDE_LATER --> Q_WHO_CLAUDE_LATER_SCORE
+    Q_WHO --> Q_CHOICE_WHO_HELPER --> Q_WHO_HELPER_SCORE
+    Q_WHO --> Q_CHOICE_WHO_USER --> Q_WHO_USER_SCORE
+    Q_WHO --> Q_CHOICE_WHO_NOBODY_DONE --> Q_WHO_NOBODY_DONE_SCORE
+    Q_WHO --> Q_CHOICE_WHO_NOBODY_OPEN --> Q_WHO_NOBODY_OPEN_SCORE
+    Q_WHO_CLAUDE_NOW_SCORE --> Q_CHOICE_WHO_CLAUDE_NOW_SCORE_NO
+    Q_WHO_CLAUDE_NOW_SCORE --> Q_CHOICE_WHO_CLAUDE_NOW_SCORE_YES
+    Q_WHO_CLAUDE_LATER_SCORE --> Q_CHOICE_WHO_CLAUDE_LATER_SCORE_NO
+    Q_WHO_CLAUDE_LATER_SCORE --> Q_CHOICE_WHO_CLAUDE_LATER_SCORE_YES
+    Q_WHO_HELPER_SCORE --> Q_CHOICE_WHO_HELPER_SCORE_NO
+    Q_WHO_HELPER_SCORE --> Q_CHOICE_WHO_HELPER_SCORE_YES
+    Q_WHO_USER_SCORE --> Q_CHOICE_WHO_USER_SCORE_NO
+    Q_WHO_USER_SCORE --> Q_CHOICE_WHO_USER_SCORE_YES
+    Q_WHO_NOBODY_DONE_SCORE --> Q_CHOICE_WHO_NOBODY_DONE_SCORE_NO
+    Q_WHO_NOBODY_DONE_SCORE --> Q_CHOICE_WHO_NOBODY_DONE_SCORE_YES
+    Q_WHO_NOBODY_OPEN_SCORE --> Q_CHOICE_WHO_NOBODY_OPEN_SCORE_NO
+    Q_WHO_NOBODY_OPEN_SCORE --> Q_CHOICE_WHO_NOBODY_OPEN_SCORE_YES
+    Q_CHOICE_WHO_CLAUDE_NOW_SCORE_YES --> Q_LISTED
+    Q_CHOICE_WHO_CLAUDE_LATER_SCORE_YES --> Q_LISTED
+    Q_CHOICE_WHO_HELPER_SCORE_YES --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_USER_SCORE_YES --> Q_ASKED
+    Q_CHOICE_WHO_NOBODY_DONE_SCORE_YES --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_NOBODY_OPEN_SCORE_YES --> Q_LISTED
 
     %% %% work that Claude owes blocks, unless it is on the task list
-    q3_listed --> choice_3h --> score_3h
-    q3_listed --> choice_3i --> score_3i
-    score_3h --> score_3h_no
-    score_3h --> score_3h_yes
-    score_3i --> score_3i_no
-    score_3i --> score_3i_yes
-    score_3h_yes --> do_not_block
-    score_3i_yes --> block_task
+    Q_LISTED --> Q_CHOICE_LISTED_YES --> Q_LISTED_YES_SCORE
+    Q_LISTED --> Q_CHOICE_LISTED_NO --> Q_LISTED_NO_SCORE
+    Q_LISTED_YES_SCORE --> Q_CHOICE_LISTED_YES_SCORE_NO
+    Q_LISTED_YES_SCORE --> Q_CHOICE_LISTED_YES_SCORE_YES
+    Q_LISTED_NO_SCORE --> Q_CHOICE_LISTED_NO_SCORE_NO
+    Q_LISTED_NO_SCORE --> Q_CHOICE_LISTED_NO_SCORE_YES
+    Q_CHOICE_LISTED_YES_SCORE_YES --> B_DO_NOT_BLOCK
+    Q_CHOICE_LISTED_NO_SCORE_YES --> B_BLOCK_TASK
 
     %% %% all layer 3 scores below threshold go to 'do not block'
-    score_3a_no --> do_not_block
-    score_3b_no --> do_not_block
-    score_3c_no --> do_not_block
-    score_3d_no --> do_not_block
-    score_3e_no --> do_not_block
-    score_3f_no --> do_not_block
-    score_3g_no --> do_not_block
-    score_3h_no --> do_not_block
-    score_3i_no --> do_not_block
-    score_3j_no --> do_not_block
+    Q_CHOICE_WHO_CLAUDE_NOW_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_CLAUDE_LATER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_HELPER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_USER_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_NOBODY_DONE_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ASKED_YES_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_ASKED_NO_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_LISTED_YES_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_LISTED_NO_SCORE_NO --> B_DO_NOT_BLOCK
+    Q_CHOICE_WHO_NOBODY_OPEN_SCORE_NO --> B_DO_NOT_BLOCK
 
 
 
-    askGate[Ask gate opens]
-    taskGate[Task gate opens]
-    noGate[No gate opens from this answer]
+    B_ASK_GATE["Ask gate opens"]
+    B_TASK_GATE["Task gate opens"]
+    B_NO_GATE["No gate opens from this answer"]
 
