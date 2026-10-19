@@ -5,14 +5,14 @@
     "describesApproach": "the reply explains the method or plan it will use to address the task or problem at hand",
     "describesWorkDone": "the reply says that some work has been completed during the turn",
     "describesWorkInProgress": "the reply says that work is currently ongoing during the turn, possibly by a subagent",
-    "describesSpecificTask": "the reply describes a specific task that is being addressed during the turn",
-    "describesWorkNotDone": "the reply says that some work has not been completed during the turn",
-    "describesWorkToDo": "the reply describes the next steps or tasks that need to be done after the current turn",
+    "describesSpecificTask": "the reply names a task by its number, for example \"#142\", and says what that task does or what happened to it",
+    "describesWorkNotDone": "the reply says in plain words that a piece of work from this turn is not done or stays open, as in \"Not done:\" or \"stays open until\"",
+    "describesWorkToDo": "the reply lists work that must still be done after this turn, as next steps or a to-do list",
     "describesStateOfCode": "the reply describes the current state of the code, such as its structure, content, or condition",
-    "describesCurrentBehavior": "the reply describes what is currently happening, such as the observed behavior or output",
+    "describesCurrentBehavior": "the reply says what the code or program does today, before any change, as in \"Today the runner starts Claude with only two plugin folders\"",
     "describesUnconfirmedResult": "the reply provides a result or answer that is not yet confirmed or verified",
-    "describesStateChecked": "the reply says that something was checked, tested, run, or verified",
-    "describesStateNotChecked": "the reply says that something was not checked, not tested, not run, or not verified",
+    "describesStateChecked": "the reply reports the result of a check that ran during this turn, such as a test result, a count, or a command output, as in \"3 pass, 0 fail\"",
+    "describesStateNotChecked": "the reply says in plain words that a check was not run, as in \"I did not run the test\" or \"not verified\"",
     "describesWaitingForSubagent": "the reply says a helper, subagent, or background job is still running and the reply waits for its result",
     "describesCreatingTasks": "the reply says that new tasks are being created during the turn",
     "describesSessionInformation": "the reply provides information (state, answers or questions from another agent, or other relevant details) about this session, this message, another session, or other relevant context",
@@ -21,8 +21,8 @@
     "leavesOpenDecision": "the reply leaves a choice that nobody has made yet, for example two options with no pick, or a choice the user must still make",
     "describesUserDecision": "the reply describes a decision made by the user",
     "describesStartingMultiStepWork": "the reply announces work requiring multiple steps to complete has begun",
-    "describesStepInMultistepWork": "the reply describes a step or part of a multi-step work process",
-    "mentionsExistingTask": "the reply mentions an existing task that is already on a task list or to-do list: pending, in progress, or still to do"
+    "describesStepInMultistepWork": "the reply lists one step of a plan that has several ordered steps, as in \"2. Run the tests\" in a list of phases",
+    "mentionsExistingTask": "the reply says that the work was already on a task list or was already being done before this turn, as in \"a helper was already doing it\"; a task number alone is not enough"
   },
   "replies": [
     {
