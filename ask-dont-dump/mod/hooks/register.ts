@@ -55,7 +55,7 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
   if (e.reason !== 'answer')
     return next(e);
 
-  const rubric =await $.fs.read(`${$.plugin.root}/${RUBRIC_FILE_NAME}`);
+  const rubric = await $.fs.read(`${$.plugin.root}/${RUBRIC_FILE_NAME}`);
   const hookInput = JSON.stringify({ last_assistant_message: e.answer, stop_hook_active: isAnsweringCheckerReason });
   const checkerPrompt = rubric.split(ARGUMENTS_PLACEHOLDER).join(hookInput);
   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt: checkerPrompt, timeoutMs: CHECKER_TIMEOUT_MS });
