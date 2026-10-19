@@ -1,7 +1,7 @@
 // Stranger test: 47 hook rows, 22 live in tmux and 25 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { tmux_lib } from "./external/tmux_lib/tmux_lib.ts";
@@ -197,6 +197,17 @@ function copyUncommittedChanges(clone: string): void {
   execFileSync("git", ["apply", "--allow-empty"], { cwd: clone, input: patch });
 }
 
+export function copyUntrackedFiles(repo: string, clone: string): void {
+  const listing = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  for (const relativePath of listing.split("\0")) {
+    if (relativePath === "")
+      continue;
+    const target = path.join(clone, relativePath);
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(path.join(repo, relativePath), target);
+  }
+}
+
 export function createProject(project: string): void {
   mkdirSync(project);
   executeCommand(["git", "init", "-q"], project);
@@ -240,6 +251,7 @@ function buildBed(bed: string, config: string): void {
   mkdirSync(bed, { recursive: true });
   executeCommand(["git", "clone", "-q", REPO, clone]);
   copyUncommittedChanges(clone);
+  copyUntrackedFiles(REPO, clone);
   executeCommand(["npm", "install"], clone);
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
   writeUserDispatch(clone, bed, config);
@@ -923,6 +935,7 @@ async function executeMain(): Promise<void> {
   process.exit(allPassed ? 0 : 1);
 }
 
+export { buildBed, launchSession, readRecords, executeTurn, executePromptOnlyTurn, clearToIdlePrompt, findEvidence }; // TEMP-EXPERIMENT
 if (import.meta.main) {
   await executeMain();
 }
