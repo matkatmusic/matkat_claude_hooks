@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { reflowSource } from "./reflowComments.ts";
+import { applyReflowToSource } from "./reflowComments.ts";
 
 type Block = { startLine: number; endLine: number; source: string };
 const load = (name: string): Block[] =>
@@ -32,27 +32,27 @@ for (const { label, blocks, open, close, markers } of KINDS) {
     // A block whose first body character opens a tag is commented-out markup, not prose.
     if (/^</.test(source.trimStart().slice(open.length).trimStart())) {
       test(`${name}: commented-out markup keeps its exact bytes`, () => {
-        assert.deepEqual(reflowSource(source), { text: source, runs: [] });
+        assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
       });
       continue;
     }
 
     test(`${name}: every word survives, in order`, () => {
-      assert.deepEqual(words(reflowSource(source).text), words(source));
+      assert.deepEqual(words(applyReflowToSource(source).text), words(source));
     });
 
     test(`${name}: markers stay intact and balanced`, () => {
-      const { text } = reflowSource(source);
+      const { text } = applyReflowToSource(source);
       assert.equal(text.split(open).length - 1, 1);
       assert.equal(text.split(close).length - 1, 1);
     });
 
     test(`${name}: paragraph breaks are preserved`, () => {
-      assert.equal(paragraphs(reflowSource(source).text, markers), paragraphs(source, markers));
+      assert.equal(paragraphs(applyReflowToSource(source).text, markers), paragraphs(source, markers));
     });
 
     test(`${name}: delimiters get their own lines, body indented two`, () => {
-      const lines = reflowSource(source).text.split("\n");
+      const lines = applyReflowToSource(source).text.split("\n");
       const indent = source.match(/^\s*/)![0];
       assert.equal(lines.at(0), `${indent}${open}`);
       assert.equal(lines.at(-1), `${indent}${close}`);
@@ -62,38 +62,38 @@ for (const { label, blocks, open, close, markers } of KINDS) {
     });
 
     test(`${name}: each paragraph collapses to one line`, () => {
-      const bodyLines = reflowSource(source).text.split("\n").filter((line) => line.trim() !== "");
+      const bodyLines = applyReflowToSource(source).text.split("\n").filter((line) => line.trim() !== "");
       assert.equal(bodyLines.length, paragraphs(source, markers) + 3);
     });
 
     test(`${name}: reflowing twice changes nothing`, () => {
-      const once = reflowSource(source).text;
-      assert.equal(reflowSource(once).text, once);
+      const once = applyReflowToSource(source).text;
+      assert.equal(applyReflowToSource(once).text, once);
     });
 
     test(`${name}: nothing is reported as joined on a second pass`, () => {
-      const once = reflowSource(source).text;
-      assert.deepEqual(reflowSource(once).runs.filter((run) => run.joined), []);
+      const once = applyReflowToSource(source).text;
+      assert.deepEqual(applyReflowToSource(once).runs.filter((run) => run.joined), []);
     });
   }
 }
 
 test("commented-out CSS inside a block is left alone", () => {
   const source = ["  /* .bubble {", "       color: red;", "     } */"].join("\n");
-  assert.deepEqual(reflowSource(source), { text: source, runs: [] });
+  assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
 });
 
 test("a JSDoc-style block is left alone", () => {
   const source = ["/**", " * Does a thing that wraps", " * across two lines.", " */"].join("\n");
-  assert.deepEqual(reflowSource(source), { text: source, runs: [] });
+  assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
 });
 
 test("commented-out markup inside an HTML comment is left alone", () => {
   const source = ['  <!-- <div class="x">', "         <span>hi</span>", "       </div> -->"].join("\n");
-  assert.deepEqual(reflowSource(source), { text: source, runs: [] });
+  assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
 });
 
 test("a one-line commented-out element keeps its exact bytes", () => {
   const source = '  <!-- <button id="load">Load</button> -->';
-  assert.deepEqual(reflowSource(source), { text: source, runs: [] });
+  assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
 });

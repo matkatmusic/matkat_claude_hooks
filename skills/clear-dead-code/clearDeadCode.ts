@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
-import { looksLikeCode } from "../../reflow-comments/reflowComments.ts";
+import { isBodyCode } from "../../reflow-comments/reflowComments.ts";
 import { BODY_LOOKS_LIKE_CODE } from "../../reflow-comments/resultCodes.ts";
 
 const SLASH_COMMENT = /^\s*\/\/(?!\/)/;
@@ -42,7 +42,7 @@ function findLineKind(line: string, isMermaid: boolean): LineKind {
     const isCode = isMermaidCode(body);
     return isCode ? "code" : "prose";
   }
-  const isCode = looksLikeCode(body) === BODY_LOOKS_LIKE_CODE;
+  const isCode = isBodyCode(body) === BODY_LOOKS_LIKE_CODE;
   return isCode ? "code" : "prose";
 }
 

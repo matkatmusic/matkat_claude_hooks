@@ -38,16 +38,17 @@ export type Reflow = {
 };
 
 // Trailing `;` and `)` are left out: wrapped prose ends lines that way too.
-export function looksLikeCode(body: string): number {
-  const isCode = (
-    /[{}]$|=>$/.test(body) ||
-    /^[)}\]]/.test(body) ||
-    /^<[/!a-zA-Z]/.test(body) || // commented-out markup
-
-    (KEYWORD.test(body) && (/^\w+\s*\(/.test(body) || /[;{,:]$/.test(body))) ||
-    /^[\w.$]+\s*[:=].*[,;:{]$/.test(body) ||
-    /^[\w.$]+\(.*[;,){]$/.test(body)
-  );
+export function isBodyCode(body: string): number {
+  const endsWithBraceOrArrow = /[{}]$|=>$/.test(body);
+  const startsWithCloser = /^[)}\]]/.test(body);
+  const startsWithMarkup = /^<[/!a-zA-Z]/.test(body); // commented-out markup
+  const startsWithKeyword = KEYWORD.test(body);
+  const startsWithCall = /^\w+\s*\(/.test(body);
+  const endsWithPunctuation = /[;{,:]$/.test(body);
+  const isKeywordStatement = startsWithKeyword && (startsWithCall || endsWithPunctuation);
+  const isAssignment = /^[\w.$]+\s*[:=].*[,;:{]$/.test(body);
+  const isCall = /^[\w.$]+\(.*[;,){]$/.test(body);
+  const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall;
   return isCode ? BODY_LOOKS_LIKE_CODE : BODY_LOOKS_LIKE_PROSE;
 }
 
@@ -77,7 +78,7 @@ function isRunProse(bodies: string[]): number {
   if (startsWithDirective)
     return RUN_IS_NOT_PROSE;
   for (const body of bodies) {
-    const bodyIsCode = looksLikeCode(body) !== BODY_LOOKS_LIKE_PROSE;
+    const bodyIsCode = isBodyCode(body) !== BODY_LOOKS_LIKE_PROSE;
     if (bodyIsCode)
       return RUN_IS_NOT_PROSE;
   }
@@ -115,7 +116,7 @@ function buildReflowBlock(lines: string[], start: number, outLen: number) {
     bodies.push((n === raw.length - 1 ? stripped.replace(kind.stripClose, "") : stripped).trim());
   }
   for (const body of bodies) {
-    const isCodeBody = body !== "" && looksLikeCode(body) === BODY_LOOKS_LIKE_CODE;
+    const isCodeBody = body !== "" && isBodyCode(body) === BODY_LOOKS_LIKE_CODE;
     if (isCodeBody)
       return null;
   }
@@ -172,7 +173,7 @@ function buildReflowBlock(lines: string[], start: number, outLen: number) {
   return { end, out, runs };
 }
 
-export function reflowSource(source: string): { text: string; runs: Reflow[] } {
+export function applyReflowToSource(source: string): { text: string; runs: Reflow[] } {
   const lines = source.split("\n");
   const out: string[] = [];
   const runs: Reflow[] = [];
@@ -312,7 +313,7 @@ export function applyReflowToFile(path: string): Reflow[] {
       return [];
   }
   const source = readFileSync(path, "utf8");
-  const { text, runs } = reflowSource(source);
+  const { text, runs } = applyReflowToSource(source);
   const needsWrite = runs.length > 0 && text !== source;
   if (needsWrite)
     writeFileSync(path, text);
