@@ -1,30 +1,28 @@
 flowchart TD
-    start([For each line of the reply]) --> q1{does = question,<br/>offer, or choices?}
-    q1 -- yes --> ASK
-    q1 -- no --> q2{who = user<br/>and when = later?}
-    q2 -- yes --> q2a{Did the user ask<br/>for this?}
-    q2a -- yes --> OK
-    q2a -- no --> ASK
-    q2 -- no --> q3{does = guess-or-gap?}
-    q3 -- yes --> ASK
-    q3 -- no --> q4{who = me<br/>and when = later?}
-    q4 -- yes --> onList{Already on the<br/>task list?}
-    q4 -- no --> q5{does = plan, who = me,<br/>and when = now?}
-    q5 -- yes --> onList
-    q5 -- no --> q6{who = helper<br/>and when = now?}
-    q6 -- yes --> OK
-    q6 -- no --> OK
-    onList -- yes --> OK
-    onList -- no --> TASK
+    start([TypeSafe rates the whole reply]) --> askUser{Does the reply ask the user a question,<br/>offer to do something, or give choices<br/>with no pick?}
+    askUser -- yes --> needAsk
+    askUser -- no --> tellsUser{Does the reply tell the user<br/>to do something after this turn?}
+    tellsUser -- yes --> userAsked{Did the user ask for that instruction,<br/>for example &quot;give me the command&quot;?}
+    userAsked -- no --> needAsk
+    userAsked -- yes --> guess
+    tellsUser -- no --> guess{Does the reply guess at a result,<br/>or say that something was not checked<br/>or not confirmed?}
+    guess -- yes --> needAsk
+    guess -- no --> noAsk
 
-    ASK[ASK: block, use AskUserQuestion]
-    TASK[TASK: block, use TaskCreate]
-    OK[OK: no block]
+    needAsk[Mark: ask the user] --> laterWork
+    noAsk[No questions for the user] --> laterWork
 
-    ASK --> reply
-    TASK --> reply
-    OK --> reply
-    reply{Reply result:<br/>any ASK line?} -- yes --> blockAsk([Block: ask the user])
-    reply -- no --> anyTask{Any TASK line?}
-    anyTask -- yes --> blockTask([Block: add tasks])
-    anyTask -- no --> pass([Do not block])
+    laterWork{Does the reply say that Claude<br/>will do more work after this turn?}
+    laterWork -- yes --> onList
+    laterWork -- no --> startsSteps{Does the reply say that Claude<br/>starts work with several steps now?}
+    startsSteps -- yes --> onList
+    startsSteps -- no --> noTask
+    onList{Is that work already<br/>on the task list?}
+    onList -- no --> needTask[Mark: add tasks]
+    onList -- yes --> noTask[No new tasks]
+
+    needTask --> result
+    noTask --> result
+    result{Is any mark set?}
+    result -- no --> pass([Do not block])
+    result -- yes --> block([Block the reply:<br/>ask the user with AskUserQuestion for an ask mark,<br/>add tasks with TaskCreate for a task mark])
