@@ -1,3 +1,5 @@
+# Disabled: replaced by tests/run_stranger.ts.
+r'''
 #!/usr/bin/env python3
 """Automated stranger test: runs the 14-row manual checklist in tmux and prints PASS or FAIL per row.
 
@@ -458,3 +460,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''

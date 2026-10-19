@@ -133,6 +133,20 @@ export function writeUserDispatch(clone: string, bed: string, config: string): v
   writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify({ enablements, values }, null, 2) + "\n");
 }
 
+export function setEnablement(clone: string, hook: string, event: string, on: boolean): void {
+  const userDispatchPath = path.join(clone, "dispatcher", "user-dispatch.json");
+  const userDispatch = JSON.parse(readFileSync(userDispatchPath, "utf8"));
+  userDispatch.enablements[hook][event] = on;
+  writeFileSync(userDispatchPath, JSON.stringify(userDispatch, null, 2) + "\n");
+}
+
+export function setValue(clone: string, section: string, key: string, value: string): void {
+  const userDispatchPath = path.join(clone, "dispatcher", "user-dispatch.json");
+  const userDispatch = JSON.parse(readFileSync(userDispatchPath, "utf8"));
+  userDispatch.values[section][key] = value;
+  writeFileSync(userDispatchPath, JSON.stringify(userDispatch, null, 2) + "\n");
+}
+
 export function modifyIdleMinutes(clone: string): void {
   const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
   const source = readFileSync(registerPath, "utf8");
@@ -482,6 +496,19 @@ function executeFirstSession(rows: Row[], bed: string, config: string): Session 
   addRow(rows, 3, "status-line (subagent)", getSessionModel(session), subagentLine !== undefined, subagentLine !== undefined ? subagentLine : "no subagent line seen on screen");
 
   for (const [number, hook, prompt, needle, event] of SESSION_ONE_ROWS) {
+    if (number === 4) {
+      const clone = path.join(bed, "claude_hooks");
+      setEnablement(clone, hook, "PreToolUse", false);
+      const [offRecords] = executeTurn(session, prompt);
+      const offFound = findEvidence(offRecords, needle, event);
+      rmSync(path.join(bed, "project", "hello.txt"), { force: true });
+      setEnablement(clone, hook, "PreToolUse", true);
+      const [onRecords] = executeTurn(session, prompt);
+      const onFound = findEvidence(onRecords, needle, event);
+      const switchOk = offFound === undefined && onFound !== undefined;
+      addRow(rows, number, hook, getSessionModel(session), switchOk, `hook off: message ${offFound === undefined ? "absent" : "PRESENT"}; hook on: message ${onFound !== undefined ? "present" : "ABSENT"}: ${onFound !== undefined ? onFound : ""}`);
+      continue;
+    }
     const [records] = executeTurn(session, prompt);
     addHookRow(rows, session, number, hook, records, needle, event);
     if (number === 5) {
@@ -557,15 +584,15 @@ async function executeMain(): Promise<void> {
   const rows: Row[] = [];
   try {
     buildBed(bed, config);
-    for (const result of await executeDirectRows(bed, config)) {
-      addRow(rows, result.number, result.hook, null, result.ok, result.evidence);
-    }
     const first = executeFirstSession(rows, bed, config);
     tmux_lib.tmux_killPane(first.name);
     const second = executeSecondSession(rows, bed, config);
     const hasExited = tmux_lib.tmux_waitForPaneClose(second.name, IDLE_MS / 1000 + IDLE_MARGIN_S);
     const stateFiles = listFilesWithSuffix(path.join(bed, "project", ".idleState"), ".json");
     executeThirdSession(rows, bed, config, second, stateFiles, hasExited);
+    for (const result of await executeDirectRows(bed, config)) {
+      addRow(rows, result.number, result.hook, null, result.ok, result.evidence);
+    }
   }
   finally {
     tmux_lib.tmux_killOtherPanes(getTmuxPane());
