@@ -81,6 +81,7 @@ test('idle chat writes a state file, exits, then drops prompts', async ($, on) =
   expect(stateFile?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/)
   expect(JSON.parse(stateFile?.text ?? '')).toEqual({
     ...STATE_OBJECT,
+    sessionId: 'abcdef1234567890',
     runningPrograms: [
       { command: 'bun run server', purpose: 'serves the app', pids: [123, 456], isRunning: true },
       { command: 'bun run watcher', purpose: 'watches files', pids: [], isRunning: false },

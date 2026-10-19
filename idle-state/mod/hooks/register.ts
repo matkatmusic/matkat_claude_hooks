@@ -181,6 +181,7 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
         programsAreRunning = true;
     }
 
+    state.sessionId = sessionId;
     await $.fs.write(path, JSON.stringify(state, null, 2) + '\n');
 
     stateFilePath = path;
