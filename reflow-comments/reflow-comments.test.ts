@@ -1,4 +1,4 @@
-// PostToolUse reflow hook: rewrites the edited file in place and reports it. Run: node --test "tests/*.test.ts"
+// PostToolUse reflow hook: rewrites the edited file in place and reports it. Run: node --test "*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dirname, "..", "scripts", "hooks", "reflow-comments-post.ts");
+const SCRIPT = join(import.meta.dirname, "reflow-comments.ts");
 
 function run(toolInput: object): string {
   return execFileSync("node", ["--no-inspect", SCRIPT], {

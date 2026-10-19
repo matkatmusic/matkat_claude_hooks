@@ -1,9 +1,9 @@
-// One test per block comment from plans/layer2-mockup/index.html. Run: node --test "tests/*.test.ts"
+// One test per block comment from plans/layer2-mockup/index.html. Run: node --test "*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { reflowSource } from "../scripts/hooks/reflowComments.ts";
+import { reflowSource } from "./reflowComments.ts";
 
 type Block = { startLine: number; endLine: number; source: string };
 const load = (name: string): Block[] =>

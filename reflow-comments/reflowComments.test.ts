@@ -1,11 +1,11 @@
-// reflowComments joins wrapped prose, skips commented-out code. Run: node --test "tests/*.test.ts"
+// reflowComments joins wrapped prose, skips commented-out code. Run: node --test "*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describeReflows, needsRewrite, reflowFile, reflowSource } from "../scripts/hooks/reflowComments.ts";
-import { REWRITE_NOT_NEEDED } from "../scripts/shared/resultCodes.ts";
+import { applyReflowToFile, formatReflows, isRewriteNeeded, reflowSource } from "./reflowComments.ts";
+import { REWRITE_NOT_NEEDED } from "./resultCodes.ts";
 
 const WRAPPED = [
   "// Nothing to say unless one of those files still has unstaged work. A porcelain",
@@ -79,7 +79,7 @@ test("a ponytail: note is joined like prose but never flagged for truncation", (
   ]);
   assert.deepEqual(runs.map((r) => [r.line, r.joined, r.capped]), [[1, true, true], [2, true, false]]);
 
-  const payload = JSON.parse(describeReflows([{ path: "/tmp/a.ts", runs }]));
+  const payload = JSON.parse(formatReflows([{ path: "/tmp/a.ts", runs }]));
   assert.deepEqual(payload.rewritten, [{ file: "/tmp/a.ts", lines: [1, 2] }]);
   assert.deepEqual(payload.files, [
     { path: "/tmp/a.ts", lines: [1], show: "nl -ba '/tmp/a.ts' | sed -n '1p'" },
@@ -99,7 +99,7 @@ test("an already-flat comment over the cap is reported but not rewritten", () =>
   assert.equal(text, [flat, "const x = 1;"].join("\n"));
   assert.deepEqual(runs, [{ start: 1, end: 1, line: 1, words: 25, joined: false, capped: true }]);
 
-  const payload = JSON.parse(describeReflows([{ path: "/tmp/a.ts", runs }]));
+  const payload = JSON.parse(formatReflows([{ path: "/tmp/a.ts", runs }]));
   assert.equal(payload.rewritten, undefined);
   assert.equal(payload.information, undefined);
   assert.deepEqual(payload.files, [
@@ -153,9 +153,15 @@ test("single-line comments, blank lines, and directives are untouched", () => {
   assert.deepEqual(reflowSource(source), { text: source, runs: [] });
 });
 
-test("mermaid %% comments are joined and keep their marker", () => {
+test("mermaid %% comments are left unchanged", () => {
   const source = ["%% one idea", "%% split over two lines"].join("\n");
-  assert.equal(reflowSource(source).text, "%% one idea split over two lines");
+  assert.equal(reflowSource(source).text, source);
+});
+
+test("mermaid %% lines are never joined", () => {
+  const source =
+    "%% Q_ABOUT --> Q_CHOICE_ABOUT_WORK --> Q_ABOUT_WORK_SCORE\n%% Q_ABOUT --> Q_CHOICE_ABOUT_CHECK --> Q_ABOUT_CHECK_SCORE\n%% old layer notes go here\n%% more notes on the same layer\n";
+  assert.deepEqual(reflowSource(source), { text: source, runs: [] });
 });
 
 test("a %% run does not absorb an adjacent // run", () => {
@@ -168,7 +174,7 @@ test("describeReflows reports every rewritten line plus the over-cap ones", () =
     { start: 1, end: 2, line: 1, words: 40, joined: true, capped: true },
     { start: 9, end: 10, line: 8, words: 5, joined: true, capped: true },
   ];
-  const payload = JSON.parse(describeReflows([{ path: "/tmp/a.ts", runs }]));
+  const payload = JSON.parse(formatReflows([{ path: "/tmp/a.ts", runs }]));
   assert.equal(payload.information, "the following lines were rewritten by a hook after your edit");
   assert.deepEqual(payload.rewritten, [{ file: "/tmp/a.ts", lines: [1, 8] }]);
   assert.match(payload.instruction, /under 20 words/);
@@ -179,15 +185,15 @@ test("describeReflows reports every rewritten line plus the over-cap ones", () =
 
 test("all-short reflows report the rewrite but carry no instruction", () => {
   const runs = reflowSource(["// a wrapped", "// short note"].join("\n")).runs;
-  const payload = JSON.parse(describeReflows([{ path: "/tmp/a.ts", runs }]));
+  const payload = JSON.parse(formatReflows([{ path: "/tmp/a.ts", runs }]));
   assert.deepEqual(payload.rewritten, [{ file: "/tmp/a.ts", lines: [1] }]);
   assert.equal(payload.instruction, undefined);
   assert.equal(payload.files, undefined);
-  assert.equal(needsRewrite([{ path: "/tmp/a.ts", runs }]), REWRITE_NOT_NEEDED);
+  assert.equal(isRewriteNeeded([{ path: "/tmp/a.ts", runs }]), REWRITE_NOT_NEEDED);
 });
 
 test("markdown files are skipped", () => {
-  assert.deepEqual(reflowFile("path.md"), []);
+  assert.deepEqual(applyReflowToFile("path.md"), []);
 });
 
 test("an active tackle-tasks worktree is skipped", () => {
@@ -197,13 +203,13 @@ test("an active tackle-tasks worktree is skipped", () => {
   const file = join(worktree, "a.ts");
   writeFileSync(file, WRAPPED);
   writeFileSync(`${worktree}.lease`, JSON.stringify({ pid: 1, runId: "x" }));
-  assert.deepEqual(reflowFile(file), []);
+  assert.deepEqual(applyReflowToFile(file), []);
   assert.equal(readFileSync(file, "utf8"), WRAPPED);
 });
 
 test("the show command lists every over-cap line in order", () => {
   const runs = [12, 40, 7].map((line) => ({ start: line, end: line + 1, line, words: 30, joined: true, capped: true }));
-  const [file] = JSON.parse(describeReflows([{ path: "/a b/c.ts", runs }])).files;
+  const [file] = JSON.parse(formatReflows([{ path: "/a b/c.ts", runs }])).files;
   assert.equal(file.show, "nl -ba '/a b/c.ts' | sed -n '12p;40p;7p'");
 });
 
