@@ -1,4 +1,4 @@
-// Stranger test: 43 hook rows, 18 live in tmux and 25 direct; run with bun.
+// Stranger test: 47 hook rows, 22 live in tmux and 25 direct; run with bun.
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -56,6 +56,12 @@ const CHECKER_WAIT_S = 20;
 const ASK_DONT_DUMP_PROMPT = "Name the files in this folder in one short line. Then end your reply with this last line: Task #20 is still open.";
 const IDLE_PROGRAM_SCRIPT = "server+80.sh";
 const IDLE_PROGRAM_PATTERN = "server\\+80\\.sh";
+const TASK_LIST_ID_MESSAGE = "CLAUDE_CODE_TASK_LIST_ID is not set";
+const NOT_WIRED_TEXT = "turn-counter hook is not wired";
+const TURN_COUNTER_EVENTS = ["SessionStart", "Stop", "StopFailure", "SessionEnd"];
+const PROMPT_FILES = ["hello.txt", "plans/test-plan.md", "bad.ts", "add.ts", "add.test.ts", "note.txt"];
+
+type TurnRunner = (session: Session, prompt: string) => JsonRecord[];
 
 // (row, hook, prompt, text the hook must produce, hook event or null for a tool error)
 const SESSION_ONE_ROWS: HookRow[] = [
@@ -65,6 +71,9 @@ const SESSION_ONE_ROWS: HookRow[] = [
   [7, "nudge-task-list", 'Reply with one sentence that has the words "starting on" in it, then stop.', "You are starting work on a task", "Stop"],
   [8, "unlisted-items", 'Reply with one line only: "next step: build the login page". Do not make any task.', "These items are not on the task list", "Stop"],
 ];
+const PONYTAIL_ROW: HookRow = [10, "ponytail-ultra-nudge", "hello", "Ponytail ultra has not been invoked yet", "UserPromptSubmit"];
+const CLARIFY_ROW: HookRow = [11, "clarify-ambiguous", "fix it", "AMBIGUITY GATE", "UserPromptSubmit"];
+const PARENT_ROW: HookRow = [15, "block-parent-edits", "Create a file note.txt that says hi.", "Parent session must not edit files", null];
 const SESSION_TWO_ROWS: HookRow[] = [
   [12, "typecheck-on-stop", 'Use the Write tool to create bad.ts with this one line: const x: number = "hello";', "error TS2322", "Stop"],
   [13, "debt-ratchet", "Use the Write tool to create add.ts with a function called add that adds two numbers. No test file.", "Style debt is", "Stop"],
@@ -288,7 +297,8 @@ function launchSession(model: string, bed: string, config: string): Session {
 function findJsonl(session: Session): string | null {
   if (session.jsonlPath === null) {
     const expectedPath = path.join(session.projectsDir, `${session.id}.jsonl`);
-    if (existsSync(expectedPath)) {
+    const hasExpectedFile = existsSync(expectedPath);
+    if (hasExpectedFile) {
       session.jsonlPath = expectedPath;
     }
     // for (const jsonlFile of listFilesWithSuffix(session.projectsDir, ".jsonl")) {
@@ -506,6 +516,34 @@ function printTable(rows: Row[]): void {
 
 // ---------- the checklist ----------
 
+function executeFullTurn(session: Session, prompt: string): JsonRecord[] {
+  const [records] = executeTurn(session, prompt);
+  return records;
+}
+
+function removePromptFiles(bed: string): void {
+  for (const promptFile of PROMPT_FILES) {
+    rmSync(path.join(bed, "project", promptFile), { force: true });
+  }
+}
+
+// Same prompt twice: hook off must show no message, hook on must show it. Returns the added row.
+function executeOffOnPair(rows: Row[], session: Session, bed: string, hookRow: HookRow, runTurn: TurnRunner): Row {
+  const [number, hook, prompt, needle, event] = hookRow;
+  const clone = path.join(bed, "claude_hooks");
+  const enablementEvent = event ?? "PreToolUse";
+  setEnablement(clone, hook, enablementEvent, false);
+  const offRecords = runTurn(session, prompt);
+  const offFound = findEvidence(offRecords, needle, event);
+  removePromptFiles(bed);
+  setEnablement(clone, hook, enablementEvent, true);
+  const onRecords = runTurn(session, prompt);
+  const onFound = findEvidence(onRecords, needle, event);
+  const switchOk = offFound === undefined && onFound !== undefined;
+  addRow(rows, number, hook, getSessionModel(session), switchOk, `hook off: message ${offFound === undefined ? "absent" : "PRESENT"}; hook on: message ${onFound !== undefined ? "present" : "ABSENT"}: ${onFound !== undefined ? onFound : ""}`);
+  return rows[rows.length - 1]!;
+}
+
 function getPaneTurns(name: string): number | null {
   const found = TURNS_RE.exec(tmux_lib.tmux_capturePane(name));
   if (found === null) {
@@ -577,6 +615,22 @@ function executeContextExitRow(rows: Row[], session: Session, bed: string): void
   const clone = path.join(bed, "claude_hooks");
   writeFillerFiles(path.join(bed, "project"));
   setEnablement(clone, "idle-state", "turn.complete", false);
+  // Off then on with a level equal to the current percent: no warning first, then a toast.
+  waitForToastGone(session.name);
+  const pairPercent = getPaneContextPercent(session.name);
+  const levelBeforePair = readWarningLevel(tmux_lib.tmux_capturePane(session.name));
+  setEnablement(clone, "context-exit", "turn.complete", false);
+  setValue(clone, "context-exit", "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS", String(pairPercent));
+  executeTurn(session, "say hi");
+  const offScreen = tmux_lib.tmux_capturePane(session.name);
+  const hasOffToast = TOAST_BOX_RE.test(offScreen);
+  const hasOffLevelChange = readWarningLevel(offScreen) !== levelBeforePair;
+  const hasOffMessage = hasOffToast || hasOffLevelChange;
+  setEnablement(clone, "context-exit", "turn.complete", true);
+  executeTurn(session, "say hi");
+  const hasOnMessage = TOAST_BOX_RE.test(tmux_lib.tmux_capturePane(session.name));
+  waitForToastGone(session.name);
+  const switchOk = !hasOffMessage && hasOnMessage;
   const startPercent = getPaneContextPercent(session.name);
   const levels: number[] = [];
   for (let step = 1; step <= 3; step++) {
@@ -615,8 +669,8 @@ function executeContextExitRow(rows: Row[], session: Session, bed: string): void
   }
   setEnablement(clone, "idle-state", "turn.complete", true);
   const isInOrder = seenLevels.join(",") === levels.join(",");
-  const ok = isInOrder && toastOnEachCrossing && noRepeat;
-  addRow(rows, 43, "context-exit", getSessionModel(session), ok, `context ${startPercent}%, levels set ${levels.join(",")}; warnings seen in order: ${seenLevels.join(",")}; toast shown at each crossing: ${toastOnEachCrossing ? "True" : "False"}; no second toast on a later turn at the same level: ${noRepeat ? "True" : "False"}; files read: ${fillerIndex}`);
+  const ok = isInOrder && toastOnEachCrossing && noRepeat && switchOk;
+  addRow(rows, 43, "context-exit", getSessionModel(session), ok, `hook off: message ${hasOffMessage ? "PRESENT" : "absent"}; hook on: message ${hasOnMessage ? "present" : "ABSENT"}; context ${startPercent}%, levels set ${levels.join(",")}; warnings seen in order: ${seenLevels.join(",")}; toast shown at each crossing: ${toastOnEachCrossing ? "True" : "False"}; no second toast on a later turn at the same level: ${noRepeat ? "True" : "False"}; files read: ${fillerIndex}`);
 }
 
 function findPluginPromptRecord(records: JsonRecord[], pluginName: string): JsonRecord | undefined {
@@ -705,27 +759,13 @@ function executeFirstSession(rows: Row[], bed: string, config: string): Session 
   const [, subagentLine] = executeTurn(session, "Start one subagent that lists the files in this folder.", SUBAGENT_LINE_RE);
   addRow(rows, 3, "status-line (subagent)", getSessionModel(session), subagentLine !== undefined, subagentLine !== undefined ? subagentLine : "no subagent line seen on screen");
 
-  for (const [number, hook, prompt, needle, event] of SESSION_ONE_ROWS) {
-    if (number === 4) {
-      const clone = path.join(bed, "claude_hooks");
-      setEnablement(clone, hook, "PreToolUse", false);
-      const [offRecords] = executeTurn(session, prompt);
-      const offFound = findEvidence(offRecords, needle, event);
-      rmSync(path.join(bed, "project", "hello.txt"), { force: true });
-      setEnablement(clone, hook, "PreToolUse", true);
-      const [onRecords] = executeTurn(session, prompt);
-      const onFound = findEvidence(onRecords, needle, event);
-      const switchOk = offFound === undefined && onFound !== undefined;
-      addRow(rows, number, hook, getSessionModel(session), switchOk, `hook off: message ${offFound === undefined ? "absent" : "PRESENT"}; hook on: message ${onFound !== undefined ? "present" : "ABSENT"}: ${onFound !== undefined ? onFound : ""}`);
-      continue;
-    }
-    const [records] = executeTurn(session, prompt);
-    addHookRow(rows, session, number, hook, records, needle, event);
-    if (number === 5) {
+  for (const hookRow of SESSION_ONE_ROWS) {
+    const row = executeOffOnPair(rows, session, bed, hookRow, executeFullTurn);
+    const isNpmTestRow = hookRow[0] === 5;
+    if (isNpmTestRow) {
       const logFiles = listFilesWithSuffix(path.join(bed, "npm-test-logs"), "");
-      const lastRow = rows[rows.length - 1]!;
-      lastRow.ok = lastRow.ok && logFiles.length > 0;
-      lastRow.evidence += ` | log files: ${logFiles.length}`;
+      row.ok = row.ok && logFiles.length > 0;
+      row.evidence += ` | log files: ${logFiles.length}`;
     }
   }
   executeAskDontDumpRows(rows, session, bed);
@@ -733,27 +773,41 @@ function executeFirstSession(rows: Row[], bed: string, config: string): Session 
   return session;
 }
 
+// Rows 47 and 48: session hooks cannot switch mid-session, so this session starts with them off.
+function addSessionOffRows(rows: Row[], session: Session): void {
+  const startMessage = findEvidence(readRecords(session), TASK_LIST_ID_MESSAGE, "SessionStart");
+  const hasStartMessage = startMessage !== undefined;
+  addRow(rows, 47, "check-task-list-id (off)", getSessionModel(session), !hasStartMessage, `session started with the hook off: message ${hasStartMessage ? "PRESENT" : "absent"}`);
+  const screen = tmux_lib.tmux_capturePane(session.name);
+  const turnsMatch = TURNS_RE.exec(screen);
+  const hasTurnCount = turnsMatch !== null;
+  const hasNotWiredText = screen.includes(NOT_WIRED_TEXT);
+  const turnCounterOff = !hasTurnCount && hasNotWiredText;
+  addRow(rows, 48, "turn-counter (off)", getSessionModel(session), turnCounterOff, `session ran with the hook off: turn count on screen: ${hasTurnCount ? "PRESENT" : "absent"}; not-wired note on screen: ${hasNotWiredText ? "present" : "ABSENT"}`);
+}
+
 function executeSecondSession(rows: Row[], bed: string, config: string): Session {
   const project = path.join(bed, "project");
+  const clone = path.join(bed, "claude_hooks");
+  setEnablement(clone, "check-task-list-id", "SessionStart", false);
+  for (const turnCounterEvent of TURN_COUNTER_EVENTS) {
+    setEnablement(clone, "turn-counter", turnCounterEvent, false);
+  }
   const session = launchSession(SONNET, bed, config);
-  const [helloRecords] = executeTurn(session, "hello");
+  executeOffOnPair(rows, session, bed, PONYTAIL_ROW, executeFullTurn);
   validateSessionModel(session, "claude-sonnet-5");
-  addHookRow(rows, session, 10, "ponytail-ultra-nudge", helloRecords, "Ponytail ultra has not been invoked yet", "UserPromptSubmit");
+  addSessionOffRows(rows, session);
 
-  for (const [number, hook, prompt, needle, event] of SESSION_TWO_ROWS) {
-    const [records] = executeTurn(session, prompt);
-    addHookRow(rows, session, number, hook, records, needle, event);
-    rmSync(path.join(project, "bad.ts"), { force: true });
-    rmSync(path.join(project, "add.ts"), { force: true });
-    rmSync(path.join(project, "add.test.ts"), { force: true });
+  for (const hookRow of SESSION_TWO_ROWS) {
+    executeOffOnPair(rows, session, bed, hookRow, executeFullTurn);
+    removePromptFiles(bed);
   }
 
-  const fixItRecords = executePromptOnlyTurn(session, "fix it");
-  const gateFound = findEvidence(fixItRecords, "AMBIGUITY GATE", "UserPromptSubmit");
+  const clarifyRow = executeOffOnPair(rows, session, bed, CLARIFY_ROW, executePromptOnlyTurn);
   const fixItJdiRecords = executePromptOnlyTurn(session, "fix it jdi");
   const gateInOptOut = findEvidence(fixItJdiRecords, "AMBIGUITY GATE", "UserPromptSubmit");
-  const clarifyOk = gateFound !== undefined && gateInOptOut === undefined;
-  addRow(rows, 11, "clarify-ambiguous", getSessionModel(session), clarifyOk, `gate on 'fix it': ${gateFound !== undefined ? "True" : "False"}; gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`);
+  clarifyRow.ok = clarifyRow.ok && gateInOptOut === undefined;
+  clarifyRow.evidence += ` | gate on 'fix it jdi': ${gateInOptOut !== undefined ? "True" : "False"}`;
 
   writeFileSync(path.join(project, IDLE_PROGRAM_SCRIPT), "sleep 3000\n");
   executeTurn(session, `Use the Bash tool with run_in_background set to true to run exactly this command: bash ./${IDLE_PROGRAM_SCRIPT}`);
@@ -789,13 +843,27 @@ function addIdleProgramRow(rows: Row[], second: Session, stateFiles: string[]): 
 }
 
 function executeThirdSession(rows: Row[], bed: string, config: string, second: Session, stateFiles: string[], hasExited: boolean): Session {
+  const clone = path.join(bed, "claude_hooks");
+  setEnablement(clone, "check-task-list-id", "SessionStart", true);
+  for (const turnCounterEvent of TURN_COUNTER_EVENTS) {
+    setEnablement(clone, "turn-counter", turnCounterEvent, true);
+  }
   const session = launchSession(OPUS, bed, config);
-  const [records] = executeTurn(session, "Create a file note.txt that says hi.");
+  const turnsBefore = getPaneTurns(session.name);
+  const parentRow = executeOffOnPair(rows, session, bed, PARENT_ROW, executeFullTurn);
   const model = validateSessionModel(session, "claude-opus-5");
-  const found = findEvidence(records, "Parent session must not edit files");
   const blockedFiles = listFilesWithSuffix(path.join(bed, "blocked-edits"), ".json");
-  const blockOk = found !== undefined && blockedFiles.length > 0;
-  addRow(rows, 15, "block-parent-edits", model, blockOk, `${found !== undefined ? found : "None"}; saved calls: ${blockedFiles.length}`);
+  parentRow.ok = parentRow.ok && blockedFiles.length > 0;
+  parentRow.evidence += ` | saved calls: ${blockedFiles.length}`;
+
+  const startMessage = findEvidence(readRecords(session), TASK_LIST_ID_MESSAGE, "SessionStart");
+  const hasStartMessage = startMessage !== undefined;
+  addRow(rows, 49, "check-task-list-id (on)", model, hasStartMessage, `next session started with the hook on: message ${hasStartMessage ? "present" : "ABSENT"}`);
+  tmux_lib.sleep(6);
+  const turnsAfter = getPaneTurns(session.name);
+  const startedAtZero = turnsBefore === 0;
+  const hasTurnsAfter = turnsAfter !== null && turnsAfter >= 1;
+  addRow(rows, 50, "turn-counter (on)", model, startedAtZero && hasTurnsAfter, `next session ran with the hook on: turns on screen: before=${turnsBefore} after=${turnsAfter}`);
 
   const readerFound = findEvidence(readRecords(session), "Tell me about the recent work", "UserPromptSubmit");
   const idleOk = stateFiles.length > 0 && hasExited && readerFound !== undefined;
