@@ -61,6 +61,9 @@ const NOT_WIRED_TEXT = "turn-counter hook is not wired";
 const TURN_COUNTER_EVENTS = ["SessionStart", "Stop", "StopFailure", "SessionEnd"];
 const PROMPT_FILES = ["hello.txt", "plans/test-plan.md", "bad.ts", "add.ts", "add.test.ts", "note.txt"];
 
+const REMAKE_ROWS = [4, 6, 12, 13, 15];
+const REMAKE_NOTE = "The file was deleted since you made it, so make it again: ";
+
 type TurnRunner = (session: Session, prompt: string) => JsonRecord[];
 
 // (row, hook, prompt, text the hook must produce, hook event or null for a tool error)
@@ -537,7 +540,9 @@ function executeOffOnPair(rows: Row[], session: Session, bed: string, hookRow: H
   const offFound = findEvidence(offRecords, needle, event);
   removePromptFiles(bed);
   setEnablement(clone, hook, enablementEvent, true);
-  const onRecords = runTurn(session, prompt);
+  const remakesFile = REMAKE_ROWS.includes(number);
+  const onPrompt = remakesFile ? REMAKE_NOTE + prompt : prompt;
+  const onRecords = runTurn(session, onPrompt);
   const onFound = findEvidence(onRecords, needle, event);
   const switchOk = offFound === undefined && onFound !== undefined;
   addRow(rows, number, hook, getSessionModel(session), switchOk, `hook off: message ${offFound === undefined ? "absent" : "PRESENT"}; hook on: message ${onFound !== undefined ? "present" : "ABSENT"}: ${onFound !== undefined ? onFound : ""}`);
