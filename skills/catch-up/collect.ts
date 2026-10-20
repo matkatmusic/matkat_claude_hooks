@@ -6,8 +6,18 @@ import { basename, join } from "node:path";
 type Item = { text: string; file: string };
 
 function pushItems(list: Item[], texts: string[], file: string): void {
-  for (const text of texts)
-    list.push({ text, file });
+  for (const text of texts) {
+    let existing: Item | undefined;
+    for (const item of list) {
+      const isSameText = item.text === text;
+      if (isSameText)
+        existing = item;
+    }
+    if (existing)
+      existing.file = file;
+    else
+      list.push({ text, file });
+  }
 }
 
 export function collectLists(root: string) {

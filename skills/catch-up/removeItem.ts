@@ -30,5 +30,11 @@ export function removeItem(root: string, text: string, file: string): void {
   writeFileSync(path, JSON.stringify(state, null, 2));
 }
 
-if (import.meta.main)
-  removeItem(process.cwd(), process.argv[2], process.argv[3]);
+if (import.meta.main) {
+  const pairs = process.argv.slice(2);
+  const isOdd = pairs.length % 2 !== 0;
+  if (isOdd)
+    throw new Error(`Expected "<text>" "<file>" pairs, got ${pairs.length} arguments`);
+  for (let index = 0; index < pairs.length; index += 2)
+    removeItem(process.cwd(), pairs[index], pairs[index + 1]);
+}

@@ -30,4 +30,18 @@ function collectInFilenameOrder() {
   assert.equal(result.mistakes[1].text, "mistake new");
 }
 
+function collectWithDuplicateTexts() {
+  const root = mkdtempSync(`${tmpdir()}/catch-up-`);
+  mkdirSync(`${root}/.idleState`);
+  writeFileSync(`${root}/.idleState/2026-10-15-0900-aaaaaaaa.json`, buildState("same"));
+  writeFileSync(`${root}/.idleState/2026-10-15-1000-bbbbbbbb.json`, buildState("same"));
+  const result = collectLists(root);
+  assert.deepEqual(result.not_done, [{ text: "not done same", file: "2026-10-15-1000-bbbbbbbb" }]);
+  assert.equal(result.actions.length, 1);
+  assert.equal(result.questions.length, 1);
+  assert.equal(result.rules.length, 1);
+  assert.equal(result.mistakes[0].file, "2026-10-15-1000-bbbbbbbb");
+}
+
 test("reads .json files in filename order and skips other files", collectInFilenameOrder);
+test("keeps one item per text with the newest file", collectWithDuplicateTexts);
