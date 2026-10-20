@@ -44,6 +44,17 @@ test("lists only state files from the last 24 hours, without their contents", ()
   assert.ok(!result.includes("ignored-secret-text"));
 });
 
+test("skips a recent merged file and keeps a recent normal file", () => {
+  const folder = mkdtempSync(`${tmpdir()}/idle-state-`);
+  const merged = `${folder}/2026-10-19-2200-merged.json`;
+  const normal = `${folder}/2026-10-19-2200.json`;
+  writeFileSync(merged, "{}");
+  writeFileSync(normal, "{}");
+  const result = buildStateContext(folder, Date.now(), WINDOW_MS);
+  assert.ok(!result.includes(merged));
+  assert.ok(result.includes(normal));
+});
+
 test("missing folder gives empty text", () => {
   assert.equal(buildStateContext("/tmp/idle-state-missing-folder", Date.now(), WINDOW_MS), "");
 });

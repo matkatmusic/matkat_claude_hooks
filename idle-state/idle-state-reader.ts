@@ -33,6 +33,9 @@ export function findRecentStateFiles(folder: string, nowMs: number, windowMs: nu
     const isJsonFile = name.endsWith(".json");
     if (!isJsonFile)
       continue;
+    const isMergedFile = name.endsWith("-merged.json");
+    if (isMergedFile)
+      continue;
     const path = `${folder}/${name}`;
     const isRecent = nowMs - statSync(path).mtimeMs < windowMs;
     if (isRecent)

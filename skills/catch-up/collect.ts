@@ -28,19 +28,21 @@ export function collectLists(root: string) {
   const questions: Item[] = [];
   const rules: Item[] = [];
   const mistakes: Item[] = [];
+  const files: string[] = [];
   for (const name of names) {
     const isJson = name.endsWith(".json");
     if (!isJson)
       continue;
     const state = JSON.parse(readFileSync(join(folder, name), "utf8"));
     const file = basename(name, ".json");
+    files.push(file);
     pushItems(not_done, state.not_done, file);
     pushItems(actions, state.nextSteps.actions, file);
     pushItems(questions, state.nextSteps.questions, file);
     pushItems(rules, state.traps.rules, file);
     pushItems(mistakes, state.traps.mistakes, file);
   }
-  return { not_done, actions, questions, rules, mistakes };
+  return { not_done, actions, questions, rules, mistakes, files };
 }
 
 if (import.meta.main)

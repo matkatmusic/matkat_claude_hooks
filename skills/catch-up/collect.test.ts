@@ -28,6 +28,7 @@ function collectInFilenameOrder() {
   assert.equal(result.questions[0].file, "2026-10-15-0900-aaaaaaaa");
   assert.equal(result.rules[0].text, "rule old");
   assert.equal(result.mistakes[1].text, "mistake new");
+  assert.deepEqual(result.files, ["2026-10-15-0900-aaaaaaaa", "2026-10-15-1000-bbbbbbbb"]);
 }
 
 function collectWithDuplicateTexts() {
