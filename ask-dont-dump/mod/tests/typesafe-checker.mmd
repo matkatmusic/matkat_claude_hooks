@@ -152,8 +152,8 @@ flowchart TD
 
 %% %% Classes
   Q_NEW_1{"Is this fact about a bug or codebase issue?"}
-  Q_CHOICE_NEW_1_Y["'About a bug or codebase issue' > threshold"]
-  Q_CHOICE_NEW_1_N["'About a bug or issue' <= threshold"]
+  Q_CHOICE_NEW_1_Y["'a bug or codebase issue' > threshold"]
+  Q_CHOICE_NEW_1_N["'a bug or codebase issue' ≤ threshold"]
   Q_CHOICE_DOES_FACT_PASS --> Q_NEW_1
   Q_NEW_1 --> Q_CHOICE_NEW_1_Y
   Q_NEW_1 --> Q_CHOICE_NEW_1_N

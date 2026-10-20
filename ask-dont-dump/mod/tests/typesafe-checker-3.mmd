@@ -1,0 +1,128 @@
+flowchart TD
+    B_AGENT_REPLY["Agent reply"]
+%% %% Layer 1 query
+    Q_DOES{"What does the reply do?"}
+%% %% Layer 1 choices
+    Q_CHOICE_DOES_FACT["'states a fact'"]
+    Q_CHOICE_DOES_FACT_PASS["> threshold"]
+    Q_CHOICE_DOES_FACT_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_QUESTION["'asks a question'"]
+    Q_CHOICE_DOES_QUESTION_PASS["> threshold"]
+    Q_CHOICE_DOES_QUESTION_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_OFFER["'offers to do something or asks for approval'"]
+    Q_CHOICE_DOES_OFFER_PASS["> threshold"]
+    Q_CHOICE_DOES_OFFER_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_CHOICES["'gives choices with no pick'"]
+    Q_CHOICE_DOES_CHOICES_PASS["> threshold"]
+    Q_CHOICE_DOES_CHOICES_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_DECISION["'records a decision the user made'"]
+    Q_CHOICE_DOES_DECISION_PASS["> threshold"]
+    Q_CHOICE_DOES_DECISION_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_ANSWER["'answers a question with a confirmed answer'"]
+    Q_CHOICE_DOES_ANSWER_PASS["> threshold"]
+    Q_CHOICE_DOES_ANSWER_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_INSTRUCTION["'tells the user to do something'"]
+    Q_CHOICE_DOES_INSTRUCTION_PASS["> threshold"]
+    Q_CHOICE_DOES_INSTRUCTION_FAIL["≤ threshold"]
+    Q_CHOICE_DOES_GUESS["'states a guess, a gap, or an unconfirmed answer'"]
+    Q_CHOICE_DOES_GUESS_PASS["> threshold"]
+    Q_CHOICE_DOES_GUESS_FAIL["≤ threshold"]
+    B_DO_NOT_BLOCK["Do not block reply"]
+    B_BLOCK_ASK["Block reply: use AskUserQuestion"]
+    B_BLOCK_TASK["Block reply: use TaskCreate"]
+%% %% Layer 1 logic
+    Q_DOES --> Q_CHOICE_DOES_FACT
+    Q_DOES --> Q_CHOICE_DOES_QUESTION
+    Q_DOES --> Q_CHOICE_DOES_OFFER
+    Q_DOES --> Q_CHOICE_DOES_CHOICES
+    Q_DOES --> Q_CHOICE_DOES_DECISION
+    Q_DOES --> Q_CHOICE_DOES_ANSWER
+    Q_DOES --> Q_CHOICE_DOES_INSTRUCTION
+    Q_DOES --> Q_CHOICE_DOES_GUESS
+    B_AGENT_REPLY --> Q_DOES
+    %% %% all layer 1 scores below threshold go to 'do not block'
+    Q_CHOICE_DOES_FACT --> Q_CHOICE_DOES_FACT_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_QUESTION --> Q_CHOICE_DOES_QUESTION_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_OFFER --> Q_CHOICE_DOES_OFFER_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_CHOICES --> Q_CHOICE_DOES_CHOICES_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_DECISION --> Q_CHOICE_DOES_DECISION_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_ANSWER --> Q_CHOICE_DOES_ANSWER_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_INSTRUCTION --> Q_CHOICE_DOES_INSTRUCTION_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_GUESS --> Q_CHOICE_DOES_GUESS_FAIL --> B_DO_NOT_BLOCK
+    %% %% a question, an offer, choices with no pick, or a guess always needs AskUserQuestion
+    Q_CHOICE_DOES_QUESTION --> Q_CHOICE_DOES_QUESTION_PASS --> B_BLOCK_ASK
+    Q_CHOICE_DOES_OFFER --> Q_CHOICE_DOES_OFFER_PASS --> B_BLOCK_ASK
+    Q_CHOICE_DOES_CHOICES --> Q_CHOICE_DOES_CHOICES_PASS --> B_BLOCK_ASK
+    Q_CHOICE_DOES_GUESS --> Q_CHOICE_DOES_GUESS_PASS --> B_BLOCK_ASK
+    %% %% a recorded user decision or an answer needs nothing
+    Q_CHOICE_DOES_DECISION --> Q_CHOICE_DOES_DECISION_PASS --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_ANSWER --> Q_CHOICE_DOES_ANSWER_PASS --> B_DO_NOT_BLOCK
+    Q_CHOICE_DOES_INSTRUCTION --> Q_CHOICE_DOES_INSTRUCTION_PASS --> Q_ASKED
+    Q_CHOICE_DOES_FACT --> Q_CHOICE_DOES_FACT_PASS --> Q_FACT_ABOUT
+%% %% Layer 2 queries
+    Q_ASKED{"Did the user ask for this instruction?"}
+    Q_FACT_ABOUT{"Is the fact about a bug or problem, work that is not done, or work that a helper does now?"}
+%% %% Layer 2 choices
+    Q_CHOICE_ASKED_YES["'yes, the user asked for it'"]
+    Q_CHOICE_ASKED_YES_PASS["> threshold"]
+    Q_CHOICE_ASKED_YES_FAIL["≤ threshold"]
+    Q_CHOICE_ASKED_NO["'no, the user did not ask for it'"]
+    Q_CHOICE_ASKED_NO_PASS["> threshold"]
+    Q_CHOICE_ASKED_NO_FAIL["≤ threshold"]
+    Q_CHOICE_FACT_ABOUT_BUG["'a bug or problem'"]
+    Q_CHOICE_FACT_ABOUT_BUG_PASS["> threshold"]
+    Q_CHOICE_FACT_ABOUT_BUG_FAIL["≤ threshold"]
+    Q_CHOICE_FACT_ABOUT_WORK["'work that is not done'"]
+    Q_CHOICE_FACT_ABOUT_WORK_PASS["> threshold"]
+    Q_CHOICE_FACT_ABOUT_WORK_FAIL["≤ threshold"]
+    Q_CHOICE_FACT_ABOUT_HELPER["'work that a helper does now'"]
+    Q_CHOICE_FACT_ABOUT_HELPER_PASS["> threshold"]
+    Q_CHOICE_FACT_ABOUT_HELPER_FAIL["≤ threshold"]
+%% %% Layer 2 logic
+    Q_ASKED --> Q_CHOICE_ASKED_YES
+    Q_ASKED --> Q_CHOICE_ASKED_NO
+    Q_FACT_ABOUT --> Q_CHOICE_FACT_ABOUT_BUG
+    Q_FACT_ABOUT --> Q_CHOICE_FACT_ABOUT_WORK
+    Q_FACT_ABOUT --> Q_CHOICE_FACT_ABOUT_HELPER
+    %% %% an instruction to the user blocks, unless the user asked for it
+    Q_CHOICE_ASKED_YES --> Q_CHOICE_ASKED_YES_PASS --> B_DO_NOT_BLOCK
+    Q_CHOICE_ASKED_NO --> Q_CHOICE_ASKED_NO_PASS --> B_BLOCK_ASK
+    Q_CHOICE_ASKED_YES --> Q_CHOICE_ASKED_YES_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_ASKED_NO --> Q_CHOICE_ASKED_NO_FAIL --> B_DO_NOT_BLOCK
+    %% %% a fact about a bug or about work that is not done is owed work
+    Q_CHOICE_FACT_ABOUT_BUG --> Q_CHOICE_FACT_ABOUT_BUG_PASS --> Q_LISTED
+    Q_CHOICE_FACT_ABOUT_WORK --> Q_CHOICE_FACT_ABOUT_WORK_PASS --> Q_LISTED
+    Q_CHOICE_FACT_ABOUT_BUG --> Q_CHOICE_FACT_ABOUT_BUG_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_FACT_ABOUT_WORK --> Q_CHOICE_FACT_ABOUT_WORK_FAIL --> B_DO_NOT_BLOCK
+    %% %% a helper already does the work, so nothing is owed
+    Q_CHOICE_FACT_ABOUT_HELPER --> Q_CHOICE_FACT_ABOUT_HELPER_PASS --> B_DO_NOT_BLOCK
+    Q_CHOICE_FACT_ABOUT_HELPER --> Q_CHOICE_FACT_ABOUT_HELPER_FAIL --> B_DO_NOT_BLOCK
+%% %% Layer 3 query
+    Q_LISTED{"Is all the work Claude owes already on the task list?"}
+%% %% Layer 3 choices
+    Q_CHOICE_LISTED_YES["'yes, all of it is on the task list'"]
+    Q_CHOICE_LISTED_YES_PASS["> threshold"]
+    Q_CHOICE_LISTED_YES_FAIL["≤ threshold"]
+    Q_CHOICE_LISTED_NO["'no, some of it is not on the task list'"]
+    Q_CHOICE_LISTED_NO_PASS["> threshold"]
+    Q_CHOICE_LISTED_NO_FAIL["≤ threshold"]
+%% %% Layer 3 logic
+    Q_LISTED --> Q_CHOICE_LISTED_YES
+    Q_LISTED --> Q_CHOICE_LISTED_NO
+    %% %% work that Claude owes blocks, unless it is on the task list
+    Q_CHOICE_LISTED_YES --> Q_CHOICE_LISTED_YES_PASS --> B_DO_NOT_BLOCK
+    Q_CHOICE_LISTED_NO --> Q_CHOICE_LISTED_NO_PASS --> B_BLOCK_TASK
+    Q_CHOICE_LISTED_YES --> Q_CHOICE_LISTED_YES_FAIL --> B_DO_NOT_BLOCK
+    Q_CHOICE_LISTED_NO --> Q_CHOICE_LISTED_NO_FAIL --> B_DO_NOT_BLOCK
+
+%% %% Classes
+    classDef decision fill:#fff3c4,stroke:#b8860b,color:#000
+    classDef choice_Pass fill:#d4f4d4,stroke:#2e7d32,color:#000
+    classDef choice_Fail fill:#f8d4d4,stroke:#c62828,color:#000
+    classDef choice fill:#ffe0b2,stroke:#e65100,color:#000
+    classDef result fill:#d4e4f8,stroke:#1565c0,color:#000
+    class Q_DOES,Q_ASKED,Q_FACT_ABOUT,Q_LISTED decision
+    class Q_CHOICE_DOES_FACT_PASS,Q_CHOICE_DOES_QUESTION_PASS,Q_CHOICE_DOES_OFFER_PASS,Q_CHOICE_DOES_CHOICES_PASS,Q_CHOICE_DOES_DECISION_PASS,Q_CHOICE_DOES_ANSWER_PASS,Q_CHOICE_DOES_INSTRUCTION_PASS,Q_CHOICE_DOES_GUESS_PASS,Q_CHOICE_ASKED_YES_PASS,Q_CHOICE_ASKED_NO_PASS,Q_CHOICE_FACT_ABOUT_BUG_PASS,Q_CHOICE_FACT_ABOUT_WORK_PASS,Q_CHOICE_LISTED_YES_PASS,Q_CHOICE_LISTED_NO_PASS,Q_CHOICE_FACT_ABOUT_HELPER_PASS choice_Pass
+    class Q_CHOICE_DOES_FACT_FAIL,Q_CHOICE_DOES_QUESTION_FAIL,Q_CHOICE_DOES_OFFER_FAIL,Q_CHOICE_DOES_CHOICES_FAIL,Q_CHOICE_DOES_DECISION_FAIL,Q_CHOICE_DOES_ANSWER_FAIL,Q_CHOICE_DOES_INSTRUCTION_FAIL,Q_CHOICE_DOES_GUESS_FAIL,Q_CHOICE_ASKED_YES_FAIL,Q_CHOICE_ASKED_NO_FAIL,Q_CHOICE_FACT_ABOUT_BUG_FAIL,Q_CHOICE_FACT_ABOUT_WORK_FAIL,Q_CHOICE_LISTED_YES_FAIL,Q_CHOICE_LISTED_NO_FAIL,Q_CHOICE_FACT_ABOUT_HELPER_FAIL choice_Fail
+    class Q_CHOICE_DOES_FACT,Q_CHOICE_DOES_QUESTION,Q_CHOICE_DOES_OFFER,Q_CHOICE_DOES_CHOICES,Q_CHOICE_DOES_DECISION,Q_CHOICE_DOES_ANSWER,Q_CHOICE_DOES_INSTRUCTION,Q_CHOICE_DOES_GUESS,Q_CHOICE_ASKED_YES,Q_CHOICE_ASKED_NO,Q_CHOICE_FACT_ABOUT_BUG,Q_CHOICE_FACT_ABOUT_WORK,Q_CHOICE_FACT_ABOUT_HELPER,Q_CHOICE_LISTED_YES,Q_CHOICE_LISTED_NO choice
+    class B_AGENT_REPLY,B_DO_NOT_BLOCK,B_BLOCK_ASK,B_BLOCK_TASK result
