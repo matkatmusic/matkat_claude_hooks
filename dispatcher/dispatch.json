@@ -41,6 +41,12 @@
     "idle-state-reader": {
       "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS": "86400000"
     },
+    "idle-state": {
+      "CLAUDE_HOOKS_IDLE_MINUTES": "55"
+    },
+    "context-exit": {
+      "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80"
+    },
     "plan-file-reminder": {
       "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md"
     },
