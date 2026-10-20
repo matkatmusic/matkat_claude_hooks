@@ -2,16 +2,18 @@ flowchart TD
     B_AGENT_REPLY["Agent reply"]
 %% %% Layer 1 query
     Q_ABOUT{"What is the reply about, broadly?"}
-
-  B_AGENT_REPLY --> Q_ABOUT
+%% Layer 1 choices
   Q_CHOICE_ABOUT_NEW["Information"]
+  Q_CHOICE_ABOUT_NEW2["Open Work"]
+  Q_CHOICE_ABOUT_NEW3["Problem Found"]
+  Q_CHOICE_ABOUT_NEW4["Need's the user's answer"]
+%% Layer 1 logic
+  B_AGENT_REPLY --> Q_ABOUT
   Q_ABOUT --> Q_CHOICE_ABOUT_NEW
-  Q_CHOICE_ABOUT_NEW2["Proposed Change"]
   Q_ABOUT --> Q_CHOICE_ABOUT_NEW2
-  Q_CHOICE_ABOUT_NEW3["Work status"]
   Q_ABOUT --> Q_CHOICE_ABOUT_NEW3
-  Q_CHOICE_ABOUT_NEW4["User-specific task"]
   Q_ABOUT --> Q_CHOICE_ABOUT_NEW4
+
 classDef decision fill:#fff3c4,stroke:#b8860b,color:#000
     classDef choice_Pass fill:#d4f4d4,stroke:#2e7d32,color:#000
     classDef choice_Fail fill:#f8d4d4,stroke:#c62828,color:#000
