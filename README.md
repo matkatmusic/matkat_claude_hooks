@@ -15,11 +15,13 @@ Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce
 | [block-parent-edits](block-parent-edits/README.md) | Blocks file edits from the main session. A subagent must make them. |
 | [check-task-list-id](check-task-list-id/README.md) | Warns at session start when `CLAUDE_CODE_TASK_LIST_ID` is not set. |
 | [clarify-ambiguous](clarify-ambiguous/README.md) | Makes Claude ask one question when your prompt is vague. |
+| [context-exit](context-exit/README.md) | A separate plugin. Shows one message when the context reaches 30, 50, or 80 percent, so you can start a new chat. |
 | [debt-ratchet](debt-ratchet/README.md) | Runs eslint on edited `.ts` files. Blocks the stop unless the style debt dropped. |
 | [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files on the first prompt. |
 | [nudge-task-list](nudge-task-list/README.md) | Blocks the stop when work starts without a task list. |
 | [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
 | [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |
+| [skills](skills) | Three skills: `catch-up` (shows open work from the idle-state reports), `clear-dead-code` (removes commented-out code), and `handoff-state` (writes the handoff file for a fresh chat). |
 | [status-line](status-line/README.md) | Shows model, context, turns, tokens, and usage limits under the prompt. |
 | [typecheck-on-stop](typecheck-on-stop/README.md) | Blocks the stop while the TypeScript checker reports errors. |
 | [unlisted-items](unlisted-items/README.md) | Blocks the stop when named work is not on the task list. |
@@ -77,7 +79,7 @@ A new `CLAUDE_CONFIG_DIR` starts signed out. Run `claude` once and sign in.
 
 ### The .env file
 
-Replace each `/path/to/...` in `.env` with a real path on your computer. Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
+Replace each `/path/to/...` in `.env` with a real path on your computer. Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. Its default is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
 
 Warning: a `CLAUDE_HOOKS_*` value that is already set in the shell overrides the value in `.env`. `process.loadEnvFile` in `shared/env.ts` does not replace a value that is already set. Run `unset` on each `CLAUDE_HOOKS_*` value in the shell first.
 

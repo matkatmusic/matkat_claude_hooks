@@ -95,6 +95,13 @@ test("a user-only hook name with its own enablement does not throw", () => {
   assert.equal(isEnabled(settings, "mine", "Stop"), true);
 });
 
+test("a value that starts with ../ resolves from the dispatcher folder", () => {
+  const dispatcherDir = `${import.meta.dirname}/../dispatcher`;
+  const settings = readSettings(makeDir({ enablements: {}, values: { alpha: { ALPHA_KEY: "../plan-file-reminder/planning.md" } } }));
+  settings.dispatcherDir = dispatcherDir;
+  assert.equal(getValues(settings, "alpha")["ALPHA_KEY"], resolve(`${import.meta.dirname}/..`, "plan-file-reminder/planning.md"));
+});
+
 test("a value that starts with ~/ gets the home folder", () => {
   const settings = readSettings(makeDir({ enablements: {}, values: { alpha: { ALPHA_KEY: "~/some/dir" } } }));
   assert.equal(getValues(settings, "alpha")["ALPHA_KEY"], `${homedir()}/some/dir`);

@@ -7,7 +7,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump)/**/*.test.ts\"",
+    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump)/**/*.test.ts\" idle-state/idle-state-check.test.ts",
     "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod"
   }
 }

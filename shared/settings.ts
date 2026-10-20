@@ -82,7 +82,7 @@ export function getSetting(input: { settings?: Record<string, string> }, key: st
   return value;
 }
 
-export function getValues(settings: { defaults: Settings; user: Settings }, name: string): Record<string, string> {
+export function getValues(settings: { defaults: Settings; user: Settings; dispatcherDir: string }, name: string): Record<string, string> {
   const merged: Record<string, string> = {
     ...settings.defaults.values["shared"],
     ...settings.user.values["shared"],
@@ -94,6 +94,9 @@ export function getValues(settings: { defaults: Settings; user: Settings }, name
     const hasHomePrefix = value.startsWith("~/");
     if (hasHomePrefix)
       merged[key] = homedir() + value.slice(1);
+    const hasRelativePrefix = value.startsWith("../");
+    if (hasRelativePrefix)
+      merged[key] = resolve(settings.dispatcherDir, value);
   }
   return merged;
 }

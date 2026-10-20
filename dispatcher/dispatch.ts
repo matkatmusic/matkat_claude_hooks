@@ -10,7 +10,7 @@ export { type HookEntry, buildHookOutput };
 
 const HOME = process.env.HOME;
 
-export function executeHooks(input: any, hooks: HookEntry[], settings: { defaults: Settings; user: Settings }): string {
+export function executeHooks(input: any, hooks: HookEntry[], settings: { defaults: Settings; user: Settings; dispatcherDir: string }): string {
   const event = input.hook_event_name;
   let currentInput = input;
   let updatedInput: any;

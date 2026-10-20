@@ -9,7 +9,7 @@ Claude forgets your planning rules while it edits a plan, and a reminder at the 
 1. Add this line to `.env`:
 
 ```sh
-CLAUDE_HOOKS_PLANNING_GUIDE_PATH=~/.claude/guides/planning.md
+CLAUDE_HOOKS_PLANNING_GUIDE_PATH=../plan-file-reminder/planning.md
 ```
 
 2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
@@ -41,7 +41,7 @@ You keep planning rules in one guide file.
 
 ### The guide path
 
-The guide path comes from `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` in the `.env` file. If the value is missing, the hook throws an error.
+The guide path comes from `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` in the `.env` file. The default is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. If the value is missing, the hook throws an error.
 
 ### Turn it on alone
 

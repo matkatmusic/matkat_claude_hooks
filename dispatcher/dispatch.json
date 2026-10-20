@@ -5,6 +5,7 @@
     "block-bash-edits": { "PreToolUse": false },
     "plan-file-reminder": { "PostToolUse": false },
     "reflow-comments": { "PostToolUse": false },
+    "reflow-comments-stop": { "Stop": false },
     "check-task-list-id": { "SessionStart": false },
     "nudge-task-list": { "Stop": false },
     "unlisted-items": { "Stop": false },
@@ -41,10 +42,10 @@
       "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS": "86400000"
     },
     "plan-file-reminder": {
-      "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "~/.claude/guides/planning.md"
+      "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md"
     },
     "turn-counter": {
-      "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT": "/private/tmp",
+      "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT": "/tmp",
       "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS": "14"
     },
     "typecheck-on-stop": {
@@ -62,6 +63,7 @@
     { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-bash-edits/block-bash-edits.ts"] },
     { "event": "PostToolUse", "matcher": "Write|Edit", "command": ["node", "../plan-file-reminder/plan-file-reminder.ts"] },
     { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../reflow-comments/reflow-comments.ts"] },
+    { "event": "Stop", "command": ["node", "../reflow-comments/reflow-comments-stop.ts"] },
     { "event": "SessionStart", "command": ["node", "../check-task-list-id/check-task-list-id.ts"] },
     { "event": "Stop", "command": ["node", "../nudge-task-list/nudge-task-list.ts"] },
     { "event": "Stop", "command": ["node", "../unlisted-items/unlisted-items.ts"] },
