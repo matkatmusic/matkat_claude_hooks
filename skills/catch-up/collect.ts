@@ -3,9 +3,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
-type Item = { text: string; file: string };
+type Item = { text: string; file: string; sessionId?: string };
 
-function pushItems(list: Item[], texts: string[], file: string): void {
+function pushItems(list: Item[], texts: string[], file: string, sessionId?: string): void {
   for (const text of texts) {
     let existing: Item | undefined;
     for (const item of list) {
@@ -13,10 +13,12 @@ function pushItems(list: Item[], texts: string[], file: string): void {
       if (isSameText)
         existing = item;
     }
-    if (existing)
+    if (existing) {
       existing.file = file;
+      existing.sessionId = sessionId;
+    }
     else
-      list.push({ text, file });
+      list.push({ text, file, sessionId });
   }
 }
 
@@ -36,11 +38,11 @@ export function collectLists(root: string) {
     const state = JSON.parse(readFileSync(join(folder, name), "utf8"));
     const file = basename(name, ".json");
     files.push(file);
-    pushItems(not_done, state.not_done, file);
-    pushItems(actions, state.nextSteps.actions, file);
-    pushItems(questions, state.nextSteps.questions, file);
-    pushItems(rules, state.traps.rules, file);
-    pushItems(mistakes, state.traps.mistakes, file);
+    pushItems(not_done, state.not_done, file, state.sessionId);
+    pushItems(actions, state.nextSteps.actions, file, state.sessionId);
+    pushItems(questions, state.nextSteps.questions, file, state.sessionId);
+    pushItems(rules, state.traps.rules, file, state.sessionId);
+    pushItems(mistakes, state.traps.mistakes, file, state.sessionId);
   }
   return { not_done, actions, questions, rules, mistakes, files };
 }
