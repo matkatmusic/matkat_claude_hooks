@@ -1,0 +1,104 @@
+flowchart TD
+    B_NORMALIZE_START["Input: extracted candidates"]
+    B_INIT_NORMALIZE["Initialize NormalizedItems = []"]
+
+    Q_MORE_CANDIDATES{"Are there unprocessed candidates?"}
+    Q_CHOICE_MORE_CANDIDATES_YES["Yes"]
+    Q_CHOICE_MORE_CANDIDATES_NO["No"]
+
+    B_SELECT_CANDIDATE["Select next candidate"]
+    B_SET_SUBJECT["Identify subject: code, helper, bug, test, task, decision, other"]
+    B_SET_ACTION["Identify speech act: report, question, request, commit, offer, recommend, assign"]
+    B_SET_STATUS["Identify status: completed, unresolved, pending, blocked, hypothetical, unknown"]
+    B_SET_OWNER["Identify responsible actor: agent, helper, user, external, unknown"]
+    B_SET_DEPENDENCIES["Identify prerequisite decisions, permissions, resources, and related work"]
+
+    Q_EXPLICIT_QUESTION{"Is the candidate an explicit user-directed question or request for a decision?"}
+    Q_CHOICE_EXPLICIT_QUESTION_YES["Yes"]
+    Q_CHOICE_EXPLICIT_QUESTION_NO["No"]
+
+    B_SET_QUESTION["Record exact question and requested answer"]
+    B_SET_NO_QUESTION["Record no explicit user question"]
+
+    Q_WORK_REFERENCE{"Does the candidate reference a concrete work item?"}
+    Q_CHOICE_WORK_REFERENCE_YES["Yes"]
+    Q_CHOICE_WORK_REFERENCE_NO["No"]
+
+    B_IDENTIFY_WORK["Identify action, target, expected outcome, and completion condition"]
+    B_SET_NO_WORK["Record no concrete work target"]
+
+    Q_HAS_LINK{"Can the candidate be linked to an existing task, helper assignment, or related candidate?"}
+    Q_CHOICE_HAS_LINK_YES["Yes"]
+    Q_CHOICE_HAS_LINK_NO["No"]
+
+    B_LINK["Record matching task IDs, helper IDs, and related candidate IDs"]
+    B_NO_LINK["Record no verified existing links"]
+
+    Q_UNCERTAIN{"Are any decision-relevant fields unknown or ambiguous?"}
+    Q_CHOICE_UNCERTAIN_YES["Yes"]
+    Q_CHOICE_UNCERTAIN_NO["No"]
+
+    B_MARK_UNKNOWN["Preserve uncertainty explicitly; do not infer completion, ownership, or approval"]
+    B_VALIDATE["Validate required fields and retain source evidence"]
+    B_APPEND_NORMALIZED["Append normalized item"]
+    B_NEXT_CANDIDATE["Mark candidate processed"]
+    B_NORMALIZE_OUTPUT["Output: NormalizedItems"]
+
+    B_NORMALIZE_START --> B_INIT_NORMALIZE
+    B_INIT_NORMALIZE --> Q_MORE_CANDIDATES
+
+    Q_MORE_CANDIDATES --> Q_CHOICE_MORE_CANDIDATES_YES
+    Q_MORE_CANDIDATES --> Q_CHOICE_MORE_CANDIDATES_NO
+    Q_CHOICE_MORE_CANDIDATES_YES --> B_SELECT_CANDIDATE
+    Q_CHOICE_MORE_CANDIDATES_NO --> B_NORMALIZE_OUTPUT
+
+    B_SELECT_CANDIDATE --> B_SET_SUBJECT
+    B_SET_SUBJECT --> B_SET_ACTION
+    B_SET_ACTION --> B_SET_STATUS
+    B_SET_STATUS --> B_SET_OWNER
+    B_SET_OWNER --> B_SET_DEPENDENCIES
+
+    B_SET_DEPENDENCIES --> Q_EXPLICIT_QUESTION
+    Q_EXPLICIT_QUESTION --> Q_CHOICE_EXPLICIT_QUESTION_YES
+    Q_EXPLICIT_QUESTION --> Q_CHOICE_EXPLICIT_QUESTION_NO
+    Q_CHOICE_EXPLICIT_QUESTION_YES --> B_SET_QUESTION
+    Q_CHOICE_EXPLICIT_QUESTION_NO --> B_SET_NO_QUESTION
+
+    B_SET_QUESTION --> Q_WORK_REFERENCE
+    B_SET_NO_QUESTION --> Q_WORK_REFERENCE
+
+    Q_WORK_REFERENCE --> Q_CHOICE_WORK_REFERENCE_YES
+    Q_WORK_REFERENCE --> Q_CHOICE_WORK_REFERENCE_NO
+    Q_CHOICE_WORK_REFERENCE_YES --> B_IDENTIFY_WORK
+    Q_CHOICE_WORK_REFERENCE_NO --> B_SET_NO_WORK
+
+    B_IDENTIFY_WORK --> Q_HAS_LINK
+    B_SET_NO_WORK --> Q_HAS_LINK
+
+    Q_HAS_LINK --> Q_CHOICE_HAS_LINK_YES
+    Q_HAS_LINK --> Q_CHOICE_HAS_LINK_NO
+    Q_CHOICE_HAS_LINK_YES --> B_LINK
+    Q_CHOICE_HAS_LINK_NO --> B_NO_LINK
+
+    B_LINK --> Q_UNCERTAIN
+    B_NO_LINK --> Q_UNCERTAIN
+
+    Q_UNCERTAIN --> Q_CHOICE_UNCERTAIN_YES
+    Q_UNCERTAIN --> Q_CHOICE_UNCERTAIN_NO
+    Q_CHOICE_UNCERTAIN_YES --> B_MARK_UNKNOWN
+    Q_CHOICE_UNCERTAIN_NO --> B_VALIDATE
+
+    B_MARK_UNKNOWN --> B_VALIDATE
+    B_VALIDATE --> B_APPEND_NORMALIZED
+    B_APPEND_NORMALIZED --> B_NEXT_CANDIDATE
+    B_NEXT_CANDIDATE --> Q_MORE_CANDIDATES
+
+    classDef decision fill:#fff3c4,stroke:#b8860b,color:#000
+    classDef choice fill:#e8e8e8,stroke:#666666,color:#000
+    classDef action fill:#ffe0b2,stroke:#e65100,color:#000
+    classDef result fill:#d4e4f8,stroke:#1565c0,color:#000
+
+    class Q_MORE_CANDIDATES,Q_EXPLICIT_QUESTION,Q_WORK_REFERENCE,Q_HAS_LINK,Q_UNCERTAIN decision
+    class Q_CHOICE_MORE_CANDIDATES_YES,Q_CHOICE_MORE_CANDIDATES_NO,Q_CHOICE_EXPLICIT_QUESTION_YES,Q_CHOICE_EXPLICIT_QUESTION_NO,Q_CHOICE_WORK_REFERENCE_YES,Q_CHOICE_WORK_REFERENCE_NO,Q_CHOICE_HAS_LINK_YES,Q_CHOICE_HAS_LINK_NO,Q_CHOICE_UNCERTAIN_YES,Q_CHOICE_UNCERTAIN_NO choice
+    class B_INIT_NORMALIZE,B_SELECT_CANDIDATE,B_SET_SUBJECT,B_SET_ACTION,B_SET_STATUS,B_SET_OWNER,B_SET_DEPENDENCIES,B_SET_QUESTION,B_SET_NO_QUESTION,B_IDENTIFY_WORK,B_SET_NO_WORK,B_LINK,B_NO_LINK,B_MARK_UNKNOWN,B_VALIDATE,B_APPEND_NORMALIZED,B_NEXT_CANDIDATE action
+    class B_NORMALIZE_START,B_NORMALIZE_OUTPUT result

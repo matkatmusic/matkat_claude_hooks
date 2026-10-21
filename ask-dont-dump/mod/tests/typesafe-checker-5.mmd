@@ -1,99 +1,201 @@
 flowchart TD
+    %% NODE DECLARATIONS
+
     B_AGENT_REPLY["Agent reply"]
 
+    %% this block encapsulates the logic defined in 'distinct-item-extraction.mmd'
     B_EXTRACT["Extract distinct items from reply"]
+
+    %% this block encapsulates the logic defined in 'normalize-extracted-item.mmd'
     B_NORMALIZE["Normalize each item: subject, action, status, owner, dependencies"]
     B_INIT["Initialize AskQuestions = [] and TaskItems = []"]
+
     Q_MORE_ITEMS{"Are there unprocessed items?"}
+    Q_CHOICE_MORE_ITEMS_YES["Yes"]
+    Q_CHOICE_MORE_ITEMS_NO["No"]
 
     B_SELECT["Select next item"]
 
     %% ASK USER QUESTION TREE
+
     Q_ASK_WALK{"Q1: Does this item require AskUserQuestion?"}
+
     Q_EXPLICIT{"Does the item explicitly ask the user a question or request a decision?"}
+    Q_CHOICE_EXPLICIT_YES["Yes"]
+    Q_CHOICE_EXPLICIT_NO["No"]
+
     Q_BLOCKED{"Does the item describe work blocked by missing user input?"}
+    Q_CHOICE_BLOCKED_YES["Yes"]
+    Q_CHOICE_BLOCKED_NO["No"]
+
     Q_AMBIGUOUS{"Does the item contain ambiguity that prevents required work?"}
+    Q_CHOICE_AMBIGUOUS_YES["Yes"]
+    Q_CHOICE_AMBIGUOUS_NO["No"]
+
     Q_PERMISSION{"Does the item require user authorization or approval?"}
+    Q_CHOICE_PERMISSION_YES["Yes"]
+    Q_CHOICE_PERMISSION_NO["No"]
 
     B_ADD_ASK["Append required question to AskQuestions"]
 
-    %% TASK TREE
+    %% TASKLIST TREE
+
     Q_TASK_WALK{"Q2: Does this item require a TaskList entry?"}
+
     Q_ACTION{"Does the item describe concrete unfinished work?"}
+    Q_CHOICE_ACTION_YES["Yes"]
+    Q_CHOICE_ACTION_NO["No"]
+
     Q_COMMITMENT{"Does the item contain an outstanding agent commitment?"}
+    Q_CHOICE_COMMITMENT_YES["Yes"]
+    Q_CHOICE_COMMITMENT_NO["No"]
+
     Q_BUG{"Does the item report an unresolved bug, failure, or issue?"}
+    Q_CHOICE_BUG_YES["Yes"]
+    Q_CHOICE_BUG_NO["No"]
+
     Q_PENDING{"Does the item describe a pending action needed to complete the request?"}
+    Q_CHOICE_PENDING_YES["Yes"]
+    Q_CHOICE_PENDING_NO["No"]
+
     Q_OWNED{"Is the work already assigned to a helper?"}
+    Q_CHOICE_OWNED_YES["Yes"]
+    Q_CHOICE_OWNED_NO["No"]
+
     Q_TRACKED{"Is the work already covered by the TaskList?"}
+    Q_CHOICE_TRACKED_YES["Yes"]
+    Q_CHOICE_TRACKED_NO["No"]
 
     B_ADD_TASK["Append task to TaskItems"]
     B_NEXT["Mark item processed"]
 
-    %% FINAL OUTPUT
+    %% FINAL OUTPUT DECISIONS
+
     Q_HAS_ASK{"Are there accumulated questions?"}
+    Q_CHOICE_HAS_ASK_YES["Yes"]
+    Q_CHOICE_HAS_ASK_NO["No"]
+
     Q_HAS_TASK{"Are there accumulated tasks?"}
+    Q_CHOICE_HAS_TASK_YES["Yes"]
+    Q_CHOICE_HAS_TASK_NO["No"]
+
     Q_HAS_TASK_AFTER_ASK{"Are there accumulated tasks?"}
+    Q_CHOICE_HAS_TASK_AFTER_ASK_YES["Yes"]
+    Q_CHOICE_HAS_TASK_AFTER_ASK_NO["No"]
+
+    %% TERMINAL RESULTS
 
     B_RESULT_NONE["Do not ask; do not add a task"]
     B_RESULT_ASK["Show AskUserQuestion only"]
     B_RESULT_TASK["Add TaskList items only"]
     B_RESULT_BOTH["Add TaskList items AND show AskUserQuestion"]
 
-    %% EXTRACTION
+    %% EXTRACTION AND INITIALIZATION
+
     B_AGENT_REPLY --> B_EXTRACT
     B_EXTRACT --> B_NORMALIZE
     B_NORMALIZE --> B_INIT
     B_INIT --> Q_MORE_ITEMS
-    Q_MORE_ITEMS -->|"Yes"| B_SELECT
-    Q_MORE_ITEMS -->|"No"| Q_HAS_ASK
+
+    Q_MORE_ITEMS --> Q_CHOICE_MORE_ITEMS_YES
+    Q_MORE_ITEMS --> Q_CHOICE_MORE_ITEMS_NO
+
+    Q_CHOICE_MORE_ITEMS_YES --> B_SELECT
+    Q_CHOICE_MORE_ITEMS_NO --> Q_HAS_ASK
+
     B_SELECT --> Q_ASK_WALK
 
-    %% QUESTION 1
+    %% QUESTION 1: ASK USER QUESTION
+
     Q_ASK_WALK --> Q_EXPLICIT
-    Q_EXPLICIT -->|"Yes"| B_ADD_ASK
-    Q_EXPLICIT -->|"No"| Q_BLOCKED
-    Q_BLOCKED -->|"Yes"| B_ADD_ASK
-    Q_BLOCKED -->|"No"| Q_AMBIGUOUS
-    Q_AMBIGUOUS -->|"Yes"| B_ADD_ASK
-    Q_AMBIGUOUS -->|"No"| Q_PERMISSION
-    Q_PERMISSION -->|"Yes"| B_ADD_ASK
-    Q_PERMISSION -->|"No"| Q_TASK_WALK
+
+    Q_EXPLICIT --> Q_CHOICE_EXPLICIT_YES
+    Q_EXPLICIT --> Q_CHOICE_EXPLICIT_NO
+    Q_CHOICE_EXPLICIT_YES --> B_ADD_ASK
+    Q_CHOICE_EXPLICIT_NO --> Q_BLOCKED
+
+    Q_BLOCKED --> Q_CHOICE_BLOCKED_YES
+    Q_BLOCKED --> Q_CHOICE_BLOCKED_NO
+    Q_CHOICE_BLOCKED_YES --> B_ADD_ASK
+    Q_CHOICE_BLOCKED_NO --> Q_AMBIGUOUS
+
+    Q_AMBIGUOUS --> Q_CHOICE_AMBIGUOUS_YES
+    Q_AMBIGUOUS --> Q_CHOICE_AMBIGUOUS_NO
+    Q_CHOICE_AMBIGUOUS_YES --> B_ADD_ASK
+    Q_CHOICE_AMBIGUOUS_NO --> Q_PERMISSION
+
+    Q_PERMISSION --> Q_CHOICE_PERMISSION_YES
+    Q_PERMISSION --> Q_CHOICE_PERMISSION_NO
+    Q_CHOICE_PERMISSION_YES --> B_ADD_ASK
+    Q_CHOICE_PERMISSION_NO --> Q_TASK_WALK
 
     B_ADD_ASK --> B_NEXT
 
-    %% QUESTION 2
+    %% QUESTION 2: TASKLIST
+
     Q_TASK_WALK --> Q_ACTION
-    Q_ACTION -->|"Yes"| Q_OWNED
-    Q_ACTION -->|"No"| Q_COMMITMENT
-    Q_COMMITMENT -->|"Yes"| Q_OWNED
-    Q_COMMITMENT -->|"No"| Q_BUG
-    Q_BUG -->|"Yes"| Q_OWNED
-    Q_BUG -->|"No"| Q_PENDING
-    Q_PENDING -->|"Yes"| Q_OWNED
-    Q_PENDING -->|"No"| B_NEXT
 
-    Q_OWNED -->|"Yes"| B_NEXT
-    Q_OWNED -->|"No"| Q_TRACKED
-    Q_TRACKED -->|"Yes"| B_NEXT
-    Q_TRACKED -->|"No"| B_ADD_TASK
+    Q_ACTION --> Q_CHOICE_ACTION_YES
+    Q_ACTION --> Q_CHOICE_ACTION_NO
+    Q_CHOICE_ACTION_YES --> Q_OWNED
+    Q_CHOICE_ACTION_NO --> Q_COMMITMENT
+
+    Q_COMMITMENT --> Q_CHOICE_COMMITMENT_YES
+    Q_COMMITMENT --> Q_CHOICE_COMMITMENT_NO
+    Q_CHOICE_COMMITMENT_YES --> Q_OWNED
+    Q_CHOICE_COMMITMENT_NO --> Q_BUG
+
+    Q_BUG --> Q_CHOICE_BUG_YES
+    Q_BUG --> Q_CHOICE_BUG_NO
+    Q_CHOICE_BUG_YES --> Q_OWNED
+    Q_CHOICE_BUG_NO --> Q_PENDING
+
+    Q_PENDING --> Q_CHOICE_PENDING_YES
+    Q_PENDING --> Q_CHOICE_PENDING_NO
+    Q_CHOICE_PENDING_YES --> Q_OWNED
+    Q_CHOICE_PENDING_NO --> B_NEXT
+
+    Q_OWNED --> Q_CHOICE_OWNED_YES
+    Q_OWNED --> Q_CHOICE_OWNED_NO
+    Q_CHOICE_OWNED_YES --> B_NEXT
+    Q_CHOICE_OWNED_NO --> Q_TRACKED
+
+    Q_TRACKED --> Q_CHOICE_TRACKED_YES
+    Q_TRACKED --> Q_CHOICE_TRACKED_NO
+    Q_CHOICE_TRACKED_YES --> B_NEXT
+    Q_CHOICE_TRACKED_NO --> B_ADD_TASK
+
     B_ADD_TASK --> B_NEXT
-
     B_NEXT --> Q_MORE_ITEMS
 
-    %% COMBINE RESULTS
-    Q_HAS_ASK -->|"Yes"| Q_HAS_TASK_AFTER_ASK
-    Q_HAS_ASK -->|"No"| Q_HAS_TASK
+    %% FINAL RESULT SELECTION
 
-    Q_HAS_TASK_AFTER_ASK -->|"Yes"| B_RESULT_BOTH
-    Q_HAS_TASK_AFTER_ASK -->|"No"| B_RESULT_ASK
-    Q_HAS_TASK -->|"Yes"| B_RESULT_TASK
-    Q_HAS_TASK -->|"No"| B_RESULT_NONE
+    Q_HAS_ASK --> Q_CHOICE_HAS_ASK_YES
+    Q_HAS_ASK --> Q_CHOICE_HAS_ASK_NO
+    Q_CHOICE_HAS_ASK_YES --> Q_HAS_TASK_AFTER_ASK
+    Q_CHOICE_HAS_ASK_NO --> Q_HAS_TASK
+
+    Q_HAS_TASK_AFTER_ASK --> Q_CHOICE_HAS_TASK_AFTER_ASK_YES
+    Q_HAS_TASK_AFTER_ASK --> Q_CHOICE_HAS_TASK_AFTER_ASK_NO
+    Q_CHOICE_HAS_TASK_AFTER_ASK_YES --> B_RESULT_BOTH
+    Q_CHOICE_HAS_TASK_AFTER_ASK_NO --> B_RESULT_ASK
+
+    Q_HAS_TASK --> Q_CHOICE_HAS_TASK_YES
+    Q_HAS_TASK --> Q_CHOICE_HAS_TASK_NO
+    Q_CHOICE_HAS_TASK_YES --> B_RESULT_TASK
+    Q_CHOICE_HAS_TASK_NO --> B_RESULT_NONE
 
     %% CLASSES
+
     classDef decision fill:#fff3c4,stroke:#b8860b,color:#000
     classDef action fill:#ffe0b2,stroke:#e65100,color:#000
     classDef result fill:#d4e4f8,stroke:#1565c0,color:#000
+    classDef choice fill:#e8e8e8,stroke:#666666,color:#000
 
     class Q_MORE_ITEMS,Q_ASK_WALK,Q_EXPLICIT,Q_BLOCKED,Q_AMBIGUOUS,Q_PERMISSION,Q_TASK_WALK,Q_ACTION,Q_COMMITMENT,Q_BUG,Q_PENDING,Q_OWNED,Q_TRACKED,Q_HAS_ASK,Q_HAS_TASK,Q_HAS_TASK_AFTER_ASK decision
+
+    class Q_CHOICE_MORE_ITEMS_YES,Q_CHOICE_MORE_ITEMS_NO,Q_CHOICE_EXPLICIT_YES,Q_CHOICE_EXPLICIT_NO,Q_CHOICE_BLOCKED_YES,Q_CHOICE_BLOCKED_NO,Q_CHOICE_AMBIGUOUS_YES,Q_CHOICE_AMBIGUOUS_NO,Q_CHOICE_PERMISSION_YES,Q_CHOICE_PERMISSION_NO,Q_CHOICE_ACTION_YES,Q_CHOICE_ACTION_NO,Q_CHOICE_COMMITMENT_YES,Q_CHOICE_COMMITMENT_NO,Q_CHOICE_BUG_YES,Q_CHOICE_BUG_NO,Q_CHOICE_PENDING_YES,Q_CHOICE_PENDING_NO,Q_CHOICE_OWNED_YES,Q_CHOICE_OWNED_NO,Q_CHOICE_TRACKED_YES,Q_CHOICE_TRACKED_NO,Q_CHOICE_HAS_ASK_YES,Q_CHOICE_HAS_ASK_NO,Q_CHOICE_HAS_TASK_YES,Q_CHOICE_HAS_TASK_NO,Q_CHOICE_HAS_TASK_AFTER_ASK_YES,Q_CHOICE_HAS_TASK_AFTER_ASK_NO choice
+
     class B_EXTRACT,B_NORMALIZE,B_INIT,B_SELECT,B_ADD_ASK,B_ADD_TASK,B_NEXT action
+
     class B_AGENT_REPLY,B_RESULT_NONE,B_RESULT_ASK,B_RESULT_TASK,B_RESULT_BOTH result

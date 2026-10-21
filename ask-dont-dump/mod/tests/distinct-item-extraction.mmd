@@ -1,0 +1,83 @@
+flowchart TD
+    B_EXTRACT_START["Input: complete previous agent reply"]
+    B_SPLIT["Split reply into sentences, clauses, and list entries"]
+    B_INIT_EXTRACT["Initialize Candidates = []"]
+    Q_MORE_SPANS{"Are there unprocessed text spans?"}
+    Q_CHOICE_MORE_SPANS_YES["Yes"]
+    Q_CHOICE_MORE_SPANS_NO["No"]
+
+    B_SELECT_SPAN["Select next text span"]
+
+    Q_MEANINGFUL{"Does the span communicate a distinct claim, question, action, or obligation?"}
+    Q_CHOICE_MEANINGFUL_YES["Yes"]
+    Q_CHOICE_MEANINGFUL_NO["No"]
+
+    Q_MULTIPLE{"Does the span contain multiple independently evaluable propositions?"}
+    Q_CHOICE_MULTIPLE_YES["Yes"]
+    Q_CHOICE_MULTIPLE_NO["No"]
+
+    B_SPLIT_SPAN["Split into atomic propositions and return them to the input queue"]
+    B_CREATE_CANDIDATE["Create candidate with exact source text and location"]
+
+    Q_CONTEXT{"Does the candidate depend on another span for its meaning?"}
+    Q_CHOICE_CONTEXT_YES["Yes"]
+    Q_CHOICE_CONTEXT_NO["No"]
+
+    B_RESOLVE_CONTEXT["Resolve pronouns, references, negation, and conditional language without changing meaning"]
+
+    Q_DUPLICATE{"Does this candidate refer to an existing candidate's same claim or obligation?"}
+    Q_CHOICE_DUPLICATE_YES["Yes"]
+    Q_CHOICE_DUPLICATE_NO["No"]
+
+    B_MERGE["Merge source references and complementary details without losing distinct actions"]
+    B_APPEND["Append candidate to Candidates"]
+    B_NEXT_SPAN["Mark span processed"]
+
+    B_OUTPUT["Output: distinct extracted candidates with source evidence"]
+
+    B_EXTRACT_START --> B_SPLIT
+    B_SPLIT --> B_INIT_EXTRACT
+    B_INIT_EXTRACT --> Q_MORE_SPANS
+
+    Q_MORE_SPANS --> Q_CHOICE_MORE_SPANS_YES
+    Q_MORE_SPANS --> Q_CHOICE_MORE_SPANS_NO
+    Q_CHOICE_MORE_SPANS_YES --> B_SELECT_SPAN
+    Q_CHOICE_MORE_SPANS_NO --> B_OUTPUT
+
+    B_SELECT_SPAN --> Q_MEANINGFUL
+    Q_MEANINGFUL --> Q_CHOICE_MEANINGFUL_YES
+    Q_MEANINGFUL --> Q_CHOICE_MEANINGFUL_NO
+    Q_CHOICE_MEANINGFUL_YES --> Q_MULTIPLE
+    Q_CHOICE_MEANINGFUL_NO --> B_NEXT_SPAN
+
+    Q_MULTIPLE --> Q_CHOICE_MULTIPLE_YES
+    Q_MULTIPLE --> Q_CHOICE_MULTIPLE_NO
+    Q_CHOICE_MULTIPLE_YES --> B_SPLIT_SPAN
+    Q_CHOICE_MULTIPLE_NO --> B_CREATE_CANDIDATE
+    B_SPLIT_SPAN --> Q_MORE_SPANS
+
+    B_CREATE_CANDIDATE --> Q_CONTEXT
+    Q_CONTEXT --> Q_CHOICE_CONTEXT_YES
+    Q_CONTEXT --> Q_CHOICE_CONTEXT_NO
+    Q_CHOICE_CONTEXT_YES --> B_RESOLVE_CONTEXT
+    Q_CHOICE_CONTEXT_NO --> Q_DUPLICATE
+    B_RESOLVE_CONTEXT --> Q_DUPLICATE
+
+    Q_DUPLICATE --> Q_CHOICE_DUPLICATE_YES
+    Q_DUPLICATE --> Q_CHOICE_DUPLICATE_NO
+    Q_CHOICE_DUPLICATE_YES --> B_MERGE
+    Q_CHOICE_DUPLICATE_NO --> B_APPEND
+
+    B_MERGE --> B_NEXT_SPAN
+    B_APPEND --> B_NEXT_SPAN
+    B_NEXT_SPAN --> Q_MORE_SPANS
+
+    classDef decision fill:#fff3c4,stroke:#b8860b,color:#000
+    classDef choice fill:#e8e8e8,stroke:#666666,color:#000
+    classDef action fill:#ffe0b2,stroke:#e65100,color:#000
+    classDef result fill:#d4e4f8,stroke:#1565c0,color:#000
+
+    class Q_MORE_SPANS,Q_MEANINGFUL,Q_MULTIPLE,Q_CONTEXT,Q_DUPLICATE decision
+    class Q_CHOICE_MORE_SPANS_YES,Q_CHOICE_MORE_SPANS_NO,Q_CHOICE_MEANINGFUL_YES,Q_CHOICE_MEANINGFUL_NO,Q_CHOICE_MULTIPLE_YES,Q_CHOICE_MULTIPLE_NO,Q_CHOICE_CONTEXT_YES,Q_CHOICE_CONTEXT_NO,Q_CHOICE_DUPLICATE_YES,Q_CHOICE_DUPLICATE_NO choice
+    class B_SPLIT,B_INIT_EXTRACT,B_SELECT_SPAN,B_SPLIT_SPAN,B_CREATE_CANDIDATE,B_RESOLVE_CONTEXT,B_MERGE,B_APPEND,B_NEXT_SPAN action
+    class B_EXTRACT_START,B_OUTPUT result
