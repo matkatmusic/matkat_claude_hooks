@@ -11,7 +11,7 @@ test("formatTokens: plain, thousands, millions", () => {
 test("formatBar and formatCountdown: fixed width output", () => {
   assert.equal(formatBar(42), "████░░░░░░");
   assert.equal(formatBar(150), "██████████");
-  assert.equal(formatCountdown(5400), "01:30");
+  assert.equal(formatCountdown(5400), "01:30:00");
 });
 
 test("computeSecondsUntilReset and computeDayOfWeek: handle missing and numeric input", () => {

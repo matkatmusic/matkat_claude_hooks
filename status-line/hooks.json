@@ -2,12 +2,12 @@
   "statusLine": {
     "type": "command",
     "command": "node \"/path/to/claude_hooks/status-line/status.ts\"",
-    "refreshInterval": 3
+    "refreshInterval": 1
   },
   "subagentStatusLine": {
     "type": "command",
     "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
-    "refreshInterval": 3
+    "refreshInterval": 1
   },
   "hooks": {
     "SessionStart": [

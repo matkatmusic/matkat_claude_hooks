@@ -15,8 +15,10 @@ export function formatBar(percent: number): string {
 }
 
 export function formatCountdown(seconds: number): string {
-  const total = Math.floor(seconds / 60);
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  const total = Math.floor(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor(total / 60) % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 // resets_at is epoch seconds from rate-limit headers, but ISO 8601 elsewhere

@@ -39,8 +39,8 @@ assert.equal(formatBar(0), "░░░░░░░░░░");
 assert.equal(formatBar(42), "████░░░░░░");
 assert.equal(formatBar(150), "██████████", "over 100% must not blow up");
 
-assert.equal(formatCountdown(5400), "01:30");
-assert.equal(formatCountdown(59), "00:00");
+assert.equal(formatCountdown(5400), "01:30:00");
+assert.equal(formatCountdown(59), "00:00:59");
 
 assert.equal(computeSecondsUntilReset(2000, 1000), 1000, "epoch seconds");
 assert.equal(computeSecondsUntilReset("2026-08-05T12:00:00Z", 1785931200 - 60), 60, "ISO 8601");
@@ -65,10 +65,10 @@ assert.equal(selectColor(7, 5, 6, 7), RED, "last day of the week");
 assert.equal(formatWeeklyResetSuffix(6, 3600), "", "only shows on day 7");
 assert.equal(formatWeeklyResetSuffix(7, 0), "", "missing weekly reset time");
 assert.equal(formatWeeklyResetSuffix(7, 13 * 3600), "", "more than 12 hours out");
-assert.equal(formatWeeklyResetSuffix(7, 11 * 3600), ` (Resets in: ${RED}11:00\x1b[0m)`, "far from reset");
-assert.equal(formatWeeklyResetSuffix(7, 7 * 3600), ` (Resets in: ${ORANGE}07:00\x1b[0m)`);
-assert.equal(formatWeeklyResetSuffix(7, 4 * 3600), ` (Resets in: ${YELLOW}04:00\x1b[0m)`);
-assert.equal(formatWeeklyResetSuffix(7, 1800), ` (Resets in: ${GREEN}00:30\x1b[0m)`, "nearly reset");
+assert.equal(formatWeeklyResetSuffix(7, 11 * 3600), ` (Resets in: ${RED}11:00:00\x1b[0m)`, "far from reset");
+assert.equal(formatWeeklyResetSuffix(7, 7 * 3600), ` (Resets in: ${ORANGE}07:00:00\x1b[0m)`);
+assert.equal(formatWeeklyResetSuffix(7, 4 * 3600), ` (Resets in: ${YELLOW}04:00:00\x1b[0m)`);
+assert.equal(formatWeeklyResetSuffix(7, 1800), ` (Resets in: ${GREEN}00:30:00\x1b[0m)`, "nearly reset");
 
 assert.equal(Math.round(computeWeeklyBudget(1)), 14, "day 1 allowance");
 assert.equal(Math.round(computeWeeklyBudget(3)), 43);
