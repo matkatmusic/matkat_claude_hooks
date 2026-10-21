@@ -5,7 +5,7 @@ const environment = (globalThis as any).process.env
 environment.TYPESAFE_API_KEY ??= 'test-only'
 
 async function validateNodeRequest() {
-  const { buildNodeRequest } = await import('./typesafe-checker-5')
+  const { buildNodeRequest } = await import('./checker5Calls')
   const nodeLabel = 'Is the work already assigned to a helper?'
   const taskList = [{ id: '1', subject: 'fix the bug', status: 'pending' }]
   const replyState = { reply: { text: 'I fixed the bug.' }, userPrompt: 'fix the bug', taskList }
