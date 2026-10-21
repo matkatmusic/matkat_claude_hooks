@@ -16,4 +16,4 @@ for (const path of editedFiles) {
   if (pathExists)
     files.push({ path, runs: applyReflowToFile(path) });
 }
-emitReflows("Stop", files, input.session_id);
+emitReflows("Stop", files, getSetting(input, "CLAUDE_HOOKS_REFLOW_MAX_REWRITES"), input.session_id);

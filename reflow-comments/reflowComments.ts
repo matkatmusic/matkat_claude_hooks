@@ -266,6 +266,7 @@ export const isRewriteNeeded = (files: FileReflow[]): number => {
 export function formatReflows(
   files: FileReflow[],
   overCapInput?: { path: string; lines: number[] }[],
+  maxRewrites?: string,
 ): string {
   let overCap = overCapInput;
   if (!overCap) {
@@ -295,7 +296,7 @@ export function formatReflows(
       rewritten,
     }),
     ...(overCap.length > 0 && {
-      instruction: `Spawn a sonnet-5 subagent to rewrite only 1-2 of the comments below to under ${WORD_LIMIT} words, keeping each on one line. Return to your primary task after finishing the comment rewrites.  The hook will track when any flagged comments pass the word-length restriction and stop blocking you.`,
+      instruction: `Spawn a sonnet-5 subagent to rewrite up to ${maxRewrites} of the comments below to under ${WORD_LIMIT} words, keeping each on one line. Return to your primary task after finishing the comment rewrites.  The hook will track when any flagged comments pass the word-length restriction and stop blocking you.`,
       files: shownFiles,
     }),
   });
@@ -321,7 +322,7 @@ export function applyReflowToFile(path: string): Reflow[] {
 }
 
 // Blocks on over-cap comments; with a sessionId the quota silences already-seen debt after one fix.
-export function emitReflows(hookEventName: string, files: FileReflow[], sessionId?: string): number {
+export function emitReflows(hookEventName: string, files: FileReflow[], maxRewrites: string, sessionId?: string): number {
   const reflowed: FileReflow[] = [];
   let joined = false;
   for (const file of files) {
@@ -347,7 +348,7 @@ export function emitReflows(hookEventName: string, files: FileReflow[], sessionI
     if (!joined)
       return REFLOW_NOT_EMITTED;
   }
-  const reason = formatReflows(reflowed, overCap);
+  const reason = formatReflows(reflowed, overCap, maxRewrites);
   process.stdout.write(`${JSON.stringify(
     overCap.length > 0
       ? { decision: "block", reason }
