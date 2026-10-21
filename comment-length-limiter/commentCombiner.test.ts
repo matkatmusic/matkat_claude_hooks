@@ -1,4 +1,4 @@
-// PostToolUse reflow hook: rewrites the edited file in place, reports it, and records its path. Run: node --test "*.test.ts"
+// PostToolUse combiner hook: rewrites the edited file in place and reports it. Run: node --test "*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dirname, "reflow-comments.ts");
+const SCRIPT = join(import.meta.dirname, "commentCombiner.ts");
 
 const STATE_DIR = mkdtempSync(join(tmpdir(), "reflow-state-"));
 
@@ -53,18 +53,18 @@ test("commented-out code and already-flat files stay silent", () => {
   assert.equal(readFileSync(path, "utf8"), source);
 });
 
-test("an edited file path is recorded once in the session state", () => {
-  const path = fileWith("const x = 1;");
-  run({ file_path: path });
-  run({ file_path: path });
-  const state = JSON.parse(readFileSync(join(STATE_DIR, "post-session.json"), "utf8"));
-  let timesRecorded = 0;
-  for (const recorded of state.editedFiles) {
-    if (recorded === path)
-      timesRecorded++;
-  }
-  assert.equal(timesRecorded, 1);
-});
+// test("an edited file path is recorded once in the session state", () => {
+//   const path = fileWith("const x = 1;");
+//   run({ file_path: path });
+//   run({ file_path: path });
+//   const state = JSON.parse(readFileSync(join(STATE_DIR, "post-session.json"), "utf8"));
+//   let timesRecorded = 0;
+//   for (const recorded of state.editedFiles) {
+//     if (recorded === path)
+//       timesRecorded++;
+//   }
+//   assert.equal(timesRecorded, 1);
+// });
 
 test("missing path or notebook edit: silent", () => {
   assert.equal(run({ notebook_path: "/nope/x.ipynb" }), "");

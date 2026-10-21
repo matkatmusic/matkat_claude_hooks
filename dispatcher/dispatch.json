@@ -4,8 +4,9 @@
     "block-parent-edits": { "PreToolUse": false },
     "block-bash-edits": { "PreToolUse": false },
     "plan-file-reminder": { "PostToolUse": false },
-    "reflow-comments": { "PostToolUse": false },
-    "reflow-comments-stop": { "Stop": false },
+    "commentCombiner": { "PostToolUse": false },
+    "commentCombinerLogger": { "PostToolUse": false },
+    "commentLengthLimiter": { "Stop": false },
     "check-task-list-id": { "SessionStart": false },
     "nudge-task-list": { "Stop": false },
     "unlisted-items": { "Stop": false },
@@ -54,6 +55,9 @@
       "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT": "/tmp",
       "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS": "14"
     },
+    "commentLengthLimiter": {
+      "CLAUDE_HOOKS_REFLOW_MAX_REWRITES": "2"
+    },
     "typecheck-on-stop": {
       "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES": "20"
     },
@@ -68,8 +72,9 @@
     { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["node", "../block-parent-edits/block-parent-edits.ts"] },
     { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-bash-edits/block-bash-edits.ts"] },
     { "event": "PostToolUse", "matcher": "Write|Edit", "command": ["node", "../plan-file-reminder/plan-file-reminder.ts"] },
-    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../reflow-comments/reflow-comments.ts"] },
-    { "event": "Stop", "command": ["node", "../reflow-comments/reflow-comments-stop.ts"] },
+    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../comment-length-limiter/commentCombiner.ts"] },
+    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../comment-length-limiter/commentCombinerLogger.ts"] },
+    { "event": "Stop", "command": ["node", "../comment-length-limiter/commentLengthLimiter.ts"] },
     { "event": "SessionStart", "command": ["node", "../check-task-list-id/check-task-list-id.ts"] },
     { "event": "Stop", "command": ["node", "../nudge-task-list/nudge-task-list.ts"] },
     { "event": "Stop", "command": ["node", "../unlisted-items/unlisted-items.ts"] },

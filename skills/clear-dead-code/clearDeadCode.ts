@@ -3,8 +3,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
-import { isBodyCode } from "../../reflow-comments/reflowComments.ts";
-import { BODY_LOOKS_LIKE_CODE } from "../../reflow-comments/resultCodes.ts";
+import { isBodyCode } from "../../comment-length-limiter/reflowComments.ts";
+import { BODY_LOOKS_LIKE_CODE } from "../../comment-length-limiter/resultCodes.ts";
 
 const SLASH_COMMENT = /^\s*\/\/(?!\/)/;
 const PERCENT_COMMENT = /^\s*%%/;

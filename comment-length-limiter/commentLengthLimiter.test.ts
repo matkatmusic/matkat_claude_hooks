@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = join(import.meta.dirname, "reflow-comments-stop.ts");
+const SCRIPT = join(import.meta.dirname, "commentLengthLimiter.ts");
 const LONG_COMMENT = ["// A wrapped comment that runs well past the twenty word cap once it",
   "// has been joined back together into one single long line of prose here.",
   "const x = 1;"].join("\n");
