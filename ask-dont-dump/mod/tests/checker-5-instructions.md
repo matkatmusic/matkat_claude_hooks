@@ -114,3 +114,7 @@ I recommend treating the extraction, normalization, and decision phases as produ
 This separation makes it possible to test the accuracy of each phase independently. It also gives you a way to determine whether a missed TaskList entry came from faulty extraction, incorrect normalization, or the decision-tree logic itself.
 
 I haven't executed these diagrams against your custom parser, but they follow the required standalone node declarations and `Q_CHOICE_` branch conventions.
+
+The main improvement over the existing typesafe-checker diagrams is that the tree now collects zero or more questions and zero or more tasks, rather than assuming there is exactly one decision for the entire reply.
+
+I would make one further structural improvement before using this as an automation: move duplicate detection into the extraction/normalization phase, so multiple sentences referring to the same bug, question, or outstanding action become one canonical item rather than generating redundant questions or tasks.

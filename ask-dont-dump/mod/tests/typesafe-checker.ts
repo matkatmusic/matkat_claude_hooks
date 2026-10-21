@@ -109,7 +109,7 @@ const listedChoices: Record<string, string> = {
 const userPromptPath = { userPrompt: "`userPrompt`" };
 const userPromptAndTaskListPaths = { userPrompt: "`userPrompt`", taskList: "`taskList`" };
 
-async function loadTaskList(): Promise<TaskSummary[]> {
+export async function loadTaskList():Promise<TaskSummary[]> {
   const settings = await Bun.file(`${process.cwd()}/.claude/settings.json`).json();
   const taskListId = settings.env.CLAUDE_CODE_TASK_LIST_ID;
   const taskDirectory = `${homedir()}/.claude/tasks/${taskListId}`;
