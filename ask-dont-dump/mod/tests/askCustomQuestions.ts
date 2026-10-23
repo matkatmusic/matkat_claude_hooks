@@ -15,7 +15,8 @@ const FOLLOW_UP_ID_MARKER = '.followUp';
 const YES_SCORE_LIMIT = 1;
 // const CONTEXT_NOTE = '`message` is the message. `userPrompt` is the user\'s request before it, for context only.';
 
-type CustomQuestion = { ask: string; choices?: Record<string, string>; 'follow-ups'?: string[] };
+// type CustomQuestion = { ask: string; choices?: Record<string, string>; 'follow-ups'?: string[] };
+type CustomQuestion = { ask: string; active: boolean; choices?: Record<string, string>; 'follow-ups'?: { ask: string; active: boolean }[] };
 // type FollowUpRecord = { ask: string; gate: string; confidence: number };
 type FollowUpState = Record<string, string | { ask: string; score: number; scoreLimit: number }>;
 // type AnswerRecord = { gate: string; noul?: number; choice?: string; confidence?: number; probabilities?: Record<string, number>; followUps?: FollowUpRecord[] };
@@ -294,12 +295,22 @@ if (import.meta.main) {
       message: replyState.reply.text,
     };
     const questions: Questions = {};
-    for (const [questionId, customQuestion] of Object.entries(customFile.questions))
+    // for (const [questionId, customQuestion] of Object.entries(customFile.questions))
+    //   questions[questionId] = choice(customQuestion.ask, {
+    //     yes: 'yes',
+    //     no: 'no',
+    //     unclear: 'not sure',
+    //   });
+    for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
+      const isQuestionInactive = !customQuestion.active;
+      if (isQuestionInactive)
+        continue;
       questions[questionId] = choice(customQuestion.ask, {
         yes: 'yes',
         no: 'no',
         unclear: 'not sure',
       });
+    }
     if (isDryRun)
       console.log({ state, questions });
     const isDryRunWithoutSavedAnswers = isDryRun && mainFromPath === undefined;
@@ -317,8 +328,18 @@ if (import.meta.main) {
     followUpState.message = replyState.reply.text;
     // const answers = response.answers as Record<string, ChoiceResponse>;
     for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
+      const isQuestionInactive = !customQuestion.active;
+      if (isQuestionInactive)
+        continue;
       const followUps = customQuestion['follow-ups'] ?? [];
-      const hasFollowUps = followUps.length > 0;
+      // const hasFollowUps = followUps.length > 0;
+      let activeFollowUpCount = 0;
+      for (const followUp of followUps) {
+        const isFollowUpActive = followUp.active;
+        if (isFollowUpActive)
+          activeFollowUpCount++;
+      }
+      const hasFollowUps = activeFollowUpCount > 0;
       if (!hasFollowUps)
         continue;
       // const yesScore = (answers[questionId] as ChoiceResponse).probabilities.yes as number;
@@ -337,12 +358,23 @@ if (import.meta.main) {
         score: yesScore,
         scoreLimit: YES_SCORE_LIMIT,
       };
-      for (let index = 0; index < followUps.length; index++)
-        followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUps[index] as string), {
+      // for (let index = 0; index < followUps.length; index++)
+      //   followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUps[index] as string), {
+      //     yes: 'yes',
+      //     no: 'no',
+      //     unclear: 'not sure',
+      //   });
+      for (let index = 0; index < followUps.length; index++) {
+        const followUp = followUps[index] as { ask: string; active: boolean };
+        const isFollowUpInactive = !followUp.active;
+        if (isFollowUpInactive)
+          continue;
+        followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUp.ask), {
           yes: 'yes',
           no: 'no',
           unclear: 'not sure',
         });
+      }
     }
     const hasFollowupQuestions = Object.keys(followupQuestions).length > 0;
     if (!hasFollowupQuestions)
