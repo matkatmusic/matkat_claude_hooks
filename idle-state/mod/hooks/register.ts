@@ -144,6 +144,7 @@ Rules for populating the template:
 - Do not put the JSON in a code fence.
 - Replace each example value with real values.
 - Use an empty array when there is nothing to report for that key.
+- Put only unfinished work in \`not_done\`. Put each completed item in \`done\`, never in \`not_done\`.
 - For \`runningPrograms\`, give the exact command line that started each program.
 - Keep each section under 150 words.`;
   isWritingState = true;
