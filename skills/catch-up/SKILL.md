@@ -9,12 +9,12 @@ Read the state files of past chats. Show the user what is still open.
 
 ## Steps
 1. Find the project root. Run `node "${CLAUDE_SKILL_DIR}/collect.ts" <project root>`. The output is one JSON object with 5 lists: `not_done`, `actions`, `questions`, `rules`, `mistakes`. It also has a `files` list. Each item in the 5 lists has `text` and `file`. An item from a new state file also has `sessionId`.
-2. Start one subagent with `model: haiku`. Give it the 5 lists and the `files` list. It does these steps in order:
+2. Start one subagent with `model: haiku`. Give it the 5 lists, the `files` list, and your scratchpad folder. It does these steps in order:
    a. In each list, it merges items that say the same thing in different words. It keeps one wording of each merged item.
    When an item is not clear, the subagent may read the transcript of the chat that made it. The transcript is `~/.claude/projects/<project folder>/<sessionId>.jsonl`. The project folder name is the full path of the project root, with each character that is not a letter or a digit changed to `-`. Example: `/Users/x/Programming/dotfiles` becomes `-Users-x-Programming-dotfiles`. An item with no `sessionId` has no transcript.
    b. It checks only `not_done`, `actions`, and `questions`. It does not check `rules` or `mistakes`. For each checked item, it looks at `git log` and the working tree since the stamp in the `file` value. The stamp is the `YYYY-MM-DD-HHMM` at the start. It drops each item that is done.
-   c. It writes one JSON file to `/tmp/catch-up-merge.json` with the Write tool. The file has the 5 lists as lists of text only, and the `files` list from step 1 unchanged.
-   d. It runs `node "${CLAUDE_SKILL_DIR}/writeMerged.ts" /tmp/catch-up-merge.json` one time from the project root.
+   c. It writes one JSON file to `<scratchpad folder>/catch-up-merge.json` with the Write tool. The file has the 5 lists as lists of text only, and the `files` list from step 1 unchanged.
+   d. It runs `node "${CLAUDE_SKILL_DIR}/writeMerged.ts" <scratchpad folder>/catch-up-merge.json` one time from the project root.
    e. It returns the 5 lists with the items that are left.
 3. Show the user the items that are left. Show `rules` and `mistakes` first, in full. Then show `not_done`, `actions`, and `questions`.
 4. Call TaskList. For each `not_done` item that no open task covers, make a task.
