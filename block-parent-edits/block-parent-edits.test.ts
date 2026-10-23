@@ -390,6 +390,30 @@ test("main session on claude-fable-5-1, Bash grep -o: allowed", () => {
   assert.equal(output, "");
 });
 
+test("main session on claude-fable-5-1, Bash rg with other flags before -o: allowed", () => {
+  const transcript_path = writeTranscript("claude-fable-5-1");
+  const output = runHook({ transcript_path, tool_name: "Bash", tool_input: { command: "rg -m1 -o 'model \\S+' /tmp/some.log" } });
+  assert.equal(output, "");
+});
+
+test("main session on claude-fable-5-1, Bash sort -o file: denied", () => {
+  const transcript_path = writeTranscript("claude-fable-5-1");
+  const output = runHook({ session_id: "test-session", transcript_path, tool_name: "Bash", tool_input: { command: "sort -o out.txt in" } });
+  assert.match(output, /"permissionDecision":"deny"/);
+});
+
+test("main session on claude-fable-5-1, Bash rg piped into sort -o file: denied", () => {
+  const transcript_path = writeTranscript("claude-fable-5-1");
+  const output = runHook({ session_id: "test-session", transcript_path, tool_name: "Bash", tool_input: { command: "rg foo in | sort -o out.txt" } });
+  assert.match(output, /"permissionDecision":"deny"/);
+});
+
+test("main session on claude-fable-5-1, Bash rg redirected to a file: denied", () => {
+  const transcript_path = writeTranscript("claude-fable-5-1");
+  const output = runHook({ session_id: "test-session", transcript_path, tool_name: "Bash", tool_input: { command: "rg foo > out.txt" } });
+  assert.match(output, /"permissionDecision":"deny"/);
+});
+
 test("real taskTools-86 fable transcripts: hook decisions match hand-labeled expected.json", () => {
   const fixturesDir = `${import.meta.dirname}/fixtures/block-parent-edits`;
   const expected = JSON.parse(readFileSync(`${fixturesDir}/expected.json`, "utf8"));
