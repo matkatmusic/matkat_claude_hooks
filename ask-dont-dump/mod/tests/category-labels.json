@@ -28,6 +28,12 @@
     {
       "id": "s1-helper-still-running",
       "userPrompt": "fix this bug:\nask-dont-dump: turn.complete hook skipped: threw SyntaxError: JSON Parse error: Unrecognized token '`'",
+      "originalReply": [
+        "The helper is still running. I will report when it finishes.",
+        "",
+        "- Fix: before `JSON.parse`, cut the text from the first `{` to the last `}`. The code fence then does not matter.",
+        "- The helper also adds one test that sends back a fenced answer."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -69,6 +75,26 @@
     {
       "id": "s3-replay-script-blocked",
       "userPrompt": "Commits can be made via the jot script replay-plate.  Run that script so the changes are committed in proper work-done order.  ask the session in Attune how to use the script if needed.",
+      "originalReply": [
+        "I could not run the replay script, because the auto mode safety check blocked the command. I made no branch and no commits.",
+        "I read the script and ran its `survey` command, which only reads. There are enough captures for a replay: the claude_hooks repo has about 1,200 captures, from October 15 to 20. The script works in 3 steps:",
+        "1. `build` makes a new branch from HEAD, with one dated commit for each work step. A last \"sync\" commit makes the branch match the files on your computer.",
+        "2. `verify` checks that the branch and the files on your computer are the same.",
+        "3. `advance` moves `develop` forward to the new branch. It keeps your files and your staged changes.",
+        "The last commit also replaces the broken `register.ts` files in commit 93b9972 with the correct files from your computer.",
+        "To run it yourself, type these lines in this chat one at a time:",
+        "```",
+        "! cd ~/Programming/dotfiles/claude/claude_hooks && python3 -I ~/Programming/jot/common/scripts/plate/plate_replay.py build --branch plate-replay-2026-10-20",
+        "! cd ~/Programming/dotfiles/claude/claude_hooks && python3 -I ~/Programming/jot/common/scripts/plate/plate_replay.py verify --branch plate-replay-2026-10-20",
+        "```",
+        "Checks (b), (c) and (d) in the `verify` output must be empty. Only then, type the third line:",
+        "```",
+        "! cd ~/Programming/dotfiles/claude/claude_hooks && python3 -I ~/Programming/jot/common/scripts/plate/plate_replay.py advance --branch plate-replay-2026-10-20",
+        "```",
+        "You can also add a permission rule that allows `plate_replay.py`. Then I can run the 3 steps myself.",
+        "- I did not find a session named Attune, so I did not ask it about the script. The script's own help text gave enough information.",
+        "- Your commit \"WIP updated diagrams\" already includes the 3 diagram files."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -296,6 +322,16 @@
     {
       "id": "s3-what-to-clarify",
       "userPrompt": "I'm still seeing 'who must act next and when' for this chain:\n```\nWhat is the reply about? -> work or task > threshold\nWhat does the reply do? -> states a fact > threshold\nWho must act next, and when?\n```\nI am expecting the diagram to not go to that question.  \nI would expect the diagram to go to checking if the fact is about a bug or issue, otherwise go to 'do not block.\nare you waiting for decisions from me about certain routes, including this one, that are supposed to be set in route-table.md?",
+      "originalReply": [
+        "What do you want to clarify?",
+        "Here is where things stand:",
+        "- **Your question:** yes, I am waiting on you. `route-table.md` is a draft, and you have not confirmed it. So the flowchart still sends every \"states a fact\" pass to \"Who must act next?\".",
+        "- **Why one more check is needed:** all 9 topics share one \"What does the reply do?\" question. That question does not know the topic. So \"states a fact\" needs one more check before it can split bug facts from other facts.",
+        "- **Open decisions:**",
+        "  1. How the new check finds a bug: use the layer 1 \"a bug or problem\" result, or send a new paid question.",
+        "  2. The \"work not done\" conflict: your \"work + states a fact -> do not block\" rule also lets unfinished work through.",
+        "  3. The 11 unsure cells in `route-table.md`."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -449,6 +485,26 @@
     {
       "id": "s2-explain-rows",
       "userPrompt": "Explain this concept of \"rows\" in stranger_test",
+      "originalReply": [
+        "A \"row\" is one line in the final PASS/FAIL table. Each row checks one hook behavior and prints one line of proof.",
+        "**What one row is**",
+        "- It has a number, a hook name, a model, PASS or FAIL, and the proof.",
+        "- Example: row 15, `block-parent-edits`, Opus, PASS, \"Parent session must not edit files; saved calls: 1\".",
+        "**Two kinds of rows**",
+        "1. **Live rows (14).** The runner starts a real Claude in tmux and types a prompt. Then it reads the chat log and looks for the hook's message.",
+        "   - Session 1 (Sonnet): rows 1 to 9. Examples: task list id, status line, npm test block.",
+        "   - Session 2 (Sonnet): rows 10 to 13. Examples: ponytail nudge, the \"fix it\" ambiguity gate.",
+        "   - Session 3 (Opus): rows 14 and 15. These are idle-state and block-parent-edits.",
+        "2. **Direct rows (27).** No Claude runs. The runner writes made-up hook input and pipes it into the hook script. Then it checks what the script prints.",
+        "   - 25 rows pipe made-up input into normal hook scripts.",
+        "   - 2 rows test the mods: context-exit and idle-state. They load the mod file and call it with a fake engine. A fake engine is a stand-in for Claude. That fake has no `fs.read`, so the context-exit row crashed.",
+        "**Why direct rows exist**",
+        "- Many hook cases are hard to trigger on purpose in a real chat, such as an unknown model name or a `.tsx` file.",
+        "- Direct rows check those cases fast and give the same result each run.",
+        "**What your point changes**",
+        "- The 27 direct rows do not prove the hooks work inside real Claude. Only the 14 live rows prove that.",
+        "- The crash we hit comes from the fake engine. A live row would use real Claude, so this crash would not happen there."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -610,6 +666,33 @@
     {
       "id": "s2-where-is-rows-code",
       "userPrompt": "Where is the code for these \"rows\"?",
+      "originalReply": [
+        "The rows are in two places. `tests/run_stranger.ts` has the live rows and starts everything. Seven `tests/stranger_direct_*_rows.ts` files hold the fake rows. All paths are under `claude/claude_hooks/`.",
+        "**Start point and table**",
+        "- `tests/run_stranger.ts:538` `executeMain` runs everything in order: test bed, direct rows, then sessions 1, 2, and 3.",
+        "- `tests/run_stranger.ts:433` `addRow` and `:437` `addHookRow` add one line each to the PASS/FAIL table.",
+        "**Live rows (real Claude in tmux)**",
+        "- `tests/run_stranger.ts:46` `SESSION_ONE_ROWS`: a list of prompts, plus the hook message to look for.",
+        "- `tests/run_stranger.ts:53` `SESSION_TWO_ROWS`: the same kind of list.",
+        "- `tests/run_stranger.ts:467` `executeFirstSession`: rows 1 to 9.",
+        "- `tests/run_stranger.ts:497` `executeSecondSession`: rows 10 to 13.",
+        "- `tests/run_stranger.ts:523` `executeThirdSession`: rows 14 and 15.",
+        "**Direct rows (no Claude)**",
+        "- `tests/stranger_direct_rows.ts` holds the list of all 27 checks. The other files below hold the checks.",
+        "- `tests/stranger_direct_bash_rows.ts`: 5 rows",
+        "- `tests/stranger_direct_parent_rows.ts`: 4 rows",
+        "- `tests/stranger_direct_prompt_rows.ts`: 4 rows",
+        "- `tests/stranger_direct_status_rows.ts`: 3 rows",
+        "- `tests/stranger_direct_stop_rows.ts`: 6 rows",
+        "- `tests/stranger_direct_state_rows.ts`: 3 rows",
+        "- `tests/stranger_direct_mod_rows.ts`: 2 rows (the fake mod engine)",
+        "- `tests/stranger_direct_support.ts`: shared helpers",
+        "**The run order matters**",
+        "- The direct rows run first (`run_stranger.ts:560`), so the fake-engine crash stopped the whole run.",
+        "- No real Claude session started this time. The 14 live rows did not run.",
+        "**Also found**",
+        "- `tests/stranger_test.py` is an older Python version of the same test. `run_stranger.ts` is the one in use."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -788,6 +871,49 @@
     {
       "id": "s2-unlabeled-five-changes-a",
       "userPrompt": "Additionally, since claude_hooks now uses json to configure everything and doesn't require .env values, we can enable/disable hooks in stranger_test in realtime to verify behavior between sessions or during a session. \n\nWhat changes do we need to make to the stranger_test so that thorough testing is performed and all claude_hook functionality is confirmed working as expected?",
+      "originalReply": [
+        "Five changes make the stranger test cover every hook in a real Claude session. On/off switching during a run already works, because the hook runner and all three mods reread the JSON files on every event.",
+        "",
+        "**1. Add live on/off switching to the test** (`tests/run_stranger.ts:108`)",
+        "- Today `writeUserDispatch` writes `user-dispatch.json` once, before any session starts.",
+        "- Add one helper that rewrites a single on/off flag or setting while a session runs.",
+        "- Each row then has three steps:",
+        "  1. Turn the hook off and send the prompt. The hook message must not appear.",
+        "  2. Turn it on and send the same prompt. The message must appear.",
+        "  3. Turn it off again. The message must disappear.",
+        "- This runs inside one session, so it also proves that switching works without a restart.",
+        "",
+        "**2. Load all three mods in the live sessions** (`run_stranger.ts:217`)",
+        "- Today only `idle-state/mod` is loaded. `context-exit/mod` and `ask-dont-dump/mod` never run in a real session.",
+        "",
+        "**3. Replace the fake mod engine with live rows** (`tests/stranger_direct_mod_rows.ts`)",
+        "- **context-exit:** The first warning comes at 30% of the context window, which means about 300,000 words of chat. A real test needs that number to come from `dispatch.json`, so the test can set it to 1%.",
+        "- **idle-state:** The test now edits the mod's code to change `IDLE_MINUTES` (`run_stranger.ts:136`). Move that number into `dispatch.json` too, so the test sets it through JSON instead.",
+        "- **ask-dont-dump:** It has no row at all. Add a live row: one prompt that makes Claude dump a list of issues, then check the mod's reply.",
+        "- Comment out the fake engine and its test file.",
+        "",
+        "**4. Fill the live coverage gaps**",
+        "- Row 9 is missing. The numbers jump from 8 to 10.",
+        "- No live row checks `typecheck-on-stop` or `debt-ratchet` when a helper agent stops. Only the main chat's stop is tested.",
+        "- No live row checks `turn-counter` when a session ends or a turn fails.",
+        "- No live row checks the idle-state mod's events for tool calls or slash commands.",
+        "- Add one live config row: put an unknown hook name in `user-dispatch.json`. The session must show the loud error from `shared/settings.ts:38`.",
+        "- Add one live settings row: change a folder setting mid-session, such as the blocked-edits folder. The next saved file must land in the new folder.",
+        "",
+        "**5. Sort the 25 other direct rows by your rule**",
+        "- 17 rows only send JSON into a script and check what it prints. These stay direct.",
+        "- 8 rows do more:",
+        "  - Rows 22, 27, 28, 38, and 40 check files the hook leaves behind.",
+        "  - Rows 34, 38, and 40 check a chain of several calls.",
+        "  - Row 31 checks the test bed's `settings.json`.",
+        "  - Row 39 starts in a subfolder.",
+        "",
+        "**Not ready to tell the other session yet.** The dispatch.json code is done, but no stranger run has passed yet.",
+        "",
+        "Should the 8 rows in step 5 move to real sessions?",
+        "- **Move them live (my pick).** They test what hooks do across turns and with files, and only a real session proves that.",
+        "- **Keep them direct.** The runs stay faster and give the same result each time."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -1112,6 +1238,55 @@
     {
       "id": "s2-unlabeled-five-changes-b",
       "userPrompt": "Additionally, since claude_hooks now uses json to configure everything and doesn't require .env values, we can enable/disable hooks in stranger_test in realtime to verify behavior between sessions or during a session. \n\nWhat changes do we need to make to the stranger_test so that thorough testing is performed and all claude_hook functionality is confirmed working as expected?",
+      "originalReply": [
+        "Five changes cover it. The base is already in place: the dispatcher reads `dispatch.json` and `user-dispatch.json` again on every hook call, and the mods re-read them on every event. A file write in the middle of a run takes effect on the next hook call, with no restart.",
+        "",
+        "**1. Run the mods in real sessions**",
+        "- Today the runner starts Claude with only two plugin folders: the clone and `idle-state/mod` (`run_stranger.ts:216`).",
+        "- The `context-exit` and `ask-dont-dump` mods never load in a real session. `ask-dont-dump` has no row at all, live or fake.",
+        "- Add `--plugin-dir` for both mods.",
+        "- Comment out the two fake-engine rows in `stranger_direct_mod_rows.ts`.",
+        "- Add live rows for them:",
+        "  - `ask-dont-dump`: give Claude a prompt that makes it list many issues, then look for the mod's message.",
+        "  - `context-exit`: see the question at the end.",
+        "  - `idle-state`: move the extra mod cases from the fake row into the live row 14 session.",
+        "",
+        "**2. Add on/off pairs for every hook, in one session**",
+        "- Add one helper, `setEnablement(hook, event, on)`. It rewrites the bed's `user-dispatch.json` in the middle of a session.",
+        "- For each live row:",
+        "  1. Turn the hook off and send the prompt. The hook message must be absent.",
+        "  2. Turn it on and send the same prompt. The message must be present.",
+        "- This proves that `user-dispatch.json` overrides `dispatch.json`, and that a change works without a restart.",
+        "- `SessionStart` and `SessionEnd` hooks cannot change inside one session. Test those across two sessions instead: off in one session, on in the next.",
+        "",
+        "**3. Change values live**",
+        "- Change one path value in the middle of a session. Example: `CLAUDE_HOOKS_BLOCKED_EDITS_DIR`. Then check that new files land in the new folder.",
+        "- This proves that `input.settings` comes from the json on every call.",
+        "",
+        "**4. Check that errors are loud, through the real dispatcher**",
+        "- Write an unknown hook name into `user-dispatch.json`. The next hook call must show the \"unknown hook\" error in the session.",
+        "- Remove one enablement. The session must show the \"no enablement\" error.",
+        "",
+        "**5. Stop editing source code in the test bed**",
+        "- `modifyIdleMinutes` (`run_stranger.ts:136`) rewrites `IDLE_MINUTES = 55` in the mod file.",
+        "- Move `IDLE_MINUTES` into `dispatch.json` values. Then the test sets it in json, like every other value.",
+        "",
+        "**Rows with no live coverage today**",
+        "- `idle-state-check` (Stop)",
+        "- `typecheck-on-stop` and `debt-ratchet` on `SubagentStop`",
+        "- `turn-counter` on `StopFailure` and `SessionEnd`",
+        "- The `context-exit` and `ask-dont-dump` mods",
+        "",
+        "**Keep as they are**",
+        "- The other 25 direct rows only pipe JSON into a hook script, so they pass your rule.",
+        "- They call the script directly and skip the dispatcher. Changes 2 to 4 test the dispatcher.",
+        "",
+        "**Also found**",
+        "- The direct rows run first. A crash in them stops the whole run before any real session starts.",
+        "- `tests/stranger_test.py` is an older copy of the test, and nothing runs it.",
+        "",
+        "One decision is yours. The `context-exit` thresholds (30, 50, and 80 percent) are fixed in the mod. A live test cannot fill 30% of a 1M context in a short time. My pick is to move the thresholds into `dispatch.json` values, so the test can set them to 1, 2, and 3 percent. Do you want that?"
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -1481,6 +1656,24 @@
     {
       "id": "s2-unlabeled-two-calls",
       "userPrompt": "How can a mod's register.ts invoke `$.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`))` but can't use a typescript file that can be shared between mods?",
+      "originalReply": [
+        "The two calls go through two different checks. An `import` loads code, and the plugin loader only loads code from inside the mod's own folder. `$.fs.read` reads data through the mod engine at run time. In our tests the engine let that read reach outside the folder.",
+        "",
+        "**What task #126 found today** (from saved session notes; I did not run it again just now)",
+        "- A trial import of `../../../shared/settings.ts` failed with: \"cannot import ... it is outside the plugin's folder\".",
+        "- A symlink did not work either. The loader follows the symlink to the real file, sees that the file is outside the mod folder, and rejects it.",
+        "- Data reads are not checked the same way. So `$.fs.read(\".../dispatcher/dispatch.json\")` works.",
+        "",
+        "**A second block, even if the import were allowed**",
+        "- `shared/settings.ts` uses `node:fs`, `node:os`, `node:path`, and `import.meta.dirname`.",
+        "- Mod code has none of those. It must use `$.fs` instead. That is why each mod has its own copy of `isEventEnabled` that uses `$.fs.read`.",
+        "",
+        "**One way to share it, if you want that**",
+        "- Keep one `mod-settings.ts` that uses only `$`.",
+        "- Have `install.sh` copy it into each mod's `hooks/` folder as a real file, not a symlink.",
+        "- Cost: you add one copy step. A mod also breaks if someone forgets to run `install.sh`.",
+        "- My pick: keep the three copies. The function is 15 lines, and a copy step adds a new way to fail."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -1666,6 +1859,15 @@
     {
       "id": "s2-i-think-it-passed",
       "userPrompt": "Where's the test that enforces all 3 mods have the same code for isEventEnabled?",
+      "originalReply": [
+        "The test is `shared/mod-copies.test.ts`. It went in with commit `2c75012`.",
+        "",
+        "- It finds the `const DISPATCHER_DIR` line and the `isEventEnabled` function in each of the three `register.ts` files.",
+        "- It fails if any copy differs from the one in `ask-dont-dump`.",
+        "- It also fails if a file has no such line or function.",
+        "- I compared the three copies just now. All three match.",
+        "- It does not show up among today's failures, so I think it passed. The log does not list passing tests by name, so I cannot confirm that from the log."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -1800,6 +2002,32 @@
     {
       "id": "s2-old-behavior-back",
       "userPrompt": "i refactored to make the intention obvious and follow the Single Responsibility Principle.\n\nread and confirm:\n/Users/matkatmusicllc/Programming/dotfiles/claude/claude_hooks/context-exit/mod/hooks/register.ts",
+      "originalReply": [
+        "I checked the context-exit file. It behaves the same as before: the user value wins, then the default, and a missing default still throws. Three issues remain.",
+        "",
+        "**1. The copies test misses the new helpers**",
+        "- `shared/mod-copies.test.ts` compares only `DISPATCHER_DIR` and `isEventEnabled`. It does not compare `readDefault` or `readUser`.",
+        "- It passed just now (1 pass, 0 fail), but the copies differ:",
+        "  - context-exit `readUser` uses your early exit.",
+        "  - ask-dont-dump and idle-state `readUser` still use `if (hasUserFile) user = ...`.",
+        "- Fix: copy your version into the other two mods. Then make the test pull out all three functions.",
+        "",
+        "**2. Two lines of dead code in `readUser`**",
+        "- Lines 23 and 24 set `user` to `{ enablements: {} }`, then replace it right away. The empty object is never used:",
+        "  ```ts",
+        "  const user: { enablements: Record<string, Record<string, boolean>> } = JSON.parse(await $.fs.read(userPath));",
+        "  ```",
+        "- Lines 25 to 28 return `userValue` or `undefined`. That is the same as one line:",
+        "  ```ts",
+        "  return user.enablements[pluginName]?.[event];",
+        "  ```",
+        "",
+        "**3. One small behavior change**",
+        "- Before, `dispatch.json` was read on every call. A broken `dispatch.json` threw even when `user-dispatch.json` had the value.",
+        "- Now, if the user file has the value, `dispatch.json` is never read, so that break stays hidden until a hook has no user value. I think this is fine. Tell me if you want the old behavior back.",
+        "",
+        "**Next action:** Tell me to send a helper to make all three mods match, apply the two cleanups, and widen the copies test."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2045,6 +2273,33 @@
     {
       "id": "s2-eight-changes",
       "userPrompt": "Additionally, since claude_hooks now uses json to configure everything and doesn't require .env values, we can enable/disable hooks in stranger_test in realtime to verify behavior between sessions or during a session. \n\nWhat changes do we need to make to the stranger_test so that thorough testing is performed and all claude_hook functionality is confirmed working as expected?",
+      "originalReply": [
+        "We need eight changes to the stranger test. The 25 direct rows that only pipe JSON into a hook script follow your rule and can stay. Everything else moves to real Claude sessions, and the runner starts turning hooks on and off between turns.",
+        "**What the code shows today**",
+        "- `dispatch.ts` reads `dispatch.json` and `user-dispatch.json` on every hook call. The 3 mods read them on every event. So a change to `user-dispatch.json` takes effect on the next turn, with no restart.",
+        "- The runner writes `user-dispatch.json` one time, in `writeUserDispatch` (`tests/run_stranger.ts:108`). It turns every hook on and never changes the file after that.",
+        "- Live sessions load only the hooks folder and the idle-state mod (`run_stranger.ts:217`). The context-exit and ask-dont-dump mods never run in a real session.",
+        "- No row tests ask-dont-dump, catch-up, handoff-state, or turn-counter's `SessionEnd`/`StopFailure` events.",
+        "- No row checks that a hook stays silent when it is turned off.",
+        "**Changes**",
+        "1. **Move the 2 mod rows to live sessions.** Comment out `validateContextExitMod` and `validateIdleStateMod` and the fake engines in `tests/stranger_direct_mod_rows.ts`. Add live rows for both in their place. This also fixes the crash that stopped today's run.",
+        "2. **Load all 3 mods in live sessions.** Add `--plugin-dir` for `context-exit/mod` and `ask-dont-dump/mod` at `run_stranger.ts:217`.",
+        "3. **Add an ask-dont-dump live row.** Ask Claude for a reply that dumps a list of issues. Check that the mod sends its follow-up prompt.",
+        "4. **Add a helper that rewrites `user-dispatch.json` during a run.** It sets one hook or one event on or off, or changes one value.",
+        "5. **Add an off/on pair for each hook.** In one session:",
+        "   - Turn the hook off, send its trigger prompt, and check that its message is absent.",
+        "   - Turn it on, send the same prompt, and check that its message is present.",
+        "   - Do this for each event of a multi-event hook, such as `typecheck-on-stop` `Stop` and `SubagentStop`.",
+        "6. **Add a \"values change during a session\" row.** Change one value, such as `CLAUDE_HOOKS_BLOCKED_EDITS_DIR`, between turns. Check that the next saved blocked edit goes to the new folder.",
+        "7. **Add a bad-config row.** Put an unknown hook name in `user-dispatch.json`. Check that the next turn shows the error from `shared/settings.ts:38`.",
+        "8. **Add live rows for the 2 skills and the missing turn-counter events.** Run `/catch-up` and `/handoff-state` in a real session. Cover turn-counter `SessionEnd` with the session-close step that already runs for idle-state.",
+        "**Open questions for you**",
+        "- **context-exit in a real session.** It warns at 30%, 50%, and 80% of the context window. On a 1M model, 30% is 300,000 tokens per run. One option is a small-window model. Another is a threshold value in `dispatch.json`. That second option adds a setting you did not ask for, so it needs your call.",
+        "- **idle-state wait time.** `modifyIdleMinutes` (`run_stranger.ts:136`) edits `register.ts` source to shorten the 55-minute wait. A `dispatch.json` value could replace that edit. That also adds a setting, so it is your call too.",
+        "**Next action:** Tell me to write this as a plan file in `plans/`, and answer the two open questions.",
+        "**Also found**",
+        "- An `undefined/` folder sits at the repo root and holds a `typecheck-blocks-*.json` file. My guess is that a setting path came through as `undefined`."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2223,6 +2478,22 @@
     {
       "id": "s2-has-user-file-early-exit",
       "userPrompt": "Why isn't this code exiting early if 'hasUserFile' is false?\n\n\n\n<pasted_content id=\"3874\">\n  const hasUserFile = await $.fs.exists(userPath);\n  let user: { enablements: Record<string, Record<string, boolean>> } = { enablements: {} };\n  if (hasUserFile)\n    user = JSON.parse(await $.fs.read(userPath));\n</pasted_content id=\"3874\">\n",
+      "originalReply": [
+        "If the user file is missing, the function is not done yet. It still has to read the default value from `dispatch.json`.",
+        "- `user-dispatch.json` holds optional overrides. If it is missing, there are no overrides.",
+        "- The empty `{ enablements: {} }` stands for \"no overrides\". Then `userValue` is `undefined`, and the code goes on to the default lookup.",
+        "- The default lookup also throws when `dispatch.json` has no entry. Both paths need that loud error.",
+        "An early exit would have to repeat the default lookup and the throw:",
+        "```ts",
+        "if (!hasUserFile) {",
+        "  const defaultValue = defaults.enablements[pluginName]?.[event];",
+        "  if (defaultValue === undefined)",
+        "    throw new Error(`dispatch.json has no enablement for ${pluginName} ${event}`);",
+        "  return defaultValue;",
+        "}",
+        "```",
+        "That puts the same four lines in two places. In each of the three mods, it is eight lines instead of four. The current shape keeps one default lookup and one throw."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2368,6 +2639,13 @@
     {
       "id": "s2-older-commit",
       "userPrompt": "I already committed.",
+      "originalReply": [
+        "Confirmed. Both commits are in, and the folder has no changes left to commit:",
+        "- `7df8e84` refactored isEventEnabled (SRP): the three mods and `mod-copies.test.ts`.",
+        "- `299f721` added prose for catching 'Next Action': the prompt line.",
+        "",
+        "The dotfiles repo still points at the older claude_hooks commit. To update it, commit the `claude/claude_hooks` change in dotfiles."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2494,6 +2772,23 @@
     {
       "id": "s2-next-phases",
       "userPrompt": "start on the stranger test tasks",
+      "originalReply": [
+        "I started phase 1 of the stranger test work. The phases run one after another, because almost every task edits `run_stranger.ts`.",
+        "",
+        "**Phase 1 (running now)**",
+        "- #136: Run the live sessions before the direct rows.",
+        "- #137: Comment out the old `stranger_test.py`, and point any README mention to `run_stranger.ts`.",
+        "- #127: Add `setEnablement` and `setValue`. Row 4 uses them as the first proof: hook off means no message, hook on means the message shows.",
+        "- At the end, the helper runs the full live stranger test.",
+        "",
+        "**Next phases (one after another)**",
+        "1. #128 and #129: Load all three mods. Move the context-exit thresholds and `IDLE_MINUTES` into `dispatch.json`. Add live mod rows.",
+        "2. On/off pairs for the other live rows, plus #135 (SessionStart and SessionEnd hooks, across two sessions).",
+        "3. #130, #133, and #134: Live coverage gaps and checks for loud errors.",
+        "4. #131: Move the 8 side-effect direct rows to live sessions.",
+        "",
+        "When phase 1 finishes, I will report its PASS/FAIL table."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2684,6 +2979,15 @@
     {
       "id": "s2-subagent-not-stuck",
       "userPrompt": "Is the subagent stuck?",
+      "originalReply": [
+        "The helper is not stuck. It did work about 2 minutes ago, but its test Claude is now waiting on a dialog.",
+        "- **Proof it is working:** At 14:55 it started a test Claude in a tmux session named `expD`. Its test bed `bed-exp1` changed at 14:50. It is trying out the SubagentStop rows, using small scripts in the scratchpad folder.",
+        "- **Possible snag:** The test Claude in `expD` is waiting on a clarify-ambiguous \"Is this the right reading of your request?\" dialog. If the helper's wait loop does not answer dialogs, it will hang there.",
+        "- **What I did:** I sent the helper a note to answer the dialog, or to turn clarify-ambiguous off for that test.",
+        "- **Not a problem:** The `stranger-test` tmux session is the finished phase 3 run. It only waits for Enter.",
+        "**Also found**",
+        "- The red `process` errors in `seten.ts` and `exp-build.ts` come from the helper's test scripts in the scratchpad folder. They are not repo files."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2821,6 +3125,19 @@
     {
       "id": "s2-taskTools-hook-error",
       "userPrompt": "one of the hooks is throwing errors now.  the subagent chat shows this:\n\n\n\n<pasted_content id=\"3874\">\nPostToolUse:Write hook error\nFailed with non-blocking status code: node:internal/modules/cjs/loader:1607\nPostToolUse:Write hook error\nFailed with non-blocking status code: node:internal/modules/cjs/loader:1607\n</pasted_content id=\"3874\">\n",
+      "originalReply": [
+        "The error comes from the taskTools plugin, not from claude_hooks. Another session moved one of its hook scripts, but this chat still runs the hook list it loaded when it started.",
+        "- **The error:** `Cannot find module '/Users/matkatmusicllc/Programming/taskTools/scripts/hooks/reflow-comments-post.ts'`.",
+        "- **Cause:** `~/Programming/taskTools` (branch `reusable-blocks-in-new-diagrams`) has uncommitted changes:",
+        "  - The changes delete `scripts/hooks/reflow-comments-post.ts` and `reflowComments.ts`.",
+        "  - The changes also edit `hooks/hooks.json`. It no longer lists that script.",
+        "  - The code now lives in `claude_hooks/reflow-comments/`.",
+        "- **Why it still runs:** This chat loaded the old taskTools `hooks.json` when it started. The current file no longer has the script, so new chats do not get the error.",
+        "- **Harm:** None. The error does not block anything. The helper's edits still go through.",
+        "- **Fix:** Restart this chat. To keep the current work, wait until phase 4 ends before you restart.",
+        "**Also found**",
+        "- The same old hook path is still in several taskTools worktrees (`taskTools-worktrees/*`, `taskTools-86-*`). Any chat started from one of them will hit this error."
+      ],
       "taskList": [
         { "id": "61", "subject": "block-bash-edits: close write-pattern gaps", "status": "completed" },
         { "id": "62", "subject": "block-npm-test: fix runner and command-matching gaps", "status": "completed" },
@@ -2999,6 +3316,12 @@
     {
       "id": "s4-about-subagent-work",
       "userPrompt": "Did the subagent finish checking the hooks list?",
+      "originalReply": [
+        "Yes. The subagent finished the hooks list check.",
+        "- It opened `dotfiles-hooks-list.json` and read all 14 entries.",
+        "- Every entry points to a script that exists.",
+        "- It changed no files."
+      ],
       "taskList": [
         { "id": "198", "subject": "Check every entry in dotfiles-hooks-list.json", "status": "in_progress" },
         { "id": "199", "subject": "Run the hooks tests after the list check", "status": "pending" }
@@ -3029,6 +3352,13 @@
     {
       "id": "s4-about-a-bug",
       "userPrompt": "Why did the stop hook not run in the last chat?",
+      "originalReply": [
+        "The stop hook has a bug in how it reads the session file.",
+        "- It reads `session.json` before the file exists, so it gets an empty value.",
+        "- With an empty value, the hook ends and prints nothing. So it looks like the hook did not run.",
+        "I did not fix this bug.",
+        "- Someone must still make the hook wait until `session.json` exists."
+      ],
       "taskList": [
         { "id": "200", "subject": "Run the full hooks tests after the dispatch change", "status": "pending" },
         { "id": "201", "subject": "Update hooks-flow.md Part 3", "status": "completed" }
@@ -3069,6 +3399,12 @@
     {
       "id": "s4-reports-command-output",
       "userPrompt": "Run the hooks tests.",
+      "originalReply": [
+        "I ran `bun test claude/hooks`. The command printed this:",
+        "- `36 pass`",
+        "- `0 fail`",
+        "- `Ran 36 tests across 9 files.`"
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3096,6 +3432,12 @@
     {
       "id": "s4-new-tasks-created",
       "userPrompt": "Make tasks for the three tmux test changes we talked about.",
+      "originalReply": [
+        "I am creating 3 new tasks for the tmux test changes.",
+        "- Make the tmux pane 90 columns wide in the stranger run.",
+        "- Use a new bed folder for each stranger run.",
+        "- Kill the tmux session before each new session starts."
+      ],
       "taskList": [
         { "id": "202", "subject": "Make the tmux pane 90 columns wide in the stranger run", "status": "pending" },
         { "id": "203", "subject": "Use a new bed folder for each stranger run", "status": "pending" },
@@ -3127,6 +3469,12 @@
     {
       "id": "s4-tasks-added-this-turn",
       "userPrompt": "Did anything new get added to the plan while you worked on the hook?",
+      "originalReply": [
+        "Yes. I added 2 tasks during this turn.",
+        "- Task 207: write a test for the empty session id case.",
+        "- Task 208: add the stop hook to the hooks list.",
+        "Tasks 205 and 206 were there before this turn."
+      ],
       "taskList": [
         { "id": "205", "subject": "Move the enabled flag into dispatch.json", "status": "completed" },
         { "id": "206", "subject": "Update the hook README", "status": "pending" },
@@ -3159,6 +3507,11 @@
     {
       "id": "s4-task-added-to-task-list",
       "userPrompt": "Put the replay check on the task list.",
+      "originalReply": [
+        "I added the replay check to the task list.",
+        "- It is task 210: run the replay script once after the checker rewrite.",
+        "- Its status is pending. I did not start it."
+      ],
       "taskList": [
         { "id": "209", "subject": "Update hooks-flow.md Part 4", "status": "pending" },
         { "id": "210", "subject": "Run the replay script once after the checker rewrite", "status": "pending" }
@@ -3185,6 +3538,12 @@
     {
       "id": "s4-relays-other-agent",
       "userPrompt": "What did the other chat say about the hooks config?",
+      "originalReply": [
+        "The other chat sent me its answers and one question.",
+        "- It says the new `dispatch.json` shape is done.",
+        "- It says the old `.env` link is gone.",
+        "- It asks: should it also change `user-dispatch.json`?"
+      ],
       "taskList": [
         { "id": "211", "subject": "Update hooks-flow.md Part 2", "status": "pending" },
         { "id": "212", "subject": "Remove the old .env link from init.sh", "status": "completed" }
@@ -3221,6 +3580,12 @@
     {
       "id": "s4-responds-to-hook",
       "userPrompt": "Fix the typo in the settings reader comment.",
+      "originalReply": [
+        "The style hook told me to cut a long comment. I did what it said.",
+        "- The comment above `readValue` had 4 lines.",
+        "- I cut it to one short line.",
+        "- `settings.ts` is the only file I changed."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3248,6 +3613,11 @@
     {
       "id": "s4-question-from-earlier-turn",
       "userPrompt": "Did you ever answer my question about the tmux pane width?",
+      "originalReply": [
+        "Yes. Earlier in this chat, you asked how wide the tmux pane must be.",
+        "- The answer is 70 columns or more.",
+        "- A narrower pane cuts off the text on row 3."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3271,6 +3641,12 @@
     {
       "id": "s4-question-sent-to-subagent",
       "userPrompt": "Find out where the table rows come from.",
+      "originalReply": [
+        "I sent one question to the subagent.",
+        "- The question: which file builds the PASS/FAIL table?",
+        "- I told it to read only. It must not edit files.",
+        "I will use its answer in my next reply."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3298,6 +3674,11 @@
     {
       "id": "s4-question-from-subagent",
       "userPrompt": "Have a subagent write the new checker test.",
+      "originalReply": [
+        "The subagent stopped before it finished. It asked me this question:",
+        "- Should the new test use the real `claude_hooks` folder or a temp folder?",
+        "I did not answer for you, because I do not know which one you want."
+      ],
       "taskList": [
         { "id": "213", "subject": "Write the test for the checker rewrite", "status": "in_progress" },
         { "id": "214", "subject": "Run the TypeSafe scorer once after the rewrite", "status": "pending" }
@@ -3330,6 +3711,11 @@
     {
       "id": "s4-user-decision-made",
       "userPrompt": "What did we settle about the ask-dont-dump mod?",
+      "originalReply": [
+        "You decided to keep the `ask-dont-dump` mod off for now.",
+        "- You said the mod must wait until the stranger rows pass.",
+        "- So I did not change `dispatch.json`."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3353,6 +3739,12 @@
     {
       "id": "s4-user-choice-made",
       "userPrompt": "Which option did I pick for the bed folder?",
+      "originalReply": [
+        "You chose option B from the two options I showed you.",
+        "- Option A: reuse the old bed folder.",
+        "- Option B: make a new bed folder for each run.",
+        "I will make a new bed folder for each run."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3380,6 +3772,12 @@
     {
       "id": "s4-work-sent-to-subagents",
       "userPrompt": "Check all 16 hook scripts for old .env reads.",
+      "originalReply": [
+        "I am sending this work to 4 subagents now.",
+        "- Each subagent gets 4 of the 16 hook scripts.",
+        "- Each one looks for old `.env` reads and reports what it finds.",
+        "- They run at the same time. They do not edit files."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3407,6 +3805,12 @@
     {
       "id": "s4-describes-completed-task",
       "userPrompt": "Is the settings change done?",
+      "originalReply": [
+        "Yes. The settings change is done.",
+        "- I moved the enabled flag into `dispatch.json`.",
+        "- I updated the 3 tests that read it.",
+        "- This work is complete. No steps remain."
+      ],
       "taskList": [],
       "expectedResult": "none",
       "expectedItems": [],
@@ -3434,6 +3838,12 @@
     {
       "id": "s4-completed-task-list-task",
       "userPrompt": "Which task is done now?",
+      "originalReply": [
+        "Task 215 on the task list is complete.",
+        "- The task was: widen the tmux pane so row 3 shows the whole line.",
+        "- I set the pane to 90 columns.",
+        "- I marked task 215 as completed."
+      ],
       "taskList": [
         { "id": "215", "subject": "Widen the tmux pane so row 3 shows the whole line", "status": "completed" },
         { "id": "216", "subject": "Update hooks-flow.md Part 5", "status": "pending" },
