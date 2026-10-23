@@ -3363,11 +3363,11 @@
         { "id": "200", "subject": "Run the full hooks tests after the dispatch change", "status": "pending" },
         { "id": "201", "subject": "Update hooks-flow.md Part 3", "status": "completed" }
       ],
-      "expectedResult": "task",
+      "expectedResult": "ask",
       "expectedItems": [
         {
-          "kind": "task",
-          "text": "Make the stop hook wait until session.json exists.",
+          "kind": "question",
+          "text": "Did you want me to fix this bug now or file a task?",
           "sourceText": "- Someone must still make the hook wait until `session.json` exists."
         }
       ],
