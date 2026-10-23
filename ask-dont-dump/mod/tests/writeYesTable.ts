@@ -5,7 +5,9 @@ import type { LabeledReply } from './checker5Calls';
 const MIN_YES_PROBABILITY = 0.6;
 // const CELL_TEXT_LIMIT = 60;
 
-type CustomQuestion = { ask: string; 'follow-ups'?: string[] };
+// type CustomQuestion = { ask: string; 'follow-ups'?: string[] };
+type CustomQuestion = { active: boolean; ask: string; followUps?: { active: boolean; ask: string }[] };
+type QuestionGroup = { active: boolean; [questionId: string]: CustomQuestion | boolean };
 type ReplyResult = { main: { answers: Record<string, ChoiceResponse> } };
 
 // function formatCellText(text: string) {
@@ -28,10 +30,27 @@ if (import.meta.main) {
     throw new Error('missing <results/responses-*.json>');
   const categoryLabels: { replies: (LabeledReply & { labels: string[] })[] } =
     await Bun.file(`${import.meta.dir}/category-labels.json`).json();
-  const customFile: { questions: Record<string, CustomQuestion> } =
+  // const customFile: { questions: Record<string, CustomQuestion> } =
+  const customFile: { questions: { groups: Record<string, QuestionGroup> } } =
     await Bun.file(`${import.meta.dir}/custom-questions.json`).json();
   const resultsByReply: Record<string, ReplyResult> = await Bun.file(resultsPath).json();
-  const questionIds = Object.keys(customFile.questions);
+  // const questionIds = Object.keys(customFile.questions);
+  const questionIds: string[] = [];
+  for (const group of Object.values(customFile.questions.groups)) {
+    const isGroupInactive = !group.active;
+    if (isGroupInactive)
+      continue;
+    for (const [questionId, groupEntry] of Object.entries(group)) {
+      const isGroupFlag = questionId === 'active';
+      if (isGroupFlag)
+        continue;
+      const customQuestion = groupEntry as CustomQuestion;
+      const isQuestionInactive = !customQuestion.active;
+      if (isQuestionInactive)
+        continue;
+      questionIds.push(questionId);
+    }
+  }
   const lines: string[] = [];
   // lines.push(`| Reply | Prompt | Reply text | Your labels | ${questionIds.join(' | ')} |`);
   // lines.push(`|${'---|'.repeat(questionIds.length + 4)}`);

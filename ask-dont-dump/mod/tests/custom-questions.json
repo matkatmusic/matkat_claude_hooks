@@ -1,91 +1,159 @@
 {
   "questions": {
-    "aboutSubagentWork": { "ask": "Does this message describe something a sub agent did?", "group": "describesWorkDone", "active": true },
-    "aboutDiscovery": { "ask": "Does this message describe something that was discovered?", "group": "describesIssue", "active": true },
-    "asksQuestion": { "ask": "Does this message ask a question?", "group": "asksQuestion", "active": true, "follow-ups": [{ "ask": "is the question meant for the user to answer?", "active": true }, { "ask": "is the question rhetorical?", "active": true }, { "ask": "is the question meant for the subagent to answer? (e.g. I have asked the subagent 'why did this bug happen?')", "active": true }] },
-    "describesStepsToFollow": { "ask": "Does this message describe steps that will be followed?", "group": "describesStepInMultistepWork", "active": true },
-    "saysWaitingForSignalToBegin": { "ask": "Does this message describe that the agent is waiting for my signal to begin a task?", "group": "leavesOpenDecision", "active": true },
-    "aboutABug": { "ask": "Does this message describe a bug?", "group": "describesIssue", "active": true },
-    "aboutAnError": { "ask": "Does this message describe an error?", "group": "describesIssue", "active": true },
-    "aboutAFailure": { "ask": "Does this message describe a failure?", "group": "describesIssue", "active": true },
-    "aboutNotWorkingAsExpected": { "ask": "Does this message describe something not working as expected?", "group": "describesIssue", "active": true },
-    "methodForTask": { "ask": "Does this message describe a method to use for a task?", "group": "describesApproach", "active": true },
-    "planForTask": { "ask": "Does this message describe a plan to use for a task?", "group": "describesApproach", "active": true },
-    "methodForProblem": { "ask": "Does this message describe a method to address a problem at hand?", "group": "describesApproach", "active": true },
-    "planForProblem": { "ask": "Does this message describe a plan to address a problem at hand?", "group": "describesApproach", "active": true },
-    "workCompletedThisTurn": { "ask": "Does this message say that work was completed during this turn?", "group": "describesWorkDone", "active": true },
-    "somethingDone": { "ask": "Does this message say that something was done?", "group": "describesWorkDone", "active": true },
-    "workInProgressThisTurn": { "ask": "Does this message say that work is in progress during this turn?", "group": "describesWorkInProgress", "active": true },
-    "subagentWorking": { "ask": "Does this message say that a subagent is currently doing work?", "group": "describesWorkInProgress", "active": true },
-    "workOngoing": { "ask": "Does this message say that work is currently ongoing?", "group": "describesWorkInProgress", "active": true },
-    "namesTaskNumber": { "ask": "Does this message name a task by its number?", "group": "describesSpecificTask", "active": true },
-    "saysWhatNumberedTaskDoes": { "ask": "Does this message say what a numbered task does?", "group": "describesSpecificTask", "active": true },
-    "saysWhatHappenedToNumberedTask": { "ask": "Does this message say what happened to a numbered task?", "group": "describesSpecificTask", "active": true },
-    "workNotDone": { "ask": "Does this message say that a piece of work is not done?", "group": "describesWorkNotDone", "active": true },
-    "workStaysOpen": { "ask": "Does this message say that a piece of work stays open?", "group": "describesWorkNotDone", "active": true },
-    "workFromTurnNotFinished": { "ask": "Does this message say that work from this turn is not finished?", "group": "describesWorkNotDone", "active": true },
-    "workWaitsOnOtherWork": { "ask": "Does this message say that work waits until other work is completed?", "group": "describesWorkNotDone", "active": true, "follow-ups": [{ "ask": "Does this message say what that other work is?", "active": true }] },
-    "listsWorkStillToDo": { "ask": "Does this message list work that must still be done?", "group": "describesWorkToDo", "active": true },
-    "listsNextSteps": { "ask": "Does this message list next steps?", "group": "describesWorkToDo", "active": true },
-    "hasToDoList": { "ask": "Does this message include a to-do list?", "group": "describesWorkToDo", "active": true },
-    "whyWorkNotDoneThisTurn": { "ask": "Does this message say why this work was not done this turn?", "group": "describesWorkNotDone", "active": true },
-    "whatUnblocksWork": { "ask": "Does this message say what will unblock this work?", "group": "describesWorkNotDone", "active": true },
-    "codeStructure": { "ask": "Does this message describe the structure of the code?", "group": "describesStateOfCode", "active": true },
-    "codeContent": { "ask": "Does this message describe the content of the code?", "group": "describesStateOfCode", "active": true },
-    "codeCondition": { "ask": "Does this message describe the condition of the code?", "group": "describesStateOfCode", "active": true },
-    "codeCurrentState": { "ask": "Does this message describe the current state of the code?", "group": "describesStateOfCode", "active": true },
-    "problemFoundInCode": { "ask": "Does this message describe a problem found in the code?", "group": "describesIssue", "active": true },
-    "codeDoesToday": { "ask": "Does this message say what the code does today?", "group": "describesCurrentBehavior", "active": true },
-    "programDoesToday": { "ask": "Does this message say what the program does today?", "group": "describesCurrentBehavior", "active": true },
-    "behaviorBeforeChange": { "ask": "Does this message describe how the code behaves before a change?", "group": "describesCurrentBehavior", "active": true },
-    "howCodeWorks": { "ask": "Does this message describe how code works?", "group": "describesCurrentBehavior", "active": true },
-    "howCodeUsedToWork": { "ask": "Does this message describe how code used to work before these changes?", "group": "describesCurrentBehavior", "active": true },
-    "codeChangesThisTurn": { "ask": "Does this message describe code changes that occurred in this turn?", "group": "describesWorkDone", "active": true },
-    "resultNotVerified": { "ask": "Does this message give a result that is not verified?", "group": "describesUnconfirmedResult", "active": true },
-    "answerNotVerified": { "ask": "Does this message give an answer that is not verified?", "group": "describesUnconfirmedResult", "active": true },
-    "somethingNotChecked": { "ask": "Does this message describe something not being checked?", "group": "describesStateNotChecked", "active": true },
-    "reportsTestResult": { "ask": "Does this message report a test result?", "group": "describesStateChecked", "active": true, "follow-ups": [{ "ask": "Does this message describe a conflict with that report?", "active": true }] },
-    "reportsCount": { "ask": "Does this message report a count from a check?", "group": "describesStateChecked", "active": true, "follow-ups": [{ "ask": "Does this message describe a conflict with that report?", "active": true }] },
-    "reportsCommandOutput": { "ask": "Does this message report a command output?", "group": "describesStateChecked", "active": true, "follow-ups": [{ "ask": "Does this message describe a conflict with that report?", "active": true }] },
-    "reportsCheckResult": { "ask": "Does this message report the result of a check that ran during this turn?", "group": "describesStateChecked", "active": true, "follow-ups": [{ "ask": "Does this message describe a conflict with that report?", "active": true }] },
-    "checkNotRun": { "ask": "Does this message say that a check was not run?", "group": "describesStateNotChecked", "active": true },
-    "testNotRun": { "ask": "Does this message say that a test was not run?", "group": "describesStateNotChecked", "active": true },
-    "notVerified": { "ask": "Does this message say that something is not verified?", "group": "describesStateNotChecked", "active": true },
-    "subagentStillRunning": { "ask": "Does this message say a subagent is still running?", "group": "describesWaitingForSubagent", "active": true },
-    "helperStillRunning": { "ask": "Does this message say a helper is still running?", "group": "describesWaitingForSubagent", "active": true },
-    "backgroundJobStillRunning": { "ask": "Does this message say a background job is still running?", "group": "describesWaitingForSubagent", "active": true },
-    "waitsForResult": { "ask": "Does this message say it waits for a result from a subagent, helper, or background job?", "group": "describesWaitingForSubagent", "active": true },
-    "waitingForUserAction": { "ask": "Does this message say the agent is waiting for the user to do something?", "group": "leavesOpenDecision", "active": true },
-    "tasksAddedToTaskList": { "ask": "Does this message say that tasks were created or added to the task list?", "group": "describesCreatingTasks", "active": true },
-    "existingTasksNotWorkedOn": { "ask": "Does this message mention existing tasks that were not worked on this turn?", "group": "mentionsExistingTask", "active": true, "follow-ups": [{ "ask": "Does this message say which specific tasks were not worked on this turn?", "active": true }] },
-    "infoThisSession": { "ask": "Does this message give information about this session?", "group": "describesSessionInformation", "active": true },
-    "infoOtherSession": { "ask": "Does this message give information about another session?", "group": "describesSessionInformation", "active": true },
-    "relaysOtherAgent": { "ask": "Does this message pass on answers or questions from another agent or a subagent?", "group": "describesSessionInformation", "active": true },
-    "respondsToHook": { "ask": "Is this message responding to a hook that told it to do or write something?", "group": "describesSessionInformation", "active": true },
-    "asksUserQuestion": { "ask": "Does this message ask the user a question?", "group": "asksQuestion", "active": true },
-    "questionFromEarlierTurn": { "ask": "Does this message describe a question that was asked in an earlier turn?", "group": "describesSessionInformation", "active": true },
-    "questionSentToSubagent": { "ask": "Does this message describe a question sent to a subagent?", "group": "describesSessionInformation", "active": true },
-    "possibleAnswer": { "ask": "Does this message give a possible answer to a question?", "group": "describesQuestionCandidateAnswer", "active": true },
-    "answerNotFinal": { "ask": "Does this message give an answer that is not final?", "group": "describesQuestionCandidateAnswer", "active": true },
-    "answerNotConfirmed": { "ask": "Does this message give an answer that is not confirmed?", "group": "describesQuestionCandidateAnswer", "active": true },
-    "containsRecommendation": { "ask": "Does this message contain a recommendation?", "group": "leavesOpenDecision", "active": true },
-    "choiceNotMade": { "ask": "Does this message leave a choice that nobody has made yet?", "group": "leavesOpenDecision", "active": true },
-    "optionsWithNoPick": { "ask": "Does this message give two or more options with no pick?", "group": "leavesOpenDecision", "active": true },
-    "userMustChoose": { "ask": "Does this message leave a choice the user must still make?", "group": "leavesOpenDecision", "active": true },
-    "recommendsChoice": { "ask": "Does this message recommend a choice in a set of options?", "group": "leavesOpenDecision", "active": true },
-    "userDecisionMade": { "ask": "Does this message describe a decision or choice the user made?", "group": "describesUserDecision", "active": true },
-    "multiStepWorkBegun": { "ask": "Does this message say that work with several steps has begun?", "group": "describesStartingMultiStepWork", "active": true },
-    "announcesMultiStepStart": { "ask": "Does this message announce the start of a task with several steps?", "group": "describesStartingMultiStepWork", "active": true },
-    "workSentToSubagents": { "ask": "Does this message describe work being sent to subagents?", "group": "describesWorkInProgress", "active": true },
-    "listsOrderedSteps": { "ask": "Does this message list ordered steps?", "group": "describesStepInMultistepWork", "active": true },
-    "listsPhases": { "ask": "Does this message list phases of work?", "group": "describesStepInMultistepWork", "active": true },
-    "listsStepsOfPlan": { "ask": "Does this message list one or more steps of a multi-step plan?", "group": "describesStepInMultistepWork", "active": true },
-    "phaseStarting": { "ask": "Does this message describe a phase of work starting?", "group": "describesStartingMultiStepWork", "active": true },
-    "workAlreadyOnTaskList": { "ask": "Does this message say the work was already on a task list?", "group": "mentionsExistingTask", "active": true },
-    "workAlreadyBeingDone": { "ask": "Does this message say the work was already being done before this turn?", "group": "mentionsExistingTask", "active": true },
-    "helperAlreadyDoing": { "ask": "Does this message say a helper was already doing the work?", "group": "mentionsExistingTask", "active": true },
-    "inProgressSessionTask": { "ask": "Does this message describe in-progress work from the session TaskList?", "group": "mentionsExistingTask", "active": true },
-    "describesCompletedTask": { "ask": "Does this message describe a completed task, including a task on the TaskList?", "group": "describesWorkDone", "active": true }
+    "groups": {
+      "describesWorkDone": {
+        "active": false,
+        "aboutSubagentWork": { "active": true, "ask": "Does this message describe something a sub agent did?" },
+        "workCompletedThisTurn": { "active": true, "ask": "Does this message say that work was completed during this turn?" },
+        "somethingDone": { "active": true, "ask": "Does this message say that something was done?" },
+        "codeChangesThisTurn": { "active": true, "ask": "Does this message describe code changes that occurred in this turn?" },
+        "describesCompletedTask": { "active": true, "ask": "Does this message describe a completed task, including a task on the TaskList?" }
+      },
+      "describesIssue": {
+        "active": true,
+        "aboutDiscovery": { "active": false, "ask": "Does this message describe something that was discovered?" },
+        "aboutABug": { "active": true, "ask": "Does this message describe a bug?" },
+        "aboutAnError": { "active": false, "ask": "Does this message describe an error?" },
+        "aboutAFailure": { "active": false, "ask": "Does this message describe a failure?" },
+        "aboutNotWorkingAsExpected": { "active": true, "ask": "Does this message describe something not working as expected?" },
+        "problemFoundInCode": { "active": true, "ask": "Does this message describe a problem found in the code?" }
+      },
+      "asksQuestion": {
+        "active": true,
+        "asksQuestion": { "active": true, "ask": "Does this message ask a question?", "followUps": [{ "active": true, "ask": "is the question meant for the user to answer?" }, { "active": true, "ask": "is the question rhetorical?" }, { "active": true, "ask": "is the question meant for the subagent to answer? (e.g. I have asked the subagent 'why did this bug happen?')" }] },
+        "asksUserQuestion": { "active": false, "ask": "Does this message ask the user a question?" }
+      },
+      "describesStepInMultistepWork": {
+        "active": false,
+        "describesStepsToFollow": { "active": true, "ask": "Does this message describe steps that will be followed?" },
+        "listsOrderedSteps": { "active": true, "ask": "Does this message list ordered steps?" },
+        "listsPhases": { "active": true, "ask": "Does this message list phases of work?" },
+        "listsStepsOfPlan": { "active": true, "ask": "Does this message list one or more steps of a multi-step plan?" }
+      },
+      "leavesOpenDecision": {
+        "active": true,
+        "saysWaitingForSignalToBegin": { "active": true, "ask": "Does this message describe that the agent is waiting for my signal to begin a task?" },
+        "waitingForUserAction": { "active": true, "ask": "Does this message say the agent is waiting for the user to do something?" },
+        "containsRecommendation": { "active": false, "ask": "Does this message contain a recommendation?" },
+        "choiceNotMade": { "active": true, "ask": "Does this message leave a choice that nobody has made yet?" },
+        "optionsWithNoPick": { "active": true, "ask": "Does this message give two or more options with no pick?" },
+        "userMustChoose": { "active": false, "ask": "Does this message leave a choice the user must still make?" },
+        "recommendsChoice": { "active": false, "ask": "Does this message recommend a choice in a set of options?" }
+      },
+      "describesApproach": {
+        "active": false,
+        "methodForTask": { "active": true, "ask": "Does this message describe a method to use for a task?" },
+        "planForTask": { "active": true, "ask": "Does this message describe a plan to use for a task?" },
+        "methodForProblem": { "active": true, "ask": "Does this message describe a method to address a problem at hand?" },
+        "planForProblem": { "active": true, "ask": "Does this message describe a plan to address a problem at hand?" }
+      },
+      "describesWorkInProgress": {
+        "active": false,
+        "workInProgressThisTurn": { "active": true, "ask": "Does this message say that work is in progress during this turn?" },
+        "subagentWorking": { "active": true, "ask": "Does this message say that a subagent is currently doing work?" },
+        "workOngoing": { "active": true, "ask": "Does this message say that work is currently ongoing?" },
+        "workSentToSubagents": { "active": true, "ask": "Does this message describe work being sent to subagents?" }
+      },
+      "describesSpecificTask": {
+        "active": false,
+        "namesTaskNumber": { "active": true, "ask": "Does this message name a task by its number?" },
+        "saysWhatNumberedTaskDoes": { "active": true, "ask": "Does this message say what a numbered task does?" },
+        "saysWhatHappenedToNumberedTask": { "active": true, "ask": "Does this message say what happened to a numbered task?" }
+      },
+      "describesWorkNotDone": {
+        "active": true,
+        "workNotDone": { "active": false, "ask": "Does this message say that a piece of work is not done?" },
+        "workStaysOpen": { "active": false, "ask": "Does this message say that a piece of work stays open?" },
+        "workFromTurnNotFinished": { "active": true, "ask": "Does this message say that work from this turn is not finished?" },
+        "workWaitsOnOtherWork": { "active": false, "ask": "Does this message say that work waits until other work is completed?", "followUps": [{ "active": true, "ask": "Does this message say what that other work is?" }] },
+        "whyWorkNotDoneThisTurn": { "active": false, "ask": "Does this message say why this work was not done this turn?" },
+        "whatUnblocksWork": { "active": true, "ask": "Does this message say what will unblock this work?" }
+      },
+      "describesWorkToDo": {
+        "active": true,
+        "listsWorkStillToDo": { "active": true, "ask": "Does this message list work that must still be done?" },
+        "listsNextSteps": { "active": false, "ask": "Does this message list next steps?" },
+        "hasToDoList": { "active": false, "ask": "Does this message include a to-do list?" }
+      },
+      "describesStateOfCode": {
+        "active": false,
+        "codeStructure": { "active": true, "ask": "Does this message describe the structure of the code?" },
+        "codeContent": { "active": true, "ask": "Does this message describe the content of the code?" },
+        "codeCondition": { "active": true, "ask": "Does this message describe the condition of the code?" },
+        "codeCurrentState": { "active": true, "ask": "Does this message describe the current state of the code?" }
+      },
+      "describesCurrentBehavior": {
+        "active": false,
+        "codeDoesToday": { "active": true, "ask": "Does this message say what the code does today?" },
+        "programDoesToday": { "active": true, "ask": "Does this message say what the program does today?" },
+        "behaviorBeforeChange": { "active": true, "ask": "Does this message describe how the code behaves before a change?" },
+        "howCodeWorks": { "active": true, "ask": "Does this message describe how code works?" },
+        "howCodeUsedToWork": { "active": true, "ask": "Does this message describe how code used to work before these changes?" }
+      },
+      "describesUnconfirmedResult": {
+        "active": false,
+        "resultNotVerified": { "active": true, "ask": "Does this message give a result that is not verified?" },
+        "answerNotVerified": { "active": true, "ask": "Does this message give an answer that is not verified?" }
+      },
+      "describesStateNotChecked": {
+        "active": true,
+        "somethingNotChecked": { "active": true, "ask": "Does this message describe something not being checked?" },
+        "checkNotRun": { "active": false, "ask": "Does this message say that a check was not run?" },
+        "testNotRun": { "active": false, "ask": "Does this message say that a test was not run?" },
+        "notVerified": { "active": true, "ask": "Does this message say that something is not verified?" }
+      },
+      "describesStateChecked": {
+        "active": false,
+        "reportsTestResult": { "active": true, "ask": "Does this message report a test result?", "followUps": [{ "active": true, "ask": "Does this message describe a conflict with that report?" }] },
+        "reportsCount": { "active": true, "ask": "Does this message report a count from a check?", "followUps": [{ "active": true, "ask": "Does this message describe a conflict with that report?" }] },
+        "reportsCommandOutput": { "active": true, "ask": "Does this message report a command output?", "followUps": [{ "active": true, "ask": "Does this message describe a conflict with that report?" }] },
+        "reportsCheckResult": { "active": true, "ask": "Does this message report the result of a check that ran during this turn?", "followUps": [{ "active": true, "ask": "Does this message describe a conflict with that report?" }] }
+      },
+      "describesWaitingForSubagent": {
+        "active": true,
+        "subagentStillRunning": { "active": false, "ask": "Does this message say a subagent is still running?" },
+        "helperStillRunning": { "active": false, "ask": "Does this message say a helper is still running?" },
+        "backgroundJobStillRunning": { "active": false, "ask": "Does this message say a background job is still running?" },
+        "waitsForResult": { "active": true, "ask": "Does this message say it waits for a result from a subagent, helper, or background job?" }
+      },
+      "describesCreatingTasks": {
+        "active": true,
+        "tasksAddedToTaskList": { "active": true, "ask": "Does this message say that tasks were created or added to the task list?" }
+      },
+      "mentionsExistingTask": {
+        "active": true,
+        "existingTasksNotWorkedOn": { "active": false, "ask": "Does this message mention existing tasks that were not worked on this turn?", "followUps": [{ "active": true, "ask": "Does this message say which specific tasks were not worked on this turn?" }] },
+        "workAlreadyOnTaskList": { "active": true, "ask": "Does this message say the work was already on a task list?" },
+        "workAlreadyBeingDone": { "active": false, "ask": "Does this message say the work was already being done before this turn?" },
+        "helperAlreadyDoing": { "active": true, "ask": "Does this message say a helper was already doing the work?" },
+        "inProgressSessionTask": { "active": false, "ask": "Does this message describe in-progress work from the session TaskList?" }
+      },
+      "describesSessionInformation": {
+        "active": false,
+        "infoThisSession": { "active": true, "ask": "Does this message give information about this session?" },
+        "infoOtherSession": { "active": true, "ask": "Does this message give information about another session?" },
+        "relaysOtherAgent": { "active": true, "ask": "Does this message pass on answers or questions from another agent or a subagent?" },
+        "respondsToHook": { "active": true, "ask": "Is this message responding to a hook that told it to do or write something?" },
+        "questionFromEarlierTurn": { "active": true, "ask": "Does this message describe a question that was asked in an earlier turn?" },
+        "questionSentToSubagent": { "active": true, "ask": "Does this message describe a question sent to a subagent?" }
+      },
+      "describesQuestionCandidateAnswer": {
+        "active": true,
+        "possibleAnswer": { "active": false, "ask": "Does this message give a possible answer to a question?" },
+        "answerNotFinal": { "active": false, "ask": "Does this message give an answer that is not final?" },
+        "answerNotConfirmed": { "active": true, "ask": "Does this message give an answer that is not confirmed?" }
+      },
+      "describesUserDecision": {
+        "active": false,
+        "userDecisionMade": { "active": true, "ask": "Does this message describe a decision or choice the user made?" }
+      },
+      "describesStartingMultiStepWork": {
+        "active": false,
+        "multiStepWorkBegun": { "active": true, "ask": "Does this message say that work with several steps has begun?" },
+        "announcesMultiStepStart": { "active": true, "ask": "Does this message announce the start of a task with several steps?" },
+        "phaseStarting": { "active": true, "ask": "Does this message describe a phase of work starting?" }
+      }
+    }
   },
   "mergedAway": {
     "saysTaskAddedToTaskList": { "ask": "Does this message say something was added to the task list?", "group": "describesCreatingTasks", "active": true },

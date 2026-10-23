@@ -16,7 +16,9 @@ const YES_SCORE_LIMIT = 1;
 // const CONTEXT_NOTE = '`message` is the message. `userPrompt` is the user\'s request before it, for context only.';
 
 // type CustomQuestion = { ask: string; choices?: Record<string, string>; 'follow-ups'?: string[] };
-type CustomQuestion = { ask: string; active: boolean; choices?: Record<string, string>; 'follow-ups'?: { ask: string; active: boolean }[] };
+// type CustomQuestion = { ask: string; active: boolean; choices?: Record<string, string>; 'follow-ups'?: { ask: string; active: boolean }[] };
+type CustomQuestion = { active: boolean; ask: string; followUps?: { active: boolean; ask: string }[] };
+type QuestionGroup = { active: boolean; [questionId: string]: CustomQuestion | boolean };
 // type FollowUpRecord = { ask: string; gate: string; confidence: number };
 type FollowUpState = Record<string, string | { ask: string; score: number; scoreLimit: number }>;
 // type AnswerRecord = { gate: string; noul?: number; choice?: string; confidence?: number; probabilities?: Record<string, number>; followUps?: FollowUpRecord[] };
@@ -250,7 +252,8 @@ if (import.meta.main) {
   // const isMissingIdValue = hasIdFlag && requestedReplyId === undefined;
   // if (isMissingIdValue)
   //   throw new Error('missing --id <replyId>');
-  const customFile: { questions: Record<string, CustomQuestion> } =
+  // const customFile: { questions: Record<string, CustomQuestion> } =
+  const customFile: { questions: { groups: Record<string, QuestionGroup> } } =
     await Bun.file(`${import.meta.dir}/custom-questions.json`).json();
   const categoryLabels: { replies: LabeledReply[] } =
     await Bun.file(`${import.meta.dir}/category-labels.json`).json();
@@ -301,15 +304,34 @@ if (import.meta.main) {
     //     no: 'no',
     //     unclear: 'not sure',
     //   });
-    for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
-      const isQuestionInactive = !customQuestion.active;
-      if (isQuestionInactive)
+    // for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
+    //   const isQuestionInactive = !customQuestion.active;
+    //   if (isQuestionInactive)
+    //     continue;
+    //   questions[questionId] = choice(customQuestion.ask, {
+    //     yes: 'yes',
+    //     no: 'no',
+    //     unclear: 'not sure',
+    //   });
+    // }
+    for (const group of Object.values(customFile.questions.groups)) {
+      const isGroupInactive = !group.active;
+      if (isGroupInactive)
         continue;
-      questions[questionId] = choice(customQuestion.ask, {
-        yes: 'yes',
-        no: 'no',
-        unclear: 'not sure',
-      });
+      for (const [questionId, groupEntry] of Object.entries(group)) {
+        const isGroupFlag = questionId === 'active';
+        if (isGroupFlag)
+          continue;
+        const customQuestion = groupEntry as CustomQuestion;
+        const isQuestionInactive = !customQuestion.active;
+        if (isQuestionInactive)
+          continue;
+        questions[questionId] = choice(customQuestion.ask, {
+          yes: 'yes',
+          no: 'no',
+          unclear: 'not sure',
+        });
+      }
     }
     if (isDryRun)
       console.log({ state, questions });
@@ -327,53 +349,64 @@ if (import.meta.main) {
     const followupQuestions: Questions = {};
     followUpState.message = replyState.reply.text;
     // const answers = response.answers as Record<string, ChoiceResponse>;
-    for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
-      const isQuestionInactive = !customQuestion.active;
-      if (isQuestionInactive)
+    // for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
+    for (const group of Object.values(customFile.questions.groups)) {
+      const isGroupInactive = !group.active;
+      if (isGroupInactive)
         continue;
-      const followUps = customQuestion['follow-ups'] ?? [];
-      // const hasFollowUps = followUps.length > 0;
-      let activeFollowUpCount = 0;
-      for (const followUp of followUps) {
-        const isFollowUpActive = followUp.active;
-        if (isFollowUpActive)
-          activeFollowUpCount++;
-      }
-      const hasFollowUps = activeFollowUpCount > 0;
-      if (!hasFollowUps)
-        continue;
-      // const yesScore = (answers[questionId] as ChoiceResponse).probabilities.yes as number;
-      // const isHighEnough = yesScore > FOLLOW_UP_PARENT_THRESHOLD;
-      const parentAnswer = answers[questionId] as ChoiceResponse;
-      const yesScore = parentAnswer.probabilities.yes as number;
-      // const isYes = parentAnswer.choice === 'yes';
-      // const isConfident = parentAnswer.confidence >= YES_CONFIDENCE_THRESHOLD;
-      // const isHighEnough = isYes && isConfident;
-      const isHighEnough = yesScore >= MIN_YES_PROBABILITY;
-      // const isFollowUpParent = isHighEnough && hasFollowUps;
-      if (!isHighEnough)
-        continue;
-      followUpState[questionId] = {
-        ask: customQuestion.ask,
-        score: yesScore,
-        scoreLimit: YES_SCORE_LIMIT,
-      };
-      // for (let index = 0; index < followUps.length; index++)
-      //   followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUps[index] as string), {
-      //     yes: 'yes',
-      //     no: 'no',
-      //     unclear: 'not sure',
-      //   });
-      for (let index = 0; index < followUps.length; index++) {
-        const followUp = followUps[index] as { ask: string; active: boolean };
-        const isFollowUpInactive = !followUp.active;
-        if (isFollowUpInactive)
+      for (const [questionId, groupEntry] of Object.entries(group)) {
+        const isGroupFlag = questionId === 'active';
+        if (isGroupFlag)
           continue;
-        followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUp.ask), {
-          yes: 'yes',
-          no: 'no',
-          unclear: 'not sure',
-        });
+        const customQuestion = groupEntry as CustomQuestion;
+        const isQuestionInactive = !customQuestion.active;
+        if (isQuestionInactive)
+          continue;
+        // const followUps = customQuestion['follow-ups'] ?? [];
+        const followUps = customQuestion.followUps ?? [];
+        // const hasFollowUps = followUps.length > 0;
+        let activeFollowUpCount = 0;
+        for (const followUp of followUps) {
+          const isFollowUpActive = followUp.active;
+          if (isFollowUpActive)
+            activeFollowUpCount++;
+        }
+        const hasFollowUps = activeFollowUpCount > 0;
+        if (!hasFollowUps)
+          continue;
+        // const yesScore = (answers[questionId] as ChoiceResponse).probabilities.yes as number;
+        // const isHighEnough = yesScore > FOLLOW_UP_PARENT_THRESHOLD;
+        const parentAnswer = answers[questionId] as ChoiceResponse;
+        const yesScore = parentAnswer.probabilities.yes as number;
+        // const isYes = parentAnswer.choice === 'yes';
+        // const isConfident = parentAnswer.confidence >= YES_CONFIDENCE_THRESHOLD;
+        // const isHighEnough = isYes && isConfident;
+        const isHighEnough = yesScore >= MIN_YES_PROBABILITY;
+        // const isFollowUpParent = isHighEnough && hasFollowUps;
+        if (!isHighEnough)
+          continue;
+        followUpState[questionId] = {
+          ask: customQuestion.ask,
+          score: yesScore,
+          scoreLimit: YES_SCORE_LIMIT,
+        };
+        // for (let index = 0; index < followUps.length; index++)
+        //   followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUps[index] as string), {
+        //     yes: 'yes',
+        //     no: 'no',
+        //     unclear: 'not sure',
+        //   });
+        for (let index = 0; index < followUps.length; index++) {
+          const followUp = followUps[index] as { ask: string; active: boolean };
+          const isFollowUpInactive = !followUp.active;
+          if (isFollowUpInactive)
+            continue;
+          followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUp.ask), {
+            yes: 'yes',
+            no: 'no',
+            unclear: 'not sure',
+          });
+        }
       }
     }
     const hasFollowupQuestions = Object.keys(followupQuestions).length > 0;
@@ -393,9 +426,14 @@ if (import.meta.main) {
   // const followUpResponsesPath = `${import.meta.dir}/results/followup-responses-${computeTimestamp()}.json`;
   // await Bun.write(followUpResponsesPath, JSON.stringify(followUpResponsesByReply, null, 2));
   // console.log(followUpResponsesPath);
-  const resultsPath = `${import.meta.dir}/results/responses-${computeTimestamp()}.json`;
-  await Bun.write(resultsPath, JSON.stringify(resultsByReply, null, 2));
-  console.log(resultsPath);
+  // const resultsPath = `${import.meta.dir}/results/responses-${computeTimestamp()}.json`;
+  // await Bun.write(resultsPath, JSON.stringify(resultsByReply, null, 2));
+  // console.log(resultsPath);
+  if (!isDryRun) {
+    const resultsPath = `${import.meta.dir}/results/responses-${computeTimestamp()}.json`;
+    await Bun.write(resultsPath, JSON.stringify(resultsByReply, null, 2));
+    console.log(resultsPath);
+  }
   exit(0);
 
 
