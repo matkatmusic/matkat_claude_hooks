@@ -34,7 +34,9 @@ const heredoc = "<<" + whitespaceStar + wordChar + oneOrMore;
 
 // A CLI `-o <path>` output flag that writes a file, excused right after `rg`/`grep` (their `-o` means something else).
 const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep");
-const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
+const sameCommandChars = matchNoneOf("|;&") + zeroOrMore;
+// const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
+const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
 
 // Blocks `sd` and `sed -i`; `sd` right after a single pipe (e.g. "ls | sd a b") is excused.
 const singlePipeBoundary = assertNoLookbehind("\\|") + "\\|" + whitespaceStar;
