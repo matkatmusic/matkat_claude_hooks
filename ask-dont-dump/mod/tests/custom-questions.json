@@ -1,0 +1,14 @@
+{
+  "questions": {
+    "aboutSubagentWork": { "ask": "Does this message describe something a sub agent did?" },
+    "aboutDiscovery": { "ask": "Does this message describe something that was discovered?" },
+    "asksQuestion": { "ask": "Does this message ask a question?", "follow-ups": ["is the question meant for the user to answer?", "is the question rhetorical?", "is the question meant for the subagent to answer? (e.g. I have asked the subagent 'why did this bug happen?')"] },
+    "saysTaskAddedToTaskList": { "ask": "Does this message say something was added to the task list?" },
+    "describesStepsToFollow": { "ask": "Does this message describe steps that will be followed?" },
+    "saysWaitingForSignalToBegin": { "ask": "Does this message describe that the agent is waiting for my signal to begin a task?" },
+    "aboutABug": { "ask": "Does this message describe a bug?" },
+    "aboutAnError": { "ask": "Does this message describe an error?" },
+    "aboutAFailure": { "ask": "Does this message describe a failure?" },
+    "aboutNotWorkingAsExpected": { "ask": "Does this message describe something not working as expected?" }
+  }
+}
