@@ -9,10 +9,15 @@ Read the state files of past chats. Show the user what is still open.
 
 ## Steps
 1. Find the project root. Run `node "${CLAUDE_SKILL_DIR}/collect.ts" <project root>`. The output is one JSON object with 5 lists: `not_done`, `actions`, `questions`, `rules`, `mistakes`. It also has a `files` list. Each item in the 5 lists has `text` and `file`. An item from a new state file also has `sessionId`.
-2. Start one subagent with `model: haiku`. Give it the 5 lists, the `files` list, the project root, and your scratchpad folder. It does these steps in order:
+2. Call TaskList. Start one subagent with `model: haiku`. Give it the 5 lists, the `files` list, the TaskList output, the project root, and your scratchpad folder. It does these steps in order:
    a. In each list, it merges items that say the same thing in different words. It keeps one wording of each merged item.
    When an item is not clear, the subagent may read the transcript of the chat that made it. The transcript is `~/.claude/projects/<project folder>/<sessionId>.jsonl`. The project folder name is the full path of the project root, with each character that is not a letter or a digit changed to `-`. Example: `/Users/x/Programming/dotfiles` becomes `-Users-x-Programming-dotfiles`. An item with no `sessionId` has no transcript.
-   b. It checks only `not_done`, `actions`, and `questions` against git. For each checked item, it looks at `git log` and the working tree since the stamp in the `file` value. The stamp is the `YYYY-MM-DD-HHMM` at the start. It drops each item that is done.
+   b. It checks only `not_done`, `actions`, and `questions`. The stamp is the `YYYY-MM-DD-HHMM` at the start of the `file` value. It drops each item that one of these sources shows as done since the stamp:
+      - `git log` and the working tree.
+      - A completed task in the TaskList output.
+      - A claude-mem note. It finds notes with the `search` tool of the claude-mem MCP server.
+      - A newer state file with the same `sessionId` that does not list the item.
+   It keeps an item when no source shows it as done.
    c. It reads `~/.claude/CLAUDE.md`, `<project root>/CLAUDE.md`, and each file in `~/.claude/projects/<project folder>/memory/`. It drops each `rules` or `mistakes` item that one of those files already says.
    d. It sorts each `rules` or `mistakes` item that is left. A lasting item holds for every chat in this project. A one-chat item names one chat's files, branch, or work. It drops each one-chat item.
    e. For each lasting item, it writes one memory file in `~/.claude/projects/<project folder>/memory/` with the Write tool. The file has frontmatter with `name`, `description`, and `metadata.type: feedback`, then the item text. It adds one line for the file to `MEMORY.md` in that folder.
