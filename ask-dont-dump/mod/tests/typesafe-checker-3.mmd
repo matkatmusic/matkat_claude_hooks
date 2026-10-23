@@ -98,7 +98,7 @@ flowchart TD
     Q_FACT_ABOUT_HELPER --> Q_CHOICE_FACT_ABOUT_HELPER_PASS --> B_DO_NOT_BLOCK
     Q_FACT_ABOUT_HELPER --> Q_CHOICE_FACT_ABOUT_HELPER_FAIL --> B_DO_NOT_BLOCK
 %% %% Layer 3 query
-    Q_LISTED{"Is all the work Claude owes already on the task list? Match plain words, not exact text."}
+    Q_LISTED{"Is the work that is not done already on the task list? Match plain words, not exact text."}
 %% %% Layer 3 choices
     Q_LISTED_YES{"'yes, all of it is on the task list'"}
     Q_CHOICE_LISTED_YES_PASS["> threshold"]

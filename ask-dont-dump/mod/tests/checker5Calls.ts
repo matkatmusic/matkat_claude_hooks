@@ -1,11 +1,11 @@
 import { noul, type JsonValue, type NoulResponse, type Questions, TypeSafeClient } from "@typesafe-ai/sdk";
-import { loadTaskList } from "./typesafe-checker";
+// import { loadTaskList } from "./typesafe-checker";
 
 const client = new TypeSafeClient();
 
 export const SCORE_THRESHOLD = 0.5;
 
-export type LabeledReply = { id: string; userPrompt: string; text: { category: string[]; text: string }[] };
+export type LabeledReply = { id: string; userPrompt: string; taskList: TaskSummary[]; text: { category: string[]; text: string }[] };
 export type TaskSummary = { id: string; subject: string; status: string };
 export type ReplyState = { reply: { text: string }; userPrompt: string; taskList: TaskSummary[] };
 export type Span = { text: string; sourceText: string; location: number };
@@ -71,7 +71,7 @@ export async function isNodeAnswerYes(replyState: ReplyState, nodeId: keyof type
   const nodeRequest = buildNodeRequest(replyState, LABELS[nodeId], focusName, focus, extraState);
   console.log(`asking typesafe ${nodeId}`);
   console.log(JSON.stringify(nodeRequest, null, 2));
-  await Bun.sleep(5000);
+  // await Bun.sleep(5000);
   const response = await client.systemOne(nodeRequest);
   const answer = response.answers.answer as NoulResponse;
   const isYes = answer.noul > SCORE_THRESHOLD;
@@ -84,21 +84,31 @@ export async function isNodeAnswerYes(replyState: ReplyState, nodeId: keyof type
 }
 
 export async function spawnHaikuFields(job: string, replyText: string, item: unknown, context: Record<string, unknown>, fieldsShape: string) {
-  const prompt = [
-    `Job: ${job}`,
-    `Reply:\n${replyText}`,
-    `Current item (JSON):\n${JSON.stringify(item)}`,
-    `Extra context (JSON):\n${JSON.stringify(context)}`,
-    `Answer with only a JSON object with these fields: ${fieldsShape}`,
-  ].join("\n\n");
-  const spawnArgs = ["claude", "-p", "--model", "claude-haiku-5-5", "--setting-sources", "", "--system-prompt", HAIKU_SYSTEM_PROMPT, "--tools", "", "--no-session-persistence", "--disable-slash-commands", "--output-format", "json"];
+  const promptParts = [`Job: ${job}`, `Reply:\n\`\`\`${replyText}\n\`\`\``];
+  const isItemEmpty = Object.keys(item as object).length === 0;
+  if (!isItemEmpty)
+    promptParts.push(`Current item (JSON):\n${JSON.stringify(item)}`);
+  const isContextEmpty = Object.keys(context).length === 0;
+  if (!isContextEmpty)
+    promptParts.push(`Extra context (JSON):\n${JSON.stringify(context)}`);
+  promptParts.push(`Answer with only a JSON object with these fields: ${fieldsShape}`);
+  const prompt = promptParts.join("\n\n");
+  const spawnArgs = ["claude", "-p", "--model", "claude-sonnet-5-5[1m]"/*"claude-haiku-4-5"*/, "--setting-sources", "", "--system-prompt", HAIKU_SYSTEM_PROMPT, "--tools", "", "--no-session-persistence", "--disable-slash-commands", "--output-format", "json"];
   console.log("spawning haiku");
-  console.log(spawnArgs.join(" "));
+  const printedArgs: string[] = [];
+  for (const spawnArg of spawnArgs) {
+    const needsQuotes = spawnArg === "" || spawnArg.includes(" ");
+    if (needsQuotes)
+      printedArgs.push(JSON.stringify(spawnArg));
+    else
+      printedArgs.push(spawnArg);
+  }
+  console.log(`MAX_THINKING_TOKENS=0 ${printedArgs.join(" ")}`);
   console.log(prompt);
-  await Bun.sleep(5000);
+  // await Bun.sleep(5000);
   const proc = Bun.spawn(
     spawnArgs,
-    { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: import.meta.dir },
+    { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: import.meta.dir, env: { ...process.env, MAX_THINKING_TOKENS: "0" } },
   );
   const [stdoutText, stderrText, exitCode] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
   if (exitCode !== 0)
@@ -108,6 +118,18 @@ export async function spawnHaikuFields(job: string, replyText: string, item: unk
   const fieldsJson = modelText.slice(modelText.indexOf("{"), modelText.lastIndexOf("}") + 1);
   const fields = JSON.parse(fieldsJson);
   console.log("");
+
+  /**
+   * Debugging output for the fields extracted from the haiku model response.
+  * console.log("========================================");
+  * console.log("Extracted fields from haiku model response:");
+  * console.log(JSON.stringify(fields, null, 2));
+  * console.log("========================================");
+  * console.log("full model response:");
+  * console.log(JSON.stringify(envelope, null, 2));
+  * console.log("========================================");
+  * throw new Error("abort for debugging");
+  **/
   return fields;
 }
 
@@ -121,7 +143,8 @@ export async function loadReplyState(replyId: string) {
     const lineTexts: string[] = [];
     for (const line of reply.text)
       lineTexts.push(line.text);
-    const taskList = await loadTaskList();
+    // const taskList = await loadTaskList();
+    const taskList = reply.taskList;
     const replyState: ReplyState = { reply: { text: lineTexts.join("\n") }, userPrompt: reply.userPrompt, taskList };
     return replyState;
   }
