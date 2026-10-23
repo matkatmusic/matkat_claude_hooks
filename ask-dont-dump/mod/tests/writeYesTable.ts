@@ -1,7 +1,8 @@
 import type { ChoiceResponse } from '@typesafe-ai/sdk';
 import type { LabeledReply } from './checker5Calls';
 
-const YES_CONFIDENCE_THRESHOLD = 0.75;
+// const YES_CONFIDENCE_THRESHOLD = 0.75;
+const MIN_YES_PROBABILITY = 0.6;
 // const CELL_TEXT_LIMIT = 60;
 
 type CustomQuestion = { ask: string; 'follow-ups'?: string[] };
@@ -42,9 +43,10 @@ if (import.meta.main) {
     const yesRows: { questionId: string; yesScore: number }[] = [];
     for (const questionId of questionIds) {
       const answer = answers[questionId] as ChoiceResponse;
-      const isYes = answer.choice === 'yes';
-      const isConfident = answer.confidence >= YES_CONFIDENCE_THRESHOLD;
-      const isConfidentYes = isYes && isConfident;
+      // const isYes = answer.choice === 'yes';
+      // const isConfident = answer.confidence >= YES_CONFIDENCE_THRESHOLD;
+      // const isConfidentYes = isYes && isConfident;
+      const isConfidentYes = (answer.probabilities.yes as number) >= MIN_YES_PROBABILITY;
       if (!isConfidentYes)
         continue;
       const yesScore = answer.probabilities.yes as number;

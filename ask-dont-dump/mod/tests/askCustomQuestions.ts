@@ -3,13 +3,14 @@ import { choice, TypeSafeClient, type ChoiceResponse, type Questions } from '@ty
 // import { loadReplyState, type LabeledReply, type ReplyState } from './checker5Calls';
 import { loadReplyState, type LabeledReply } from './checker5Calls';
 import { exit } from 'process';
-import { randomUUID } from 'node:crypto';
+// import { randomUUID } from 'node:crypto';
 
 // const NOUL_YES_THRESHOLD = 0.7;
 // const NOUL_NO_THRESHOLD = 0.3;
 // const CHOICE_CONFIDENCE_THRESHOLD = 0.5;
 // const FOLLOW_UP_PARENT_THRESHOLD = 0.5;
-const YES_CONFIDENCE_THRESHOLD = 0.5;
+// const YES_CONFIDENCE_THRESHOLD = 0.5;
+const MIN_YES_PROBABILITY = 0.6;
 const FOLLOW_UP_ID_MARKER = '.followUp';
 const YES_SCORE_LIMIT = 1;
 // const CONTEXT_NOTE = '`message` is the message. `userPrompt` is the user\'s request before it, for context only.';
@@ -289,7 +290,7 @@ if (import.meta.main) {
   for (const reply of categoryLabels.replies) {
     const replyState = await loadReplyState(reply.id);
     const state = {
-      uid: randomUUID(),
+      // uid: randomUUID(),
       message: replyState.reply.text,
     };
     const questions: Questions = {};
@@ -324,9 +325,10 @@ if (import.meta.main) {
       // const isHighEnough = yesScore > FOLLOW_UP_PARENT_THRESHOLD;
       const parentAnswer = answers[questionId] as ChoiceResponse;
       const yesScore = parentAnswer.probabilities.yes as number;
-      const isYes = parentAnswer.choice === 'yes';
-      const isConfident = parentAnswer.confidence >= YES_CONFIDENCE_THRESHOLD;
-      const isHighEnough = isYes && isConfident;
+      // const isYes = parentAnswer.choice === 'yes';
+      // const isConfident = parentAnswer.confidence >= YES_CONFIDENCE_THRESHOLD;
+      // const isHighEnough = isYes && isConfident;
+      const isHighEnough = yesScore >= MIN_YES_PROBABILITY;
       // const isFollowUpParent = isHighEnough && hasFollowUps;
       if (!isHighEnough)
         continue;
