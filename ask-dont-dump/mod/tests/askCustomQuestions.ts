@@ -3,6 +3,7 @@ import { choice, TypeSafeClient, type ChoiceResponse, type Questions } from '@ty
 // import { loadReplyState, type LabeledReply, type ReplyState } from './checker5Calls';
 import { loadReplyState, type LabeledReply } from './checker5Calls';
 import { exit } from 'process';
+import { randomUUID } from 'node:crypto';
 
 // const NOUL_YES_THRESHOLD = 0.7;
 // const NOUL_NO_THRESHOLD = 0.3;
@@ -288,6 +289,7 @@ if (import.meta.main) {
   for (const reply of categoryLabels.replies) {
     const replyState = await loadReplyState(reply.id);
     const state = {
+      uid: randomUUID(),
       message: replyState.reply.text,
     };
     const questions: Questions = {};
