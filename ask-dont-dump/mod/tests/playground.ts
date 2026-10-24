@@ -1,3 +1,4 @@
+import { rename } from 'node:fs/promises';
 import { choice, TypeSafeClient, type JsonValue, type Questions } from '@typesafe-ai/sdk';
 import { loadReplyState } from './checker5Calls';
 import {
@@ -25,6 +26,26 @@ const PAGE_TEMPLATE = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Playground</title>
+<!-- CodeMirror 5 tags, replaced by CodeMirror 6 below
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+-->
+<script type="importmap">
+{ "imports": {
+  "codemirror": "https://esm.sh/codemirror@6.0.1?external=@codemirror/state,@codemirror/view,@codemirror/language,@lezer/common,@lezer/highlight",
+  "@codemirror/lang-json": "https://esm.sh/@codemirror/lang-json@6.0.1?external=@codemirror/state,@codemirror/view,@codemirror/language,@lezer/common,@lezer/highlight",
+  "@codemirror/state": "https://esm.sh/@codemirror/state@6.7.6",
+  "@codemirror/view": "https://esm.sh/@codemirror/view@6.43.15?external=@codemirror/state",
+  "@codemirror/language": "https://esm.sh/@codemirror/language@6.13.1?external=@codemirror/state,@codemirror/view,@lezer/common,@lezer/highlight",
+  "@lezer/common": "https://esm.sh/@lezer/common@1.5.4",
+  "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.5?external=@lezer/common"
+} }
+</script>
 <style>
 :root {
   color-scheme: light dark;
@@ -40,6 +61,11 @@ const PAGE_TEMPLATE = `<!doctype html>
   --bad: #e34948;
   --mark-question: #bcd6f5;
   --mark-task: #f6d8a6;
+  --tok-string: #0a7a3e;
+  --tok-number: #b25000;
+  --tok-key: #1f5fbf;
+  --tok-atom: #8a3fb0;
+  --tok-punct: #52514e;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -55,6 +81,11 @@ const PAGE_TEMPLATE = `<!doctype html>
     --bad: #e66767;
     --mark-question: #1f4a7a;
     --mark-task: #7a4a1a;
+    --tok-string: #6fcf97;
+    --tok-number: #f2a65a;
+    --tok-key: #7ab7ff;
+    --tok-atom: #c792ea;
+    --tok-punct: #c3c2b7;
   }
 }
 * { box-sizing: border-box; }
@@ -65,7 +96,34 @@ button.wide { width: auto; padding: 6px 12px; font-size: 15px; }
 button:disabled { opacity: 0.6; cursor: wait; }
 button:active:not(:disabled) { transform: translateY(2px); }
 .left { flex: 0 0 42%; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-.right { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+/* .right { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; } */
+.right { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+.right > .graphs { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.graph-block { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.graph-title { flex: none; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph-block .chart-box { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+/* .CodeMirror { height: 26vh; background: var(--panel); color: var(--tok-punct); border: 1px solid var(--grid); border-radius: 6px; font: 13px/1.4 ui-monospace, Menlo, monospace; } */
+/* .CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--grid); } */
+/* .CodeMirror-linenumber { color: var(--text-muted); } */
+/* .CodeMirror-cursor { border-left: 1px solid var(--text); } */
+/* .CodeMirror div.CodeMirror-selected, .CodeMirror-focused div.CodeMirror-selected { background: var(--grid); } */
+/* .cm-string { color: var(--tok-string); } */
+/* .cm-number { color: var(--tok-number); } */
+/* .cm-property { color: var(--tok-key); } */
+/* .cm-atom { color: var(--tok-atom); } */
+/* .cm-s-default .cm-string { color: var(--tok-string); } */
+/* .cm-s-default .cm-number { color: var(--tok-number); } */
+/* .cm-s-default .cm-property { color: var(--tok-key); } */
+/* .cm-s-default .cm-atom { color: var(--tok-atom); } */
+:is(#stateEditor, #questionsEditor) .cm-gutters { background: var(--panel); color: var(--text-muted); border: none; }
+:is(#stateEditor, #questionsEditor) .cm-activeLineGutter { background: var(--grid); }
+:is(#stateEditor, #questionsEditor) .cm-activeLine { background: transparent; }
+:is(#stateEditor, #questionsEditor) .cm-cursor { border-left-color: var(--text); }
+:is(#stateEditor, #questionsEditor) .cm-selectionBackground, :is(#stateEditor, #questionsEditor) .cm-focused .cm-selectionBackground { background: var(--grid); }
+:is(#stateEditor, #questionsEditor) .cm-panels { background: var(--panel); color: var(--text); border-color: var(--grid); }
+:is(#stateEditor, #questionsEditor) .cm-textfield { background: var(--surface); color: var(--text); border: 1px solid var(--grid); border-radius: 4px; }
+:is(#stateEditor, #questionsEditor) button { width: auto; font-size: 13px; padding: 2px 8px; background: var(--panel); background-image: none; color: var(--text); border: 1px solid var(--grid); border-radius: 4px; }
+:is(#stateEditor, #questionsEditor) .cm-panel.cm-search button[name=close] { background: transparent; border: none; color: var(--text); font-size: 18px; }
 .left > *, .right > * { flex-shrink: 0; }
 .nav-row { display: flex; gap: 8px; align-items: stretch; }
 .nav-middle { flex: 1; min-width: 0; color: var(--text-muted); display: flex; align-items: center; justify-content: center; text-align: center; }
@@ -79,7 +137,8 @@ button.tab.active { background: var(--grid); font-weight: 600; }
 .pin-info { color: var(--text-muted); }
 .chart-box { overflow-x: auto; }
 svg text { fill: var(--text-muted); font-size: 11px; }
-.result { padding: 8px; background: var(--panel); border-radius: 6px; min-height: 9em; }
+/* .result { padding: 8px; background: var(--panel); border-radius: 6px; min-height: 9em; } */
+.result { flex: none; padding: 8px; background: var(--panel); border-radius: 6px; height: 9em; overflow-y: auto; }
 #hoverLine { white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 </head>
@@ -90,11 +149,14 @@ svg text { fill: var(--text-muted); font-size: 11px; }
       <button id="prev" aria-label="previous version">&lt;</button>
       <div class="nav-middle" id="versionMeta"></div>
       <button id="next" aria-label="next version">&gt;</button>
+      <button class="wide" id="resetBtn">Reset</button>
     </div>
     <label for="stateText">state</label>
-    <textarea id="stateText" wrap="soft" spellcheck="false"></textarea>
+    <!-- <textarea id="stateText" wrap="soft" spellcheck="false"></textarea> -->
+    <div id="stateEditor"></div>
     <label for="questionsText">questions</label>
-    <textarea id="questionsText" wrap="soft" spellcheck="false"></textarea>
+    <!-- <textarea id="questionsText" wrap="soft" spellcheck="false"></textarea> -->
+    <div id="questionsEditor"></div>
     <div class="btn-row">
       <label for="callsInput">calls</label>
       <input id="callsInput" type="number" min="1" max="10" step="1" value="1">
@@ -103,27 +165,34 @@ svg text { fill: var(--text-muted); font-size: 11px; }
     <div id="error" class="error"></div>
   </div>
   <div class="right">
-    <div class="tabs" id="tabs"></div>
-    <div class="tab-question" id="tabQuestion"></div>
+    <!-- <div class="tabs" id="tabs"></div> -->
+    <!-- <div class="tab-question" id="tabQuestion"></div> -->
     <div class="btn-row">
       <button class="wide" id="pinBtn">Pin</button>
       <button class="wide" id="unpinBtn">Unpin</button>
       <button class="wide" id="modeBtn"></button>
       <span class="pin-info" id="pinInfo"></span>
     </div>
-    <div class="chart-box" id="chartBox"></div>
+    <!-- <div class="chart-box" id="chartBox"></div> -->
+    <div class="graphs" id="graphs"></div>
     <div class="result"><div id="hoverLine"></div></div>
   </div>
 </main>
 <script type="application/json" id="data">${DATA_MARKER}</script>
-<script>
+<!-- <script> -->
+<script type="module">
+import { EditorView, basicSetup } from 'codemirror';
+import { json } from '@codemirror/lang-json';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 const data = JSON.parse(document.getElementById('data').textContent);
 const versions = data.versions;
 const NS = 'http://www.w3.org/2000/svg';
-const BAR_W = 8, OPTION_GAP = 14, LEFT = 44, TOP = 14, PLOT_H = 220, BOTTOM = 14;
+// const BAR_W = 8, OPTION_GAP = 14, LEFT = 44, TOP = 14, PLOT_H = 220, BOTTOM = 14;
+const BAR_W = 8, OPTION_GAP = 14, LEFT = 44, TOP = 30, BOTTOM = 14;
 let index = versions.length - 1;
 let pinnedId = null;
-let activeTab = '';
+// let activeTab = '';
 let isAverageMode = false;
 let restingText = '';
 
@@ -136,7 +205,8 @@ function makeSvg(name, attrs, text) {
   return node;
 }
 
-function yOf(value) { return TOP + PLOT_H * (1 - value); }
+// function yOf(value) { return TOP + PLOT_H * (1 - value); }
+function yOf(value, plotH) { return TOP + plotH * (1 - value); }
 
 function describeText(value) {
   if (value === undefined || value === null) return '(none)';
@@ -230,11 +300,13 @@ function buildRestingText(question, answers) {
     if (question.type === 'noul') parts.push(answer.noul.toFixed(3));
   }
   const label = question.type === 'choice' ? 'winning choice per call: ' : question.type === 'score' ? 'expected score per call: ' : 'yes probability per call: ';
-  return label + parts.join(', ') + '\\nhover a bar for details';
+  // return label + parts.join(', ') + '\\nhover a bar for details';
+  return label + parts.join(', ');
 }
 
 function clearHover() { el('hoverLine').textContent = restingText; }
 
+/* old drawOption
 function drawOption(svg, values, slotX, isPinned) {
   const stat = summarize(values);
   const fill = isPinned ? 'var(--text-muted)' : 'var(--score)';
@@ -249,7 +321,40 @@ function drawOption(svg, values, slotX, isPinned) {
     svg.appendChild(makeSvg('rect', { x: slotX + k * BAR_W - pad, y: yOf(values[k]), width: BAR_W - 1 + 2 * pad, height: PLOT_H * values[k], fill: fill, opacity: opacity }));
   }
 }
+*/
 
+function drawOption(svg, values, slotX, isPinned, plotH) {
+  const stat = summarize(values);
+  const fill = isPinned ? 'var(--text-muted)' : 'var(--score)';
+  const opacity = isPinned ? 0.35 : 1;
+  const pad = isPinned ? 2 : 0;
+  if (isAverageMode) {
+    svg.appendChild(makeSvg('rect', { x: slotX - pad, y: yOf(stat.average, plotH), width: 16 + 2 * pad, height: plotH * stat.average, fill: fill, opacity: opacity }));
+    svg.appendChild(makeSvg('line', { x1: slotX + 8, x2: slotX + 8, y1: yOf(stat.high, plotH), y2: yOf(stat.low, plotH), stroke: 'var(--text)', 'stroke-width': 1.5, opacity: opacity }));
+    return;
+  }
+  for (let k = 0; k < values.length; k++) {
+    svg.appendChild(makeSvg('rect', { x: slotX + k * BAR_W - pad, y: yOf(values[k], plotH), width: BAR_W - 1 + 2 * pad, height: plotH * values[k], fill: fill, opacity: opacity }));
+  }
+}
+
+function drawValueLabels(svg, values, slotX, plotH) {
+  const group = makeSvg('g', { class: 'value-labels', 'pointer-events': 'none' });
+  const labelStyle = 'font-size: 9px; fill: var(--text)';
+  if (isAverageMode) {
+    const stat = summarize(values);
+    group.appendChild(makeSvg('text', { x: slotX + 8, y: yOf(stat.high, plotH) - 3, 'text-anchor': 'middle', style: labelStyle }, stat.average.toFixed(3)));
+  } else {
+    for (let k = 0; k < values.length; k++) {
+      const labelX = slotX + k * BAR_W + 7;
+      const labelY = yOf(values[k], plotH) - 3;
+      group.appendChild(makeSvg('text', { x: labelX, y: labelY, transform: 'rotate(-90 ' + labelX + ' ' + labelY + ')', style: labelStyle }, values[k].toFixed(3)));
+    }
+  }
+  svg.appendChild(group);
+}
+
+/* old drawChart
 function drawChart(box, version, name) {
   const question = version.questions[name];
   const answers = listAnswers(version, name);
@@ -293,7 +398,62 @@ function drawChart(box, version, name) {
   }
   box.replaceChildren(svg);
 }
+*/
 
+function drawChart(box, version, name) {
+  const question = version.questions[name];
+  const answers = listAnswers(version, name);
+  const keys = listOptionKeys(question, answers[0]);
+  const stats = {};
+  for (const key of keys) stats[key] = summarize(listValues(question, answers, key));
+  keys.sort(function (a, b) { return stats[b].average - stats[a].average; });
+  restingText += name + ': ' + buildRestingText(question, answers) + '\\n';
+  let pinnedQuestion = null, pinnedAnswers = [], pinnedKeys = [];
+  const pinnedVersion = findPinned();
+  const hasPinnedAnswers = pinnedVersion !== null && pinnedVersion.questions[name] !== undefined && pinnedVersion.outputs.length > 0 && pinnedVersion.outputs[0].answers[name] !== undefined;
+  if (hasPinnedAnswers) {
+    pinnedQuestion = pinnedVersion.questions[name];
+    pinnedAnswers = listAnswers(pinnedVersion, name);
+    pinnedKeys = listOptionKeys(pinnedQuestion, pinnedAnswers[0]);
+  }
+  const plotH = Math.max(box.clientHeight - TOP - BOTTOM, 40);
+  const barCount = Math.max(answers.length, pinnedAnswers.length);
+  const slot = Math.max(barCount * BAR_W, 16) + OPTION_GAP;
+  const plotRight = LEFT + keys.length * slot;
+  const svg = makeSvg('svg', { width: plotRight + 20, height: TOP + plotH + BOTTOM, role: 'img' });
+  for (let tick = 0; tick <= 5; tick++) {
+    const value = tick / 5;
+    svg.appendChild(makeSvg('line', { x1: LEFT, x2: plotRight, y1: yOf(value, plotH), y2: yOf(value, plotH), stroke: 'var(--grid)' }));
+    svg.appendChild(makeSvg('text', { x: LEFT - 6, y: yOf(value, plotH) + 4, 'text-anchor': 'end' }, value.toFixed(1)));
+  }
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const slotX = LEFT + i * slot + OPTION_GAP / 2;
+    const isPinnedKey = hasPinnedAnswers && pinnedKeys.indexOf(key) >= 0;
+    let pinnedValues = null;
+    if (isPinnedKey) {
+      pinnedValues = listValues(pinnedQuestion, pinnedAnswers, key);
+      drawOption(svg, pinnedValues, slotX, true, plotH);
+    }
+    const optionValues = listValues(question, answers, key);
+    drawOption(svg, optionValues, slotX, false, plotH);
+    const hoverText = buildHoverText(question, answers, key, keys, pinnedValues);
+    const hit = makeSvg('rect', { x: LEFT + i * slot, y: TOP, width: slot, height: plotH, fill: 'transparent' });
+    hit.addEventListener('mouseenter', function () {
+      el('hoverLine').textContent = hoverText;
+      drawValueLabels(svg, optionValues, slotX, plotH);
+    });
+    hit.addEventListener('mouseleave', function () {
+      clearHover();
+      const group = svg.querySelector('.value-labels');
+      if (group !== null) group.remove();
+    });
+    svg.appendChild(hit);
+  }
+  box.replaceChildren(svg);
+}
+
+/* old drawTabs
 function drawTabs(names) {
   const tabs = el('tabs');
   tabs.replaceChildren();
@@ -334,11 +494,51 @@ function render() {
   drawChart(box, version, activeTab);
   clearHover();
 }
+*/
+
+function render() {
+  const version = versions[index];
+  el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
+  el('pinInfo').textContent = pinnedId === null ? 'nothing pinned' : 'pinned: version ' + pinnedId;
+  el('modeBtn').textContent = isAverageMode ? 'showing: average + range' : 'showing: one bar per call';
+  const names = Object.keys(version.questions);
+  const graphs = el('graphs');
+  graphs.replaceChildren();
+  const boxes = [];
+  for (let i = 0; i < names.length; i++) {
+    const titleText = 'Q' + (i + 1) + ' ' + names[i] + ' \\u00b7 ' + describeText(version.questions[names[i]].instructions);
+    const block = document.createElement('div');
+    block.className = 'graph-block';
+    const title = document.createElement('div');
+    title.className = 'graph-title';
+    title.textContent = titleText;
+    title.title = titleText;
+    const box = document.createElement('div');
+    box.className = 'chart-box';
+    block.appendChild(title);
+    block.appendChild(box);
+    graphs.appendChild(block);
+    boxes.push(box);
+  }
+  restingText = '';
+  for (let i = 0; i < names.length; i++) {
+    const hasOutputs = version.outputs.length > 0 && version.outputs[0].answers[names[i]] !== undefined;
+    if (!hasOutputs) {
+      boxes[i].textContent = 'no outputs yet';
+      continue;
+    }
+    drawChart(boxes[i], version, names[i]);
+  }
+  restingText += 'hover a bar for details';
+  clearHover();
+}
 
 function loadEditors() {
   const version = versions[index];
-  el('stateText').value = JSON.stringify(version.state, null, 2);
-  el('questionsText').value = JSON.stringify(version.questions, null, 2);
+  // el('stateText').value = JSON.stringify(version.state, null, 2);
+  // el('questionsText').value = JSON.stringify(version.questions, null, 2);
+  stateEditor.setValue(JSON.stringify(version.state, null, 2));
+  questionsEditor.setValue(JSON.stringify(version.questions, null, 2));
 }
 
 function moveBy(step) {
@@ -357,13 +557,15 @@ async function submitRun() {
   el('error').textContent = '';
   let state, questions;
   try {
-    state = JSON.parse(el('stateText').value);
+    // state = JSON.parse(el('stateText').value);
+    state = JSON.parse(stateEditor.getValue());
   } catch (error) {
     el('error').textContent = 'state is not valid JSON: ' + error.message;
     return;
   }
   try {
-    questions = JSON.parse(el('questionsText').value);
+    // questions = JSON.parse(el('questionsText').value);
+    questions = JSON.parse(questionsEditor.getValue());
   } catch (error) {
     el('error').textContent = 'questions is not valid JSON: ' + error.message;
     return;
@@ -385,6 +587,32 @@ async function submitRun() {
   }
 }
 
+const editorOptions = {
+  lineWrapping: true,
+  lineNumbers: true,
+  mode: { name: 'javascript', json: true },
+  // extraKeys: { 'Cmd-F': 'find', 'Cmd-G': 'findNext', 'Shift-Cmd-G': 'findPrev', 'Shift-Cmd-F': 'replace', 'Shift-Cmd-Alt-F': 'replaceAll' },
+  extraKeys: { 'Cmd-F': 'find', 'Cmd-G': 'findNext', 'Shift-Cmd-G': 'findPrev', 'Shift-Cmd-F': 'replace', 'Shift-Cmd-Alt-F': 'replaceAll', Esc: 'clearSearch' },
+};
+const stateEditor = CodeMirror.fromTextArea(el('stateText'), editorOptions);
+const questionsEditor = CodeMirror.fromTextArea(el('questionsText'), editorOptions);
+async function resetHistory() {
+  el('error').textContent = '';
+  const isConfirmed = confirm('Archive all ' + versions.length + ' versions and start over from the seed version?');
+  if (!isConfirmed) return;
+  try {
+    const fresh = await postJson('/reset', {});
+    versions.splice(0, versions.length, ...fresh);
+    index = 0;
+    pinnedId = null;
+    loadEditors();
+    render();
+  } catch (error) {
+    el('error').textContent = 'Reset failed: ' + error.message;
+  }
+}
+
+el('resetBtn').addEventListener('click', resetHistory);
 el('submitBtn').addEventListener('click', submitRun);
 el('prev').addEventListener('click', function () { moveBy(-1); });
 el('next').addEventListener('click', function () { moveBy(1); });
@@ -393,9 +621,11 @@ el('unpinBtn').addEventListener('click', function () { pinnedId = null; render()
 el('modeBtn').addEventListener('click', function () { isAverageMode = !isAverageMode; render(); });
 document.addEventListener('keydown', function (event) {
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+  if (event.target.closest('.CodeMirror') !== null) return;
   if (event.key === 'ArrowLeft') moveBy(-1);
   if (event.key === 'ArrowRight') moveBy(1);
 });
+window.addEventListener('resize', render);
 loadEditors();
 render();
 </script>
@@ -453,6 +683,13 @@ async function handleRunRequest(request: Request) {
   return Response.json(version);
 }
 
+async function handleResetRequest() {
+  const archivePath = `${import.meta.dir}/results/playground-history-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+  await rename(HISTORY_PATH, archivePath);
+  await seedHistory();
+  return Response.json(await loadHistory());
+}
+
 if (import.meta.main) {
   const isHistoryPresent = await Bun.file(HISTORY_PATH).exists();
   if (!isHistoryPresent)
@@ -465,6 +702,9 @@ if (import.meta.main) {
       const isRunPost = request.method === 'POST' && pathname === '/run';
       if (isRunPost)
         return handleRunRequest(request);
+      const isResetPost = request.method === 'POST' && pathname === '/reset';
+      if (isResetPost)
+        return handleResetRequest();
       const isPageGet = request.method === 'GET' && pathname === '/';
       if (isPageGet)
         return new Response(await buildPage(), { headers: { 'content-type': 'text/html; charset=utf-8' } });

@@ -6,8 +6,10 @@ const MIN_CONFIDENCE = 0.9;
 const NO_REASON_KEY = 'no_reason';
 export const USER_NO_REASON_TEXT = 'nothing in this message signals a response or decision is required by the user';
 export const TASK_NO_REASON_TEXT = 'nothing in this message signals that a task should be created.';
-export const USER_QUESTION_TEXT = 'Why does this message need the User to respond?';
-export const TASK_QUESTION_TEXT = 'Why does this message indicate a task needs to be created?';
+// export const USER_QUESTION_TEXT = 'Why does this message need the User to respond?';
+// export const TASK_QUESTION_TEXT = 'Why does this message indicate a task needs to be created?';
+export const USER_QUESTION_TEXT = 'Why does `originalReply` need the user to respond?  The message is in response to what the user wrote: `userPrompt`.';
+export const TASK_QUESTION_TEXT = 'Why does `originalReply` indicate a task or tasks needs to be created?  The message is in response to what the user wrote: `userPrompt`.';
 const DOES_PREFIX = 'Does ';
 
 type ChoiceGroup = 'Ask' | 'Task' | 'Both' | 'Neither';
@@ -96,7 +98,8 @@ if (import.meta.main) {
     if (isReplySkipped)
       continue;
     const replyState = await loadReplyState(reply.id);
-    const state = { message: replyState.reply.text };
+    // const state = { message: replyState.reply.text };
+    const state = { userPrompt: replyState.userPrompt, originalReply: replyState.reply.text };
     if (isDryRun) {
       console.log(JSON.stringify({ state, questions }, null, 2));
       console.log(`userOptions: ${Object.keys(userOptions).length}  taskOptions: ${Object.keys(taskOptions).length}`);
