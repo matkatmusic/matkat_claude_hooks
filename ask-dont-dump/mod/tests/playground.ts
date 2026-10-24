@@ -18,7 +18,8 @@ const SEED_REPLY_ID = 's3-replay-script-blocked';
 const MIN_CALLS = 1;
 const MAX_CALLS = 10;
 
-type Version = { id: number; time: string; state: unknown; questions: unknown; calls: number; outputs: unknown[] };
+// type Version = { id: number; time: string; state: unknown; questions: unknown; calls: number; outputs: unknown[] };
+type Version = { id: number; time: string; state: unknown; questions: unknown; calls: number; outputs: unknown[]; note?: string };
 
 const PAGE_TEMPLATE = `<!doctype html>
 <html lang="en">
@@ -128,6 +129,7 @@ button:active:not(:disabled) { transform: translateY(2px); }
 .nav-row { display: flex; gap: 8px; align-items: stretch; }
 .nav-middle { flex: 1; min-width: 0; color: var(--text-muted); display: flex; align-items: center; justify-content: center; text-align: center; }
 .left textarea { width: 100%; height: 26vh; resize: none; overflow-y: auto; background: var(--panel); color: var(--text); border: 1px solid var(--grid); border-radius: 6px; padding: 8px; font: 13px/1.4 ui-monospace, Menlo, monospace; }
+#noteText { height: 2.4em; overflow-y: auto; }
 .btn-row { display: flex; gap: 6px; align-items: center; }
 .btn-row input { width: 64px; background: var(--panel); color: var(--text); border: 1px solid var(--grid); border-radius: 6px; padding: 6px; font: inherit; }
 .error { color: var(--bad); font-weight: 600; overflow-wrap: anywhere; }
@@ -151,6 +153,8 @@ svg text { fill: var(--text-muted); font-size: 11px; }
       <button id="next" aria-label="next version">&gt;</button>
       <button class="wide" id="resetBtn">Reset</button>
     </div>
+    <label for="noteText">Note</label>
+    <textarea id="noteText" rows="1" wrap="soft" placeholder="Note about this run"></textarea>
     <label for="stateText">state</label>
     <!-- <textarea id="stateText" wrap="soft" spellcheck="false"></textarea> -->
     <div id="stateEditor"></div>
@@ -498,7 +502,10 @@ function render() {
 
 function render() {
   const version = versions[index];
-  el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
+  // el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
+  const noteOneLine = (version.note || '').replaceAll('\\n', ' ');
+  const noteShort = noteOneLine.length > 40 ? noteOneLine.slice(0, 40) + '\\u2026' : noteOneLine;
+  el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + (noteShort === '' ? '' : ' \\u00b7 ' + noteShort) + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
   el('pinInfo').textContent = pinnedId === null ? 'nothing pinned' : 'pinned: version ' + pinnedId;
   el('modeBtn').textContent = isAverageMode ? 'showing: average + range' : 'showing: one bar per call';
   const names = Object.keys(version.questions);
@@ -535,10 +542,17 @@ function render() {
 
 function loadEditors() {
   const version = versions[index];
+  // el('noteText').value = version.note || '';
+  const isRunCompleted = version.outputs.length > 0;
+  el('noteText').value = isRunCompleted ? version.note || '' : '';
+  el('noteText').disabled = !isRunCompleted;
+  el('noteText').placeholder = isRunCompleted ? 'Note about this run' : 'Submit a run to add a note';
   // el('stateText').value = JSON.stringify(version.state, null, 2);
   // el('questionsText').value = JSON.stringify(version.questions, null, 2);
-  stateEditor.setValue(JSON.stringify(version.state, null, 2));
-  questionsEditor.setValue(JSON.stringify(version.questions, null, 2));
+  // stateEditor.setValue(JSON.stringify(version.state, null, 2));
+  // questionsEditor.setValue(JSON.stringify(version.questions, null, 2));
+  stateEditor.dispatch({ changes: { from: 0, to: stateEditor.state.doc.length, insert: JSON.stringify(version.state, null, 2) } });
+  questionsEditor.dispatch({ changes: { from: 0, to: questionsEditor.state.doc.length, insert: JSON.stringify(version.questions, null, 2) } });
 }
 
 function moveBy(step) {
@@ -558,14 +572,16 @@ async function submitRun() {
   let state, questions;
   try {
     // state = JSON.parse(el('stateText').value);
-    state = JSON.parse(stateEditor.getValue());
+    // state = JSON.parse(stateEditor.getValue());
+    state = JSON.parse(stateEditor.state.doc.toString());
   } catch (error) {
     el('error').textContent = 'state is not valid JSON: ' + error.message;
     return;
   }
   try {
     // questions = JSON.parse(el('questionsText').value);
-    questions = JSON.parse(questionsEditor.getValue());
+    // questions = JSON.parse(questionsEditor.getValue());
+    questions = JSON.parse(questionsEditor.state.doc.toString());
   } catch (error) {
     el('error').textContent = 'questions is not valid JSON: ' + error.message;
     return;
@@ -574,9 +590,12 @@ async function submitRun() {
   el('submitBtn').disabled = true;
   el('submitBtn').textContent = 'running\\u2026';
   try {
-    const version = await postJson('/run', { state: state, questions: questions, calls: calls });
-    versions.push(version);
-    index = versions.length - 1;
+    // const version = await postJson('/run', { state: state, questions: questions, calls: calls });
+    const version = await postJson('/run', { id: versions[index].id, state: state, questions: questions, calls: calls });
+    // versions.push(version);
+    // index = versions.length - 1;
+    versions[version.id - 1] = version;
+    index = version.id - 1;
     loadEditors();
     render();
   } catch (error) {
@@ -587,15 +606,35 @@ async function submitRun() {
   }
 }
 
-const editorOptions = {
-  lineWrapping: true,
-  lineNumbers: true,
-  mode: { name: 'javascript', json: true },
-  // extraKeys: { 'Cmd-F': 'find', 'Cmd-G': 'findNext', 'Shift-Cmd-G': 'findPrev', 'Shift-Cmd-F': 'replace', 'Shift-Cmd-Alt-F': 'replaceAll' },
-  extraKeys: { 'Cmd-F': 'find', 'Cmd-G': 'findNext', 'Shift-Cmd-G': 'findPrev', 'Shift-Cmd-F': 'replace', 'Shift-Cmd-Alt-F': 'replaceAll', Esc: 'clearSearch' },
-};
-const stateEditor = CodeMirror.fromTextArea(el('stateText'), editorOptions);
-const questionsEditor = CodeMirror.fromTextArea(el('questionsText'), editorOptions);
+// const editorOptions = {
+//   lineWrapping: true,
+//   lineNumbers: true,
+//   mode: { name: 'javascript', json: true },
+//   extraKeys: { 'Cmd-F': 'find', 'Cmd-G': 'findNext', 'Shift-Cmd-G': 'findPrev', 'Shift-Cmd-F': 'replace', 'Shift-Cmd-Alt-F': 'replaceAll', Esc: 'clearSearch' },
+// };
+// const stateEditor = CodeMirror.fromTextArea(el('stateText'), editorOptions);
+// const questionsEditor = CodeMirror.fromTextArea(el('questionsText'), editorOptions);
+const jsonHighlight = HighlightStyle.define([
+  { tag: tags.string, color: 'var(--tok-string)' },
+  { tag: tags.number, color: 'var(--tok-number)' },
+  { tag: tags.propertyName, color: 'var(--tok-key)' },
+  { tag: [tags.bool, tags.null], color: 'var(--tok-atom)' },
+  { tag: [tags.punctuation, tags.brace, tags.squareBracket, tags.separator], color: 'var(--tok-punct)' },
+]);
+const editorExtensions = [
+  basicSetup,
+  json(),
+  EditorView.lineWrapping,
+  syntaxHighlighting(jsonHighlight),
+  EditorView.theme({
+    '&': { height: '26vh', background: 'var(--panel)', color: 'var(--tok-punct)', border: '1px solid var(--grid)', borderRadius: '6px' },
+    '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '13px' },
+    '.cm-gutters': { background: 'var(--panel)', color: 'var(--text-muted)', border: 'none' },
+    '.cm-panels': { background: 'var(--panel)', color: 'var(--text)' },
+  }),
+];
+const stateEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: el('stateEditor') });
+const questionsEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: el('questionsEditor') });
 async function resetHistory() {
   el('error').textContent = '';
   const isConfirmed = confirm('Archive all ' + versions.length + ' versions and start over from the seed version?');
@@ -612,6 +651,19 @@ async function resetHistory() {
   }
 }
 
+async function saveNote() {
+  el('error').textContent = '';
+  const version = versions[index];
+  try {
+    const saved = await postJson('/note', { id: version.id, note: el('noteText').value });
+    version.note = saved.note;
+    render();
+  } catch (error) {
+    el('error').textContent = 'Note save failed: ' + error.message;
+  }
+}
+
+el('noteText').addEventListener('change', saveNote);
 el('resetBtn').addEventListener('click', resetHistory);
 el('submitBtn').addEventListener('click', submitRun);
 el('prev').addEventListener('click', function () { moveBy(-1); });
@@ -621,7 +673,8 @@ el('unpinBtn').addEventListener('click', function () { pinnedId = null; render()
 el('modeBtn').addEventListener('click', function () { isAverageMode = !isAverageMode; render(); });
 document.addEventListener('keydown', function (event) {
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-  if (event.target.closest('.CodeMirror') !== null) return;
+  // if (event.target.closest('.CodeMirror') !== null) return;
+  if (event.target.closest('.cm-editor') !== null) return;
   if (event.key === 'ArrowLeft') moveBy(-1);
   if (event.key === 'ArrowRight') moveBy(1);
 });
@@ -650,6 +703,8 @@ async function seedHistory() {
   };
   const replyState = await loadReplyState(SEED_REPLY_ID);
   const state = { userPrompt: replyState.userPrompt, originalReply: replyState.reply.text };
+  // const seedVersion: Version = { id: 1, time: new Date().toISOString(), state, questions, calls: 0, outputs: [] };
+  // const seedVersion: Version = { id: 1, time: new Date().toISOString(), state, questions, calls: 0, outputs: [], note: '' };
   const seedVersion: Version = { id: 1, time: new Date().toISOString(), state, questions, calls: 0, outputs: [] };
   await Bun.write(HISTORY_PATH, JSON.stringify([seedVersion], null, 2) + '\n');
 }
@@ -661,8 +716,10 @@ async function buildPage() {
 }
 
 async function handleRunRequest(request: Request) {
-  const body = (await request.json()) as { state?: unknown; questions?: unknown; calls?: unknown };
-  const { state, questions, calls } = body;
+  // const body = (await request.json()) as { state?: unknown; questions?: unknown; calls?: unknown };
+  // const { state, questions, calls } = body;
+  const body = (await request.json()) as { id?: unknown; state?: unknown; questions?: unknown; calls?: unknown };
+  const { id, state, questions, calls } = body;
   const isStateObject = typeof state === 'object' && state !== null && !Array.isArray(state);
   if (!isStateObject)
     return new Response('state must be a JSON object', { status: 400 });
@@ -672,15 +729,61 @@ async function handleRunRequest(request: Request) {
   const isCallsValid = Number.isInteger(calls) && (calls as number) >= MIN_CALLS && (calls as number) <= MAX_CALLS;
   if (!isCallsValid)
     return new Response(`calls must be an integer from ${MIN_CALLS} to ${MAX_CALLS}`, { status: 400 });
+  const history = await loadHistory();
+  let shownVersion: Version | undefined;
+  for (const version of history) {
+    if (version.id === id)
+      shownVersion = version;
+  }
+  const isIdKnown = Number.isInteger(id) && shownVersion !== undefined;
+  if (!isIdKnown)
+    return new Response('id must be the integer id of an existing version', { status: 400 });
   const client = new TypeSafeClient();
   const outputs: unknown[] = [];
   for (let i = 0; i < (calls as number); i++)
     outputs.push(await client.systemOne({ state: state as Record<string, JsonValue>, questions: questions as Questions }));
-  const history = await loadHistory();
-  const version: Version = { id: history.length + 1, time: new Date().toISOString(), state, questions, calls: calls as number, outputs };
+  // const history = await loadHistory();
+  // const isOnlyEmptySeed = history.length === 1 && history[0].outputs.length === 0;
+  // const id = isOnlyEmptySeed ? 1 : history.length + 1;
+  // const version: Version = { id: history.length + 1, time: new Date().toISOString(), state, questions, calls: calls as number, outputs };
+  // const version: Version = { id: history.length + 1, time: new Date().toISOString(), state, questions, calls: calls as number, outputs, note: '' };
+  // const version: Version = { id, time: new Date().toISOString(), state, questions, calls: calls as number, outputs, note: '' };
+  // history.push(version);
+  // history[id - 1] = version;
+  const isInputUnchanged = JSON.stringify(state) === JSON.stringify((shownVersion as Version).state) && JSON.stringify(questions) === JSON.stringify((shownVersion as Version).questions);
+  if (isInputUnchanged) {
+    (shownVersion as Version).outputs.push(...outputs);
+    (shownVersion as Version).calls += calls as number;
+    await Bun.write(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n');
+    return Response.json(shownVersion);
+  }
+  const version: Version = { id: history.length + 1, time: new Date().toISOString(), state, questions, calls: calls as number, outputs, note: '' };
   history.push(version);
   await Bun.write(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n');
   return Response.json(version);
+}
+
+async function handleNoteRequest(request: Request) {
+  const body = (await request.json()) as { id?: unknown; note?: unknown };
+  const { id, note } = body;
+  const history = await loadHistory();
+  let foundVersion: Version | undefined;
+  for (const version of history) {
+    if (version.id === id)
+      foundVersion = version;
+  }
+  const isIdKnown = Number.isInteger(id) && foundVersion !== undefined;
+  if (!isIdKnown)
+    return new Response('id must be the integer id of an existing version', { status: 400 });
+  const isNoteString = typeof note === 'string';
+  if (!isNoteString)
+    return new Response('note must be a string', { status: 400 });
+  const isRunCompleted = (foundVersion as Version).outputs.length > 0;
+  if (!isRunCompleted)
+    return new Response('notes can only be added to a completed run', { status: 400 });
+  (foundVersion as Version).note = note as string;
+  await Bun.write(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n');
+  return Response.json(foundVersion);
 }
 
 async function handleResetRequest() {
@@ -702,6 +805,9 @@ if (import.meta.main) {
       const isRunPost = request.method === 'POST' && pathname === '/run';
       if (isRunPost)
         return handleRunRequest(request);
+      const isNotePost = request.method === 'POST' && pathname === '/note';
+      if (isNotePost)
+        return handleNoteRequest(request);
       const isResetPost = request.method === 'POST' && pathname === '/reset';
       if (isResetPost)
         return handleResetRequest();
