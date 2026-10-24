@@ -244,7 +244,7 @@ function createFollowUpQuestion(mainIdentifier: string, scoreIdentifier: string,
 //   return { request, answers, seconds };
 // }
 
-// bun claude/claude_hooks/ask-dont-dump/mod/tests/askCustomQuestions.ts [--id <replyId>] [--dry-run [--main-from <custom-*.json>]]
+// bun claude/claude_hooks/ask-dont-dump/mod/tests/askCustomQuestions.ts [--id <replyId>] [--reply <replyId>] [--question <questionId> ...] [--dry-run [--main-from <custom-*.json>]]
 if (import.meta.main) {
   // const idFlagIndex = process.argv.indexOf('--id');
   // const hasIdFlag = idFlagIndex >= 0;
@@ -278,6 +278,47 @@ if (import.meta.main) {
   const isMainFromWithoutDryRun = hasMainFromFlag && !isDryRun;
   if (isMainFromWithoutDryRun)
     throw new Error('--main-from needs --dry-run');
+  const replyFlagIndex = process.argv.indexOf('--reply');
+  const hasReplyFlag = replyFlagIndex >= 0;
+  const requestedReplyIdFromFlag = hasReplyFlag ? process.argv[replyFlagIndex + 1] : undefined;
+  const isMissingReplyValue = hasReplyFlag && (requestedReplyIdFromFlag === undefined || requestedReplyIdFromFlag.startsWith('--'));
+  if (isMissingReplyValue)
+    throw new Error('missing --reply <replyId>');
+  let isReplyFound = false;
+  for (const reply of categoryLabels.replies) {
+    const isRequestedReply = reply.id === requestedReplyIdFromFlag;
+    if (isRequestedReply)
+      isReplyFound = true;
+  }
+  const isUnknownReply = hasReplyFlag && !isReplyFound;
+  if (isUnknownReply)
+    throw new Error(`no reply has id: ${requestedReplyIdFromFlag}`);
+  const requestedQuestionIds: string[] = [];
+  for (let argIndex = 0; argIndex < process.argv.length; argIndex++) {
+    const isQuestionFlag = process.argv[argIndex] === '--question';
+    if (!isQuestionFlag)
+      continue;
+    const questionValue = process.argv[argIndex + 1];
+    const isMissingQuestionValue = questionValue === undefined || questionValue.startsWith('--');
+    if (isMissingQuestionValue)
+      throw new Error('missing --question <questionId>');
+    requestedQuestionIds.push(questionValue);
+  }
+  const hasQuestionFilter = requestedQuestionIds.length > 0;
+  const knownQuestionIds: string[] = [];
+  for (const group of Object.values(customFile.questions.groups)) {
+    for (const groupKey of Object.keys(group)) {
+      const isGroupFlag = groupKey === 'active';
+      if (isGroupFlag)
+        continue;
+      knownQuestionIds.push(groupKey);
+    }
+  }
+  for (const requestedQuestionId of requestedQuestionIds) {
+    const isUnknownQuestion = !knownQuestionIds.includes(requestedQuestionId);
+    if (isUnknownQuestion)
+      throw new Error(`no question has id: ${requestedQuestionId}`);
+  }
   const savedAnswersByReply: Record<string, Record<string, ChoiceResponse>> = {};
   if (mainFromPath !== undefined) {
     // const savedResponses: Record<string, { answers: Record<string, ChoiceResponse> }> = await Bun.file(mainFromPath).json();
@@ -292,6 +333,9 @@ if (import.meta.main) {
   // const followUpResponsesByReply: Record<string, unknown> = {};
   const resultsByReply: Record<string, { main: unknown; followUp?: unknown }> = {};
   for (const reply of categoryLabels.replies) {
+    const isReplySkipped = hasReplyFlag && reply.id !== requestedReplyIdFromFlag;
+    if (isReplySkipped)
+      continue;
     const replyState = await loadReplyState(reply.id);
     const state = {
       // uid: randomUUID(),
@@ -315,7 +359,8 @@ if (import.meta.main) {
     //   });
     // }
     for (const group of Object.values(customFile.questions.groups)) {
-      const isGroupInactive = !group.active;
+      // const isGroupInactive = !group.active;
+      const isGroupInactive = !group.active && !hasQuestionFilter;
       if (isGroupInactive)
         continue;
       for (const [questionId, groupEntry] of Object.entries(group)) {
@@ -323,18 +368,27 @@ if (import.meta.main) {
         if (isGroupFlag)
           continue;
         const customQuestion = groupEntry as CustomQuestion;
-        const isQuestionInactive = !customQuestion.active;
+        const isQuestionNotNamed = hasQuestionFilter && !requestedQuestionIds.includes(questionId);
+        if (isQuestionNotNamed)
+          continue;
+        // const isQuestionInactive = !customQuestion.active;
+        const isQuestionInactive = !customQuestion.active && !hasQuestionFilter;
         if (isQuestionInactive)
           continue;
         questions[questionId] = choice(customQuestion.ask, {
           yes: 'yes',
+          // yes: 'The message states this directly.',
+          // yes: 'The message states or clearly implies this.',
           no: 'no',
+          // no: 'The message does not state this.',
           unclear: 'not sure',
+          // unclear: 'The message only hints at this, or it is not possible to tell.',
         });
       }
     }
     if (isDryRun)
-      console.log({ state, questions });
+      // console.log({ state, questions });
+      console.log(JSON.stringify({ state, questions }, null, 2));
     const isDryRunWithoutSavedAnswers = isDryRun && mainFromPath === undefined;
     if (isDryRunWithoutSavedAnswers)
       continue;
@@ -351,7 +405,8 @@ if (import.meta.main) {
     // const answers = response.answers as Record<string, ChoiceResponse>;
     // for (const [questionId, customQuestion] of Object.entries(customFile.questions)) {
     for (const group of Object.values(customFile.questions.groups)) {
-      const isGroupInactive = !group.active;
+      // const isGroupInactive = !group.active;
+      const isGroupInactive = !group.active && !hasQuestionFilter;
       if (isGroupInactive)
         continue;
       for (const [questionId, groupEntry] of Object.entries(group)) {
@@ -359,7 +414,11 @@ if (import.meta.main) {
         if (isGroupFlag)
           continue;
         const customQuestion = groupEntry as CustomQuestion;
-        const isQuestionInactive = !customQuestion.active;
+        const isQuestionNotNamed = hasQuestionFilter && !requestedQuestionIds.includes(questionId);
+        if (isQuestionNotNamed)
+          continue;
+        // const isQuestionInactive = !customQuestion.active;
+        const isQuestionInactive = !customQuestion.active && !hasQuestionFilter;
         if (isQuestionInactive)
           continue;
         // const followUps = customQuestion['follow-ups'] ?? [];
@@ -403,8 +462,12 @@ if (import.meta.main) {
             continue;
           followupQuestions[`${questionId}${FOLLOW_UP_ID_MARKER}${index}`] = choice(createFollowUpQuestion(`${questionId}.ask`, `${questionId}.score`, `${questionId}.scoreLimit`, followUp.ask), {
             yes: 'yes',
+            // yes: 'The message states this directly.',
+            // yes: 'The message states or clearly implies this.',
             no: 'no',
+            // no: 'The message does not state this.',
             unclear: 'not sure',
+            // unclear: 'The message only hints at this, or it is not possible to tell.',
           });
         }
       }
@@ -413,7 +476,8 @@ if (import.meta.main) {
     if (!hasFollowupQuestions)
       continue;
     if (isDryRun) {
-      console.log({ state: followUpState, questions: followupQuestions });
+      // console.log({ state: followUpState, questions: followupQuestions });
+      console.log(JSON.stringify({ state: followUpState, questions: followupQuestions }, null, 2));
       continue;
     }
     const followUpResponse = await client.systemOne({ state: followUpState, questions: followupQuestions });

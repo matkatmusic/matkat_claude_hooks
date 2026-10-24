@@ -573,7 +573,7 @@
         { "id": "125", "subject": "Session state dir from input.settings; tests use temp folders; stranger direct rows get per-test state dir", "status": "completed" },
         { "id": "126", "subject": "Test whether a mod can import ../../../shared/settings.ts; if yes, dedupe the mod lookup", "status": "completed" }
       ],
-      "expectedResult": "both",
+      "expectedResult": "ask",
       "expectedItems": [
         {
           "kind": "question",
@@ -1361,7 +1361,7 @@
         { "id": "131", "subject": "Stranger test: move the 8 side-effect direct rows to live sessions", "status": "pending" },
         { "id": "132", "subject": "Tell 'prompt audit of ask-dont-dump-issues checker 4' that dispatch.json is done", "status": "pending" }
       ],
-      "expectedResult": "both",
+      "expectedResult": "ask",
       "expectedItems": null,
       "text": [
         {
@@ -1947,7 +1947,7 @@
         { "id": "136", "subject": "Stranger test: direct-row crash must not hide live rows", "status": "pending" },
         { "id": "137", "subject": "Comment out tests/stranger_test.py (old copy)", "status": "pending" }
       ],
-      "expectedResult": "both",
+      "expectedResult": "ask",
       "expectedItems": null,
       "text": [
         {
@@ -2107,7 +2107,7 @@
         { "id": "136", "subject": "Stranger test: direct-row crash must not hide live rows", "status": "pending" },
         { "id": "137", "subject": "Comment out tests/stranger_test.py (old copy)", "status": "pending" }
       ],
-      "expectedResult": "both",
+      "expectedResult": "ask",
       "expectedItems": null,
       "text": [
         {
@@ -2368,7 +2368,7 @@
         { "id": "125", "subject": "Session state dir from input.settings; tests use temp folders; stranger direct rows get per-test state dir", "status": "completed" },
         { "id": "126", "subject": "Test whether a mod can import ../../../shared/settings.ts; if yes, dedupe the mod lookup", "status": "completed" }
       ],
-      "expectedResult": "both",
+      "expectedResult": "ask",
       "expectedItems": null,
       "text": [
         {

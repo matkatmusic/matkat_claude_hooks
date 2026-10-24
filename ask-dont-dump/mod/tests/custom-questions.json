@@ -15,7 +15,7 @@
         "aboutABug": { "active": true, "ask": "Does this message describe a bug?" },
         "aboutAnError": { "active": false, "ask": "Does this message describe an error?" },
         "aboutAFailure": { "active": false, "ask": "Does this message describe a failure?" },
-        "aboutNotWorkingAsExpected": { "active": true, "ask": "Does this message describe something not working as expected?" },
+        "aboutNotWorkingAsExpected": { "active": false, "ask": "Does this message describe something not working as expected?" },
         "problemFoundInCode": { "active": true, "ask": "Does this message describe a problem found in the code?" }
       },
       "asksQuestion": {
@@ -35,7 +35,7 @@
         "saysWaitingForSignalToBegin": { "active": true, "ask": "Does this message describe that the agent is waiting for my signal to begin a task?" },
         "waitingForUserAction": { "active": true, "ask": "Does this message say the agent is waiting for the user to do something?" },
         "containsRecommendation": { "active": false, "ask": "Does this message contain a recommendation?" },
-        "choiceNotMade": { "active": true, "ask": "Does this message leave a choice that nobody has made yet?" },
+        "choiceNotMade": { "active": true, "ask": "Does this message describe a choice that needs to eventually be made?" },
         "optionsWithNoPick": { "active": true, "ask": "Does this message give two or more options with no pick?" },
         "userMustChoose": { "active": false, "ask": "Does this message leave a choice the user must still make?" },
         "recommendsChoice": { "active": false, "ask": "Does this message recommend a choice in a set of options?" }
@@ -64,14 +64,14 @@
         "active": true,
         "workNotDone": { "active": false, "ask": "Does this message say that a piece of work is not done?" },
         "workStaysOpen": { "active": false, "ask": "Does this message say that a piece of work stays open?" },
-        "workFromTurnNotFinished": { "active": true, "ask": "Does this message say that work from this turn is not finished?" },
+        "workFromTurnNotFinished": { "active": false, "ask": "Does this message say that work from this turn is not finished?" },
         "workWaitsOnOtherWork": { "active": false, "ask": "Does this message say that work waits until other work is completed?", "followUps": [{ "active": true, "ask": "Does this message say what that other work is?" }] },
         "whyWorkNotDoneThisTurn": { "active": false, "ask": "Does this message say why this work was not done this turn?" },
-        "whatUnblocksWork": { "active": true, "ask": "Does this message say what will unblock this work?" }
+        "whatUnblocksWork": { "active": false, "ask": "Does this message say what will unblock this work?" }
       },
       "describesWorkToDo": {
         "active": true,
-        "listsWorkStillToDo": { "active": true, "ask": "Does this message list work that must still be done?" },
+        "listsWorkStillToDo": { "active": false, "ask": "Does this message list work that must still be done?" },
         "listsNextSteps": { "active": false, "ask": "Does this message list next steps?" },
         "hasToDoList": { "active": false, "ask": "Does this message include a to-do list?" }
       },
