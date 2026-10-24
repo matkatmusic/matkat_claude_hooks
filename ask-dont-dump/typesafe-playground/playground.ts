@@ -1,6 +1,6 @@
 import { rename } from 'node:fs/promises';
 import { choice, TypeSafeClient, type JsonValue, type Questions } from '@typesafe-ai/sdk';
-import { loadReplyState } from './checker5Calls';
+import { loadReplyState } from '../mod/tests/checker5Calls';
 import {
   buildOptions,
   TASK_NO_REASON_TEXT,
@@ -8,7 +8,7 @@ import {
   USER_NO_REASON_TEXT,
   USER_QUESTION_TEXT,
   type QuestionGroup,
-} from './askChoiceQuestions';
+} from '../mod/tests/askChoiceQuestions';
 
 const SERVER_HOSTNAME = '127.0.0.1';
 const SERVER_PORT = 4318;
@@ -148,7 +148,8 @@ button.tab.active { background: var(--grid); font-weight: 600; }
 .chart-box { overflow-x: auto; }
 svg text { fill: var(--text-muted); font-size: 11px; }
 /* .result { padding: 8px; background: var(--panel); border-radius: 6px; min-height: 9em; } */
-.result { flex: none; padding: 8px; background: var(--panel); border-radius: 6px; height: 9em; overflow-y: auto; }
+/* .result { flex: none; padding: 8px; background: var(--panel); border-radius: 6px; height: 9em; overflow-y: auto; } */
+.result { flex: none; padding: 8px; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; height: 9em; overflow-y: auto; }
 #hoverLine { white-space: pre-wrap; overflow-wrap: anywhere; }
 .graph-block { position: relative; }
 /* .bar-info { position: absolute; top: 22px; right: 8px; max-width: 60%; z-index: 1; pointer-events: none; display: grid; grid-template-columns: max-content 1fr; column-gap: 6px; row-gap: 2px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--score); } */
@@ -878,8 +879,7 @@ function render() {
   for (let i = 0; i < names.length; i++) {
     const hasOutputs = version.outputs.length > 0 && version.outputs[0].answers[names[i]] !== undefined;
     if (!hasOutputs) {
-      // boxes[i].textContent = 'no outputs yet';
-      // boxes[i].style.paddingTop = '20px';
+      // boxes[i].textContent = 'no outputs yet'; boxes[i].style.paddingTop = '20px';
       boxes[i].style.display = 'flex';
       boxes[i].style.alignItems = 'center';
       boxes[i].style.justifyContent = 'center';
@@ -1051,7 +1051,8 @@ async function loadHistory() {
 
 async function seedHistory() {
   const customFile: { questions: { groups: Record<string, QuestionGroup> } } =
-    await Bun.file(`${import.meta.dir}/custom-questions.json`).json();
+    // await Bun.file(`${import.meta.dir}/custom-questions.json`).json();
+    await Bun.file(`${import.meta.dir}/../mod/tests/custom-questions.json`).json();
   const groups = customFile.questions.groups;
   const userOptions = buildOptions(groups, USER_NO_REASON_TEXT, ['Ask', 'Both']);
   const taskOptions = buildOptions(groups, TASK_NO_REASON_TEXT, ['Task', 'Both']);
@@ -1181,4 +1182,4 @@ if (import.meta.main) {
   console.log(`http://${SERVER_HOSTNAME}:${server.port}/`);
 }
 
-// bun claude/claude_hooks/ask-dont-dump/mod/tests/playground.ts
+// bun --watch claude/claude_hooks/ask-dont-dump/typesafe-playground/playground.ts
