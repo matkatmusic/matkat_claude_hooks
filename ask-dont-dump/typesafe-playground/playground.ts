@@ -798,18 +798,18 @@ function render() {
 function render() {
   const version = versions[index];
   // el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
-  const noteOneLine = (version.note || '').replaceAll('\\n', ' ');
-  const noteShort = noteOneLine.length > 40 ? noteOneLine.slice(0, 40) + '\\u2026' : noteOneLine;
+  // const noteOneLine = (version.note || '').replaceAll('\\n', ' ');
+  // const noteShort = noteOneLine.length > 40 ? noteOneLine.slice(0, 40) + '\\u2026' : noteOneLine;
   // el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + (noteShort === '' ? '' : ' \\u00b7 ' + noteShort) + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
   el('versionMeta').replaceChildren();
   addPart(el('versionMeta'), 'version ', 'info-label');
   addPart(el('versionMeta'), String(index + 1), 'info-value');
   addPart(el('versionMeta'), ' of ', 'info-label');
   addPart(el('versionMeta'), String(versions.length), 'info-value');
-  if (noteShort !== '') {
-    addPart(el('versionMeta'), ' \\u00b7 ', 'info-label');
-    addPart(el('versionMeta'), noteShort, 'info-value');
-  }
+  // if (noteShort !== '') {
+  //   addPart(el('versionMeta'), ' \\u00b7 ', 'info-label');
+  //   addPart(el('versionMeta'), noteShort, 'info-value');
+  // }
   addPart(el('versionMeta'), ' \\u00b7 ', 'info-label');
   addPart(el('versionMeta'), version.time, 'info-value');
   addPart(el('versionMeta'), ' \\u00b7 ', 'info-label');
