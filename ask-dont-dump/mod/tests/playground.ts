@@ -153,6 +153,7 @@ svg text { fill: var(--text-muted); font-size: 11px; }
       <button id="next" aria-label="next version">&gt;</button>
       <button class="wide" id="resetBtn">Reset</button>
     </div>
+    <div id="costLine"></div>
     <label for="noteText">Note</label>
     <textarea id="noteText" rows="1" wrap="soft" placeholder="Note about this run"></textarea>
     <label for="stateText">state</label>
@@ -194,6 +195,7 @@ const versions = data.versions;
 const NS = 'http://www.w3.org/2000/svg';
 // const BAR_W = 8, OPTION_GAP = 14, LEFT = 44, TOP = 14, PLOT_H = 220, BOTTOM = 14;
 const BAR_W = 8, OPTION_GAP = 14, LEFT = 44, TOP = 30, BOTTOM = 14;
+const INPUT_COST_PER_MILLION = 0.042;
 let index = versions.length - 1;
 let pinnedId = null;
 // let activeTab = '';
@@ -452,6 +454,7 @@ function drawChart(box, version, name) {
       const group = svg.querySelector('.value-labels');
       if (group !== null) group.remove();
     });
+    hit.addEventListener('click', function () { restingText = hoverText; });
     svg.appendChild(hit);
   }
   box.replaceChildren(svg);
@@ -507,6 +510,9 @@ function render() {
   const noteShort = noteOneLine.length > 40 ? noteOneLine.slice(0, 40) + '\\u2026' : noteOneLine;
   el('versionMeta').textContent = 'version ' + (index + 1) + ' of ' + versions.length + (noteShort === '' ? '' : ' \\u00b7 ' + noteShort) + ' \\u00b7 ' + version.time + ' \\u00b7 ' + version.calls + (version.calls === 1 ? ' call' : ' calls');
   el('pinInfo').textContent = pinnedId === null ? 'nothing pinned' : 'pinned: version ' + pinnedId;
+  let inputTokens = 0;
+  for (const output of version.outputs) inputTokens += output.usage.input_tokens;
+  el('costLine').textContent = 'cost: $' + (inputTokens * INPUT_COST_PER_MILLION / 1000000).toFixed(6) + ' \\u00b7 ' + inputTokens + ' input tokens';
   el('modeBtn').textContent = isAverageMode ? 'showing: average + range' : 'showing: one bar per call';
   const names = Object.keys(version.questions);
   const graphs = el('graphs');
