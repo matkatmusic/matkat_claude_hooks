@@ -143,10 +143,13 @@ svg text { fill: var(--text-muted); font-size: 11px; }
 .result { flex: none; padding: 8px; background: var(--panel); border-radius: 6px; height: 9em; overflow-y: auto; }
 #hoverLine { white-space: pre-wrap; overflow-wrap: anywhere; }
 .graph-block { position: relative; }
-.bar-info { position: absolute; top: 22px; right: 8px; max-width: 60%; z-index: 1; pointer-events: none; display: grid; grid-template-columns: max-content 1fr; column-gap: 6px; row-gap: 2px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--score); }
+/* .bar-info { position: absolute; top: 22px; right: 8px; max-width: 60%; z-index: 1; pointer-events: none; display: grid; grid-template-columns: max-content 1fr; column-gap: 6px; row-gap: 2px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--score); } */
+.bar-info { position: absolute; top: 22px; left: 50%; max-width: calc(50% - 8px); z-index: 1; pointer-events: none; display: grid; grid-template-columns: max-content 1fr; column-gap: 6px; row-gap: 2px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--score); }
+.avg-toggle { position: absolute; top: 20px; left: 4px; z-index: 2; font-size: 12px; color: var(--text-muted); }
 .info-label { color: var(--good); }
 .info-value { color: var(--score); }
-.info-cell { overflow-wrap: anywhere; }
+/* .info-cell { overflow-wrap: anywhere; } */
+.info-cell { overflow-wrap: anywhere; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -180,7 +183,7 @@ svg text { fill: var(--text-muted); font-size: 11px; }
     <div class="btn-row">
       <button class="wide" id="pinBtn">Pin</button>
       <button class="wide" id="unpinBtn">Unpin</button>
-      <button class="wide" id="modeBtn"></button>
+      <!-- <button class="wide" id="modeBtn"></button> -->
       <span class="pin-info" id="pinInfo"></span>
     </div>
     <!-- <div class="chart-box" id="chartBox"></div> -->
@@ -204,7 +207,8 @@ const INPUT_COST_PER_MILLION = 0.042;
 let index = versions.length - 1;
 let pinnedId = null;
 // let activeTab = '';
-let isAverageMode = false;
+// let isAverageMode = false;
+const averageShownByName = {};
 let restingText = '';
 
 function el(id) { return document.getElementById(id); }
@@ -337,7 +341,20 @@ function buildBarInfo(question, answers, key, keys, pinnedValues, callIndex) {
   box.className = 'bar-info';
   addInfoRow(box, 'Choice:', [[key, 'info-value']]);
   addInfoRow(box, 'Message:', [[readDescription(question, key), 'info-value']]);
-  addInfoRow(box, 'Score:', [[(callIndex < 0 ? stat.average : values[callIndex]).toFixed(3), 'info-value']]);
+  // addInfoRow(box, 'Score:', [[(callIndex < 0 ? stat.average : values[callIndex]).toFixed(3), 'info-value']]);
+  let score = '';
+  let confidence = '';
+  if (callIndex >= 0) {
+    score = values[callIndex].toFixed(3);
+    confidence = String(answers[callIndex].confidence);
+  }
+  if (callIndex < 0) {
+    let confidenceSum = 0;
+    for (let i = 0; i < answers.length; i++) confidenceSum += answers[i].confidence;
+    score = stat.average.toFixed(3);
+    confidence = (confidenceSum / answers.length).toFixed(2);
+  }
+  addInfoRow(box, 'Score:', [[score, 'info-value'], ['  Confidence: ', 'info-label'], [confidence, 'info-value']]);
   addInfoRow(box, 'Range:', [
     ['min: ', 'info-label'], [stat.low.toFixed(3), 'info-value'],
     ['  max: ', 'info-label'], [stat.high.toFixed(3), 'info-value'],
@@ -345,14 +362,14 @@ function buildBarInfo(question, answers, key, keys, pinnedValues, callIndex) {
   ]);
   let topCount = 0;
   for (let i = 0; i < answers.length; i++) {
-    const parts = [[values[i].toFixed(3), 'info-value']];
-    if (question.type === 'choice' && answers[i].choice === key) {
-      parts.push([' won with confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
-    }
-    if (question.type === 'score') {
-      parts.push([' expected score ', 'info-label'], [answers[i].score.toFixed(2), 'info-value'], [' confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
-    }
-    addInfoRow(box, 'Call ' + (i + 1) + ':', parts);
+    // const parts = [[values[i].toFixed(3), 'info-value']];
+    // if (question.type === 'choice' && answers[i].choice === key) {
+    //   parts.push([' won with confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
+    // }
+    // if (question.type === 'score') {
+    //   parts.push([' expected score ', 'info-label'], [answers[i].score.toFixed(2), 'info-value'], [' confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
+    // }
+    // addInfoRow(box, 'Call ' + (i + 1) + ':', parts);
     if (readTopKey(question, answers[i], keys) === key) topCount++;
   }
   addInfoRow(box, 'Top choice in', [[String(topCount), 'info-value'], [' of ', 'info-label'], [String(answers.length), 'info-value'], [' runs', 'info-label']]);
@@ -367,30 +384,81 @@ function buildBarInfo(question, answers, key, keys, pinnedValues, callIndex) {
   return box;
 }
 
-function buildSummaryLine(question, answers, name) {
-  const label = question.type === 'choice' ? 'winning choice per call: ' : question.type === 'score' ? 'expected score per call: ' : 'yes probability per call: ';
-  const groupValues = [];
+function buildEmptyBarInfo(hasPinned) {
+  const box = document.createElement('div');
+  box.className = 'bar-info';
+  addInfoRow(box, 'Choice:', [['', 'info-value']]);
+  addInfoRow(box, 'Message:', [['', 'info-value']]);
+  addInfoRow(box, 'Score:', [['', 'info-value'], ['  Confidence: ', 'info-label'], ['', 'info-value']]);
+  addInfoRow(box, 'Range:', [
+    ['min: ', 'info-label'], ['', 'info-value'],
+    ['  max: ', 'info-label'], ['', 'info-value'],
+    ['  avg: ', 'info-label'], ['', 'info-value'],
+  ]);
+  addInfoRow(box, 'Top choice in', [['', 'info-value'], [' of ', 'info-label'], ['', 'info-value'], [' runs', 'info-label']]);
+  if (hasPinned) {
+    addInfoRow(box, 'Pinned:', [
+      ['min: ', 'info-label'], ['', 'info-value'],
+      ['  max: ', 'info-label'], ['', 'info-value'],
+      ['  avg: ', 'info-label'], ['', 'info-value'],
+    ]);
+  }
+  return box;
+}
+
+// function buildSummaryLine(question, answers, name) {
+//   const label = question.type === 'choice' ? 'winning choice per call: ' : question.type === 'score' ? 'expected score per call: ' : 'yes probability per call: ';
+//   const groupValues = [];
+//   const groupRuns = [];
+//   for (let i = 0; i < answers.length; i++) {
+//     let value = '';
+//     if (question.type === 'choice') value = answers[i].choice;
+//     if (question.type === 'score') value = answers[i].score.toFixed(2);
+//     if (question.type === 'noul') value = answers[i].noul.toFixed(3);
+//     const groupIndex = groupValues.indexOf(value);
+//     if (groupIndex < 0) {
+//       groupValues.push(value);
+//       groupRuns.push([i + 1]);
+//     } else {
+//       groupRuns[groupIndex].push(i + 1);
+//     }
+//   }
+//   const line = document.createElement('div');
+//   addPart(line, name + ': ' + label, 'info-label');
+//   for (let g = 0; g < groupValues.length; g++) {
+//     if (g > 0) addPart(line, ', ', 'info-label');
+//     addPart(line, groupValues[g] + ' (' + groupRuns[g].join(',') + ')', 'info-value');
+//   }
+//   return line;
+// }
+
+function buildWinnerLines(question, answers) {
+  const keys = listOptionKeys(question, answers[0]);
+  const groupKeys = [];
   const groupRuns = [];
   for (let i = 0; i < answers.length; i++) {
-    let value = '';
-    if (question.type === 'choice') value = answers[i].choice;
-    if (question.type === 'score') value = answers[i].score.toFixed(2);
-    if (question.type === 'noul') value = answers[i].noul.toFixed(3);
-    const groupIndex = groupValues.indexOf(value);
+    const topKey = readTopKey(question, answers[i], keys);
+    const groupIndex = groupKeys.indexOf(topKey);
     if (groupIndex < 0) {
-      groupValues.push(value);
+      groupKeys.push(topKey);
       groupRuns.push([i + 1]);
     } else {
       groupRuns[groupIndex].push(i + 1);
     }
   }
-  const line = document.createElement('div');
-  addPart(line, name + ': ' + label, 'info-label');
-  for (let g = 0; g < groupValues.length; g++) {
-    if (g > 0) addPart(line, ', ', 'info-label');
-    addPart(line, groupValues[g] + ' (' + groupRuns[g].join(',') + ')', 'info-value');
+  const lines = document.createElement('div');
+  const instructionLine = document.createElement('div');
+  instructionLine.className = 'info-label';
+  instructionLine.textContent = describeText(question.instructions);
+  lines.appendChild(instructionLine);
+  for (let g = 0; g < groupKeys.length; g++) {
+    const winnerLine = document.createElement('div');
+    winnerLine.className = 'info-value';
+    winnerLine.style.paddingLeft = '2em';
+    winnerLine.textContent = readDescription(question, groupKeys[g]) + ' (' + groupRuns[g].join(',') + ')';
+    lines.appendChild(winnerLine);
   }
-  return line;
+  return lines;
 }
 
 function clearHover() { el('hoverLine').textContent = restingText; }
@@ -412,33 +480,53 @@ function drawOption(svg, values, slotX, isPinned) {
 }
 */
 
-function drawOption(svg, values, slotX, isPinned, plotH) {
+function drawOption(svg, values, slotX, isPinned, plotH, isAverageShown) {
   const stat = summarize(values);
   const fill = isPinned ? 'var(--text-muted)' : 'var(--score)';
   const opacity = isPinned ? 0.35 : 1;
   const pad = isPinned ? 2 : 0;
-  if (isAverageMode) {
-    svg.appendChild(makeSvg('rect', { x: slotX - pad, y: yOf(stat.average, plotH), width: 16 + 2 * pad, height: plotH * stat.average, fill: fill, opacity: opacity }));
-    svg.appendChild(makeSvg('line', { x1: slotX + 8, x2: slotX + 8, y1: yOf(stat.high, plotH), y2: yOf(stat.low, plotH), stroke: 'var(--text)', 'stroke-width': 1.5, opacity: opacity }));
-    return;
+  // if (isAverageMode) {
+  //   svg.appendChild(makeSvg('rect', { x: slotX - pad, y: yOf(stat.average, plotH), width: 16 + 2 * pad, height: plotH * stat.average, fill: fill, opacity: opacity }));
+  //   svg.appendChild(makeSvg('line', { x1: slotX + 8, x2: slotX + 8, y1: yOf(stat.high, plotH), y2: yOf(stat.low, plotH), stroke: 'var(--text)', 'stroke-width': 1.5, opacity: opacity }));
+  //   return;
+  // }
+  // for (let k = 0; k < values.length; k++) {
+  //   svg.appendChild(makeSvg('rect', { x: slotX + k * BAR_W - pad, y: yOf(values[k], plotH), width: BAR_W - 1 + 2 * pad, height: plotH * values[k], fill: fill, opacity: opacity }));
+  // }
+  const offset = isAverageShown ? BAR_W : 0;
+  if (isAverageShown) {
+    svg.appendChild(makeSvg('rect', { x: slotX - pad, y: yOf(stat.average, plotH), width: BAR_W - 1 + 2 * pad, height: plotH * stat.average, fill: isPinned ? fill : 'var(--confidence)', opacity: opacity }));
+    svg.appendChild(makeSvg('line', { x1: slotX + (BAR_W - 1) / 2, x2: slotX + (BAR_W - 1) / 2, y1: yOf(stat.high, plotH), y2: yOf(stat.low, plotH), stroke: 'var(--text)', 'stroke-width': 1.5, opacity: opacity }));
   }
   for (let k = 0; k < values.length; k++) {
-    svg.appendChild(makeSvg('rect', { x: slotX + k * BAR_W - pad, y: yOf(values[k], plotH), width: BAR_W - 1 + 2 * pad, height: plotH * values[k], fill: fill, opacity: opacity }));
+    svg.appendChild(makeSvg('rect', { x: slotX + offset + k * BAR_W - pad, y: yOf(values[k], plotH), width: BAR_W - 1 + 2 * pad, height: plotH * values[k], fill: fill, opacity: opacity }));
   }
 }
 
-function drawValueLabels(svg, values, slotX, plotH) {
+function drawValueLabels(svg, values, slotX, plotH, isAverageShown) {
   const group = makeSvg('g', { class: 'value-labels', 'pointer-events': 'none' });
   const labelStyle = 'font-size: 9px; fill: var(--text)';
-  if (isAverageMode) {
+  // if (isAverageMode) {
+  //   const stat = summarize(values);
+  //   group.appendChild(makeSvg('text', { x: slotX + 8, y: yOf(stat.high, plotH) - 3, 'text-anchor': 'middle', style: labelStyle }, stat.average.toFixed(3)));
+  // } else {
+  //   for (let k = 0; k < values.length; k++) {
+  //     const labelX = slotX + k * BAR_W + 7;
+  //     const labelY = yOf(values[k], plotH) - 3;
+  //     group.appendChild(makeSvg('text', { x: labelX, y: labelY, transform: 'rotate(-90 ' + labelX + ' ' + labelY + ')', style: labelStyle }, values[k].toFixed(3)));
+  //   }
+  // }
+  const offset = isAverageShown ? BAR_W : 0;
+  if (isAverageShown) {
     const stat = summarize(values);
-    group.appendChild(makeSvg('text', { x: slotX + 8, y: yOf(stat.high, plotH) - 3, 'text-anchor': 'middle', style: labelStyle }, stat.average.toFixed(3)));
-  } else {
-    for (let k = 0; k < values.length; k++) {
-      const labelX = slotX + k * BAR_W + 7;
-      const labelY = yOf(values[k], plotH) - 3;
-      group.appendChild(makeSvg('text', { x: labelX, y: labelY, transform: 'rotate(-90 ' + labelX + ' ' + labelY + ')', style: labelStyle }, values[k].toFixed(3)));
-    }
+    const averageX = slotX + 7;
+    const averageY = yOf(stat.average, plotH) - 3;
+    group.appendChild(makeSvg('text', { x: averageX, y: averageY, transform: 'rotate(-90 ' + averageX + ' ' + averageY + ')', style: labelStyle }, stat.average.toFixed(3)));
+  }
+  for (let k = 0; k < values.length; k++) {
+    const labelX = slotX + offset + k * BAR_W + 7;
+    const labelY = yOf(values[k], plotH) - 3;
+    group.appendChild(makeSvg('text', { x: labelX, y: labelY, transform: 'rotate(-90 ' + labelX + ' ' + labelY + ')', style: labelStyle }, values[k].toFixed(3)));
   }
   svg.appendChild(group);
 }
@@ -497,13 +585,24 @@ function drawChart(box, version, name) {
   for (const key of keys) stats[key] = summarize(listValues(question, answers, key));
   keys.sort(function (a, b) { return stats[b].average - stats[a].average; });
   // restingText += name + ': ' + buildRestingText(question, answers) + '\\n';
-  el('hoverLine').appendChild(buildSummaryLine(question, answers, name));
+  // el('hoverLine').appendChild(buildSummaryLine(question, answers, name));
+  el('hoverLine').appendChild(buildWinnerLines(question, answers));
+  const isAverageShown = averageShownByName[name] === true;
   const block = box.parentElement;
-  let keptInfo = null;
-  function showInfo(info) {
+  // let keptInfo = null;
+  // function showInfo(info) {
+  //   const shown = block.querySelector('.bar-info');
+  //   if (shown !== null) shown.remove();
+  //   if (info !== null) block.appendChild(info);
+  // }
+  let shownHit = null;
+  function showInfo(info, hit) {
     const shown = block.querySelector('.bar-info');
     if (shown !== null) shown.remove();
-    if (info !== null) block.appendChild(info);
+    block.appendChild(info);
+    if (shownHit !== null) shownHit.removeAttribute('stroke');
+    shownHit = hit;
+    if (hit !== null) hit.setAttribute('stroke', 'hotpink');
   }
   let pinnedQuestion = null, pinnedAnswers = [], pinnedKeys = [];
   const pinnedVersion = findPinned();
@@ -515,7 +614,8 @@ function drawChart(box, version, name) {
   }
   const plotH = Math.max(box.clientHeight - TOP - BOTTOM, 40);
   const barCount = Math.max(answers.length, pinnedAnswers.length);
-  const slot = Math.max(barCount * BAR_W, 16) + OPTION_GAP;
+  // const slot = Math.max(barCount * BAR_W, 16) + OPTION_GAP;
+  const slot = Math.max((barCount + (isAverageShown ? 1 : 0)) * BAR_W, 16) + OPTION_GAP;
   const plotRight = LEFT + keys.length * slot;
   const svg = makeSvg('svg', { width: plotRight + 20, height: TOP + plotH + BOTTOM, role: 'img' });
   for (let tick = 0; tick <= 5; tick++) {
@@ -530,10 +630,10 @@ function drawChart(box, version, name) {
     let pinnedValues = null;
     if (isPinnedKey) {
       pinnedValues = listValues(pinnedQuestion, pinnedAnswers, key);
-      drawOption(svg, pinnedValues, slotX, true, plotH);
+      drawOption(svg, pinnedValues, slotX, true, plotH, isAverageShown);
     }
     const optionValues = listValues(question, answers, key);
-    drawOption(svg, optionValues, slotX, false, plotH);
+    drawOption(svg, optionValues, slotX, false, plotH, isAverageShown);
     // const hoverText = buildHoverText(question, answers, key, keys, pinnedValues);
     // const hit = makeSvg('rect', { x: LEFT + i * slot, y: TOP, width: slot, height: plotH, fill: 'transparent' });
     // hit.addEventListener('mouseenter', function () {
@@ -547,27 +647,45 @@ function drawChart(box, version, name) {
     // });
     // hit.addEventListener('click', function () { restingText = hoverText; });
     // svg.appendChild(hit);
-    const hitCount = isAverageMode ? 1 : optionValues.length;
-    for (let k = 0; k < hitCount; k++) {
-      const callIndex = isAverageMode ? -1 : k;
-      const hitX = isAverageMode ? LEFT + i * slot : slotX + k * BAR_W;
-      const hitWidth = isAverageMode ? slot : BAR_W;
-      const hit = makeSvg('rect', { x: hitX, y: TOP, width: hitWidth, height: plotH, fill: 'transparent' });
+    // const hitCount = isAverageMode ? 1 : optionValues.length;
+    // for (let k = 0; k < hitCount; k++) {
+    //   const callIndex = isAverageMode ? -1 : k;
+    //   const hitValue = isAverageMode ? summarize(optionValues).average : optionValues[k];
+    //   const hitX = isAverageMode ? slotX : slotX + k * BAR_W;
+    //   const hitWidth = isAverageMode ? 16 : BAR_W - 1;
+    //   const hit = makeSvg('rect', { x: hitX, y: yOf(hitValue, plotH), width: hitWidth, height: plotH * hitValue, fill: 'transparent' });
+    //   const info = buildBarInfo(question, answers, key, keys, pinnedValues, callIndex);
+    //   hit.addEventListener('mouseenter', function () {
+    //     showInfo(info);
+    //     drawValueLabels(svg, optionValues, slotX, plotH);
+    //   });
+    //   hit.addEventListener('mouseleave', function () {
+    //     showInfo(keptInfo);
+    //     const group = svg.querySelector('.value-labels');
+    //     if (group !== null) group.remove();
+    //   });
+    //   hit.addEventListener('click', function () { keptInfo = info; });
+    //   svg.appendChild(hit);
+    // }
+    const offset = isAverageShown ? BAR_W : 0;
+    for (let callIndex = isAverageShown ? -1 : 0; callIndex < optionValues.length; callIndex++) {
+      const hitValue = callIndex < 0 ? summarize(optionValues).average : optionValues[callIndex];
+      const hitX = callIndex < 0 ? slotX : slotX + offset + callIndex * BAR_W;
+      const hit = makeSvg('rect', { x: hitX, y: yOf(hitValue, plotH), width: BAR_W - 1, height: plotH * hitValue, fill: 'transparent', 'stroke-width': 1 });
       const info = buildBarInfo(question, answers, key, keys, pinnedValues, callIndex);
       hit.addEventListener('mouseenter', function () {
-        showInfo(info);
-        drawValueLabels(svg, optionValues, slotX, plotH);
+        showInfo(info, hit);
+        drawValueLabels(svg, optionValues, slotX, plotH, isAverageShown);
       });
       hit.addEventListener('mouseleave', function () {
-        showInfo(keptInfo);
         const group = svg.querySelector('.value-labels');
         if (group !== null) group.remove();
       });
-      hit.addEventListener('click', function () { keptInfo = info; });
       svg.appendChild(hit);
     }
   }
   box.replaceChildren(svg);
+  showInfo(buildEmptyBarInfo(hasPinnedAnswers), null);
 }
 
 /* old drawTabs
@@ -623,7 +741,7 @@ function render() {
   let inputTokens = 0;
   for (const output of version.outputs) inputTokens += output.usage.input_tokens;
   el('costLine').textContent = 'cost: $' + (inputTokens * INPUT_COST_PER_MILLION / 1000000).toFixed(6) + ' \\u00b7 ' + inputTokens + ' input tokens';
-  el('modeBtn').textContent = isAverageMode ? 'showing: average + range' : 'showing: one bar per call';
+  // el('modeBtn').textContent = isAverageMode ? 'showing: average + range' : 'showing: one bar per call';
   const names = Object.keys(version.questions);
   const graphs = el('graphs');
   graphs.replaceChildren();
@@ -636,15 +754,28 @@ function render() {
     title.className = 'graph-title';
     title.textContent = titleText;
     title.title = titleText;
+    const toggle = document.createElement('label');
+    toggle.className = 'avg-toggle';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = averageShownByName[names[i]] === true;
+    checkbox.addEventListener('change', function () { averageShownByName[names[i]] = checkbox.checked; render(); });
+    toggle.appendChild(checkbox);
+    toggle.appendChild(document.createTextNode(' Show average'));
     const box = document.createElement('div');
     box.className = 'chart-box';
     block.appendChild(title);
+    block.appendChild(toggle);
     block.appendChild(box);
     graphs.appendChild(block);
     boxes.push(box);
   }
   // restingText = '';
   el('hoverLine').replaceChildren();
+  const winnersTitle = document.createElement('div');
+  winnersTitle.textContent = 'Winners:';
+  winnersTitle.style.color = 'var(--text)';
+  el('hoverLine').appendChild(winnersTitle);
   for (let i = 0; i < names.length; i++) {
     const hasOutputs = version.outputs.length > 0 && version.outputs[0].answers[names[i]] !== undefined;
     if (!hasOutputs) {
@@ -787,7 +918,7 @@ el('prev').addEventListener('click', function () { moveBy(-1); });
 el('next').addEventListener('click', function () { moveBy(1); });
 el('pinBtn').addEventListener('click', function () { pinnedId = versions[index].id; render(); });
 el('unpinBtn').addEventListener('click', function () { pinnedId = null; render(); });
-el('modeBtn').addEventListener('click', function () { isAverageMode = !isAverageMode; render(); });
+// el('modeBtn').addEventListener('click', function () { isAverageMode = !isAverageMode; render(); });
 document.addEventListener('keydown', function (event) {
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
   // if (event.target.closest('.CodeMirror') !== null) return;
