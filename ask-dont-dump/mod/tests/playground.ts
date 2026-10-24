@@ -142,6 +142,11 @@ svg text { fill: var(--text-muted); font-size: 11px; }
 /* .result { padding: 8px; background: var(--panel); border-radius: 6px; min-height: 9em; } */
 .result { flex: none; padding: 8px; background: var(--panel); border-radius: 6px; height: 9em; overflow-y: auto; }
 #hoverLine { white-space: pre-wrap; overflow-wrap: anywhere; }
+.graph-block { position: relative; }
+.bar-info { position: absolute; top: 22px; right: 8px; max-width: 60%; z-index: 1; pointer-events: none; display: grid; grid-template-columns: max-content 1fr; column-gap: 6px; row-gap: 2px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--score); }
+.info-label { color: var(--good); }
+.info-value { color: var(--score); }
+.info-cell { overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -277,37 +282,115 @@ function findPinned() {
   return null;
 }
 
-function buildHoverText(question, answers, key, keys, pinnedValues) {
-  const values = listValues(question, answers, key);
-  const stat = summarize(values);
-  const lines = [key, readDescription(question, key)];
-  let topCount = 0;
-  for (let i = 0; i < answers.length; i++) {
-    let line = 'call ' + (i + 1) + ': ' + values[i].toFixed(3);
-    if (question.type === 'choice' && answers[i].choice === key) line += ' \\u00b7 won with confidence ' + answers[i].confidence;
-    if (question.type === 'score') line += ' \\u00b7 expected score ' + answers[i].score.toFixed(2) + ' \\u00b7 confidence ' + answers[i].confidence;
-    lines.push(line);
-    if (readTopKey(question, answers[i], keys) === key) topCount++;
-  }
-  lines.push('low ' + stat.low.toFixed(3) + ' \\u00b7 average ' + stat.average.toFixed(3) + ' \\u00b7 high ' + stat.high.toFixed(3));
-  lines.push('top in ' + topCount + ' of ' + answers.length + ' calls');
-  if (pinnedValues !== null) {
-    const pinnedStat = summarize(pinnedValues);
-    lines.push('pinned version ' + pinnedId + ': low ' + pinnedStat.low.toFixed(3) + ' \\u00b7 average ' + pinnedStat.average.toFixed(3) + ' \\u00b7 high ' + pinnedStat.high.toFixed(3));
-  }
-  return lines.join('\\n');
+// function buildHoverText(question, answers, key, keys, pinnedValues) {
+//   const values = listValues(question, answers, key);
+//   const stat = summarize(values);
+//   const lines = [key, readDescription(question, key)];
+//   let topCount = 0;
+//   for (let i = 0; i < answers.length; i++) {
+//     let line = 'call ' + (i + 1) + ': ' + values[i].toFixed(3);
+//     if (question.type === 'choice' && answers[i].choice === key) line += ' \\u00b7 won with confidence ' + answers[i].confidence;
+//     if (question.type === 'score') line += ' \\u00b7 expected score ' + answers[i].score.toFixed(2) + ' \\u00b7 confidence ' + answers[i].confidence;
+//     lines.push(line);
+//     if (readTopKey(question, answers[i], keys) === key) topCount++;
+//   }
+//   lines.push('low ' + stat.low.toFixed(3) + ' \\u00b7 average ' + stat.average.toFixed(3) + ' \\u00b7 high ' + stat.high.toFixed(3));
+//   lines.push('top in ' + topCount + ' of ' + answers.length + ' calls');
+//   if (pinnedValues !== null) {
+//     const pinnedStat = summarize(pinnedValues);
+//     lines.push('pinned version ' + pinnedId + ': low ' + pinnedStat.low.toFixed(3) + ' \\u00b7 average ' + pinnedStat.average.toFixed(3) + ' \\u00b7 high ' + pinnedStat.high.toFixed(3));
+//   }
+//   return lines.join('\\n');
+// }
+
+// function buildRestingText(question, answers) {
+//   const parts = [];
+//   for (const answer of answers) {
+//     if (question.type === 'choice') parts.push(answer.choice);
+//     if (question.type === 'score') parts.push(answer.score.toFixed(2));
+//     if (question.type === 'noul') parts.push(answer.noul.toFixed(3));
+//   }
+//   const label = question.type === 'choice' ? 'winning choice per call: ' : question.type === 'score' ? 'expected score per call: ' : 'yes probability per call: ';
+//   // return label + parts.join(', ') + '\\nhover a bar for details';
+//   return label + parts.join(', ');
+// }
+
+function addPart(parent, text, className) {
+  const span = document.createElement('span');
+  span.className = className;
+  span.textContent = text;
+  parent.appendChild(span);
 }
 
-function buildRestingText(question, answers) {
-  const parts = [];
-  for (const answer of answers) {
-    if (question.type === 'choice') parts.push(answer.choice);
-    if (question.type === 'score') parts.push(answer.score.toFixed(2));
-    if (question.type === 'noul') parts.push(answer.noul.toFixed(3));
+function addInfoRow(box, label, parts) {
+  addPart(box, label, 'info-label');
+  const valueCell = document.createElement('span');
+  valueCell.className = 'info-cell';
+  for (const part of parts) addPart(valueCell, part[0], part[1]);
+  box.appendChild(valueCell);
+}
+
+function buildBarInfo(question, answers, key, keys, pinnedValues, callIndex) {
+  const values = listValues(question, answers, key);
+  const stat = summarize(values);
+  const box = document.createElement('div');
+  box.className = 'bar-info';
+  addInfoRow(box, 'Choice:', [[key, 'info-value']]);
+  addInfoRow(box, 'Message:', [[readDescription(question, key), 'info-value']]);
+  addInfoRow(box, 'Score:', [[(callIndex < 0 ? stat.average : values[callIndex]).toFixed(3), 'info-value']]);
+  addInfoRow(box, 'Range:', [
+    ['min: ', 'info-label'], [stat.low.toFixed(3), 'info-value'],
+    ['  max: ', 'info-label'], [stat.high.toFixed(3), 'info-value'],
+    ['  avg: ', 'info-label'], [stat.average.toFixed(3), 'info-value'],
+  ]);
+  let topCount = 0;
+  for (let i = 0; i < answers.length; i++) {
+    const parts = [[values[i].toFixed(3), 'info-value']];
+    if (question.type === 'choice' && answers[i].choice === key) {
+      parts.push([' won with confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
+    }
+    if (question.type === 'score') {
+      parts.push([' expected score ', 'info-label'], [answers[i].score.toFixed(2), 'info-value'], [' confidence ', 'info-label'], [String(answers[i].confidence), 'info-value']);
+    }
+    addInfoRow(box, 'Call ' + (i + 1) + ':', parts);
+    if (readTopKey(question, answers[i], keys) === key) topCount++;
   }
+  addInfoRow(box, 'Top choice in', [[String(topCount), 'info-value'], [' of ', 'info-label'], [String(answers.length), 'info-value'], [' runs', 'info-label']]);
+  if (pinnedValues !== null) {
+    const pinnedStat = summarize(pinnedValues);
+    addInfoRow(box, 'Pinned v' + pinnedId + ':', [
+      ['min: ', 'info-label'], [pinnedStat.low.toFixed(3), 'info-value'],
+      ['  max: ', 'info-label'], [pinnedStat.high.toFixed(3), 'info-value'],
+      ['  avg: ', 'info-label'], [pinnedStat.average.toFixed(3), 'info-value'],
+    ]);
+  }
+  return box;
+}
+
+function buildSummaryLine(question, answers, name) {
   const label = question.type === 'choice' ? 'winning choice per call: ' : question.type === 'score' ? 'expected score per call: ' : 'yes probability per call: ';
-  // return label + parts.join(', ') + '\\nhover a bar for details';
-  return label + parts.join(', ');
+  const groupValues = [];
+  const groupRuns = [];
+  for (let i = 0; i < answers.length; i++) {
+    let value = '';
+    if (question.type === 'choice') value = answers[i].choice;
+    if (question.type === 'score') value = answers[i].score.toFixed(2);
+    if (question.type === 'noul') value = answers[i].noul.toFixed(3);
+    const groupIndex = groupValues.indexOf(value);
+    if (groupIndex < 0) {
+      groupValues.push(value);
+      groupRuns.push([i + 1]);
+    } else {
+      groupRuns[groupIndex].push(i + 1);
+    }
+  }
+  const line = document.createElement('div');
+  addPart(line, name + ': ' + label, 'info-label');
+  for (let g = 0; g < groupValues.length; g++) {
+    if (g > 0) addPart(line, ', ', 'info-label');
+    addPart(line, groupValues[g] + ' (' + groupRuns[g].join(',') + ')', 'info-value');
+  }
+  return line;
 }
 
 function clearHover() { el('hoverLine').textContent = restingText; }
@@ -413,7 +496,15 @@ function drawChart(box, version, name) {
   const stats = {};
   for (const key of keys) stats[key] = summarize(listValues(question, answers, key));
   keys.sort(function (a, b) { return stats[b].average - stats[a].average; });
-  restingText += name + ': ' + buildRestingText(question, answers) + '\\n';
+  // restingText += name + ': ' + buildRestingText(question, answers) + '\\n';
+  el('hoverLine').appendChild(buildSummaryLine(question, answers, name));
+  const block = box.parentElement;
+  let keptInfo = null;
+  function showInfo(info) {
+    const shown = block.querySelector('.bar-info');
+    if (shown !== null) shown.remove();
+    if (info !== null) block.appendChild(info);
+  }
   let pinnedQuestion = null, pinnedAnswers = [], pinnedKeys = [];
   const pinnedVersion = findPinned();
   const hasPinnedAnswers = pinnedVersion !== null && pinnedVersion.questions[name] !== undefined && pinnedVersion.outputs.length > 0 && pinnedVersion.outputs[0].answers[name] !== undefined;
@@ -443,19 +534,38 @@ function drawChart(box, version, name) {
     }
     const optionValues = listValues(question, answers, key);
     drawOption(svg, optionValues, slotX, false, plotH);
-    const hoverText = buildHoverText(question, answers, key, keys, pinnedValues);
-    const hit = makeSvg('rect', { x: LEFT + i * slot, y: TOP, width: slot, height: plotH, fill: 'transparent' });
-    hit.addEventListener('mouseenter', function () {
-      el('hoverLine').textContent = hoverText;
-      drawValueLabels(svg, optionValues, slotX, plotH);
-    });
-    hit.addEventListener('mouseleave', function () {
-      clearHover();
-      const group = svg.querySelector('.value-labels');
-      if (group !== null) group.remove();
-    });
-    hit.addEventListener('click', function () { restingText = hoverText; });
-    svg.appendChild(hit);
+    // const hoverText = buildHoverText(question, answers, key, keys, pinnedValues);
+    // const hit = makeSvg('rect', { x: LEFT + i * slot, y: TOP, width: slot, height: plotH, fill: 'transparent' });
+    // hit.addEventListener('mouseenter', function () {
+    //   el('hoverLine').textContent = hoverText;
+    //   drawValueLabels(svg, optionValues, slotX, plotH);
+    // });
+    // hit.addEventListener('mouseleave', function () {
+    //   clearHover();
+    //   const group = svg.querySelector('.value-labels');
+    //   if (group !== null) group.remove();
+    // });
+    // hit.addEventListener('click', function () { restingText = hoverText; });
+    // svg.appendChild(hit);
+    const hitCount = isAverageMode ? 1 : optionValues.length;
+    for (let k = 0; k < hitCount; k++) {
+      const callIndex = isAverageMode ? -1 : k;
+      const hitX = isAverageMode ? LEFT + i * slot : slotX + k * BAR_W;
+      const hitWidth = isAverageMode ? slot : BAR_W;
+      const hit = makeSvg('rect', { x: hitX, y: TOP, width: hitWidth, height: plotH, fill: 'transparent' });
+      const info = buildBarInfo(question, answers, key, keys, pinnedValues, callIndex);
+      hit.addEventListener('mouseenter', function () {
+        showInfo(info);
+        drawValueLabels(svg, optionValues, slotX, plotH);
+      });
+      hit.addEventListener('mouseleave', function () {
+        showInfo(keptInfo);
+        const group = svg.querySelector('.value-labels');
+        if (group !== null) group.remove();
+      });
+      hit.addEventListener('click', function () { keptInfo = info; });
+      svg.appendChild(hit);
+    }
   }
   box.replaceChildren(svg);
 }
@@ -533,7 +643,8 @@ function render() {
     graphs.appendChild(block);
     boxes.push(box);
   }
-  restingText = '';
+  // restingText = '';
+  el('hoverLine').replaceChildren();
   for (let i = 0; i < names.length; i++) {
     const hasOutputs = version.outputs.length > 0 && version.outputs[0].answers[names[i]] !== undefined;
     if (!hasOutputs) {
@@ -542,8 +653,8 @@ function render() {
     }
     drawChart(boxes[i], version, names[i]);
   }
-  restingText += 'hover a bar for details';
-  clearHover();
+  // restingText += 'hover a bar for details';
+  // clearHover();
 }
 
 function loadEditors() {
