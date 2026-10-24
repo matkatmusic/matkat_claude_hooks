@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playground</title>
+<!-- CodeMirror 5 tags, replaced by CodeMirror 6 below
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+-->
+<script type="importmap">
+{ "imports": {
+  "codemirror": "https://esm.sh/codemirror@6.0.1?external=@codemirror/state,@codemirror/view,@codemirror/language,@lezer/common,@lezer/highlight",
+  "@codemirror/lang-json": "https://esm.sh/@codemirror/lang-json@6.0.1?external=@codemirror/state,@codemirror/view,@codemirror/language,@lezer/common,@lezer/highlight",
+  "@codemirror/state": "https://esm.sh/@codemirror/state@6.7.6",
+  "@codemirror/view": "https://esm.sh/@codemirror/view@6.43.15?external=@codemirror/state",
+  "@codemirror/language": "https://esm.sh/@codemirror/language@6.13.1?external=@codemirror/state,@codemirror/view,@lezer/common,@lezer/highlight",
+  "@lezer/common": "https://esm.sh/@lezer/common@1.5.4",
+  "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.5?external=@lezer/common"
+} }
+</script>
+<style>__PAGE_CSS__</style>
+</head>
+<body>
+<main>
+  <div class="left">
+    <div class="nav-row">
+      <button id="prev" aria-label="previous version">&lt;</button>
+      <div class="nav-middle" id="versionMeta"></div>
+      <button id="next" aria-label="next version">&gt;</button>
+      <button class="wide" id="resetBtn">Reset</button>
+    </div>
+    <div id="costLine"></div>
+    <!-- <label for="noteText">Note</label> -->
+    <label class="other-label" for="noteText">Note</label>
+    <textarea id="noteText" rows="1" wrap="soft" placeholder="Note about this run"></textarea>
+    <!-- <label for="stateText">state</label> -->
+    <label class="other-label" for="stateText">state</label>
+    <!-- <textarea id="stateText" wrap="soft" spellcheck="false"></textarea> -->
+    <div id="stateEditor"></div>
+    <!-- <label for="questionsText">questions</label> -->
+    <label class="other-label" for="questionsText">questions</label>
+    <!-- <textarea id="questionsText" wrap="soft" spellcheck="false"></textarea> -->
+    <div id="questionsEditor"></div>
+    <div class="btn-row">
+      <!-- <label for="callsInput">calls</label> -->
+      <label class="other-label" for="callsInput">calls</label>
+      <input id="callsInput" type="number" min="1" max="10" step="1" value="1">
+      <button id="submitBtn" class="wide">Submit (paid)</button>
+    </div>
+    <div id="error" class="error"></div>
+  </div>
+  <div class="right">
+    <!-- <div class="tabs" id="tabs"></div> -->
+    <!-- <div class="tab-question" id="tabQuestion"></div> -->
+    <div class="btn-row">
+      <button class="wide" id="pinBtn">Pin</button>
+      <button class="wide" id="unpinBtn">Unpin</button>
+      <!-- <button class="wide" id="modeBtn"></button> -->
+      <span class="pin-info" id="pinInfo"></span>
+      <button class="wide" id="themeBtn" style="margin-left: auto"></button>
+    </div>
+    <!-- <div class="chart-box" id="chartBox"></div> -->
+    <div class="graphs" id="graphs"></div>
+    <div class="result"><div id="hoverLine"></div></div>
+  </div>
+</main>
+<script type="application/json" id="data">__DATA_JSON__</script>
+<!-- <script> -->
+<script type="module">__PAGE_SCRIPT__</script>
+</body>
+</html>
