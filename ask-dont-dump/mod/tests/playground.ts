@@ -108,7 +108,8 @@ button:active:not(:disabled) { transform: translateY(2px); }
 .graph-block { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 /* .graph-title { flex: none; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } */
 .graph-title { flex: none; color: var(--label-other); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.graph-block .chart-box { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+/* .graph-block .chart-box { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; } */
+.graph-block .chart-box { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; background: var(--panel); border: 1px solid var(--grid); border-radius: 6px; }
 /* .CodeMirror { height: 26vh; background: var(--panel); color: var(--tok-punct); border: 1px solid var(--grid); border-radius: 6px; font: 13px/1.4 ui-monospace, Menlo, monospace; } */
 /* .CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--grid); } */
 /* .CodeMirror-linenumber { color: var(--text-muted); } */
@@ -133,7 +134,8 @@ button:active:not(:disabled) { transform: translateY(2px); }
 :is(#stateEditor, #questionsEditor) .cm-panel.cm-search button[name=close] { background: transparent; border: none; color: var(--text); font-size: 18px; }
 .left > *, .right > * { flex-shrink: 0; }
 .nav-row { display: flex; gap: 8px; align-items: stretch; }
-.nav-middle { flex: 1; min-width: 0; color: var(--text-muted); display: flex; align-items: center; justify-content: center; text-align: center; }
+/* .nav-middle { flex: 1; min-width: 0; color: var(--text-muted); display: flex; align-items: center; justify-content: center; text-align: center; } */
+.nav-middle { flex: 1; min-width: 0; color: var(--text-muted); display: block; align-content: center; text-align: center; }
 .left textarea { width: 100%; height: 26vh; resize: none; overflow-y: auto; background: var(--panel); color: var(--text); border: 1px solid var(--grid); border-radius: 6px; padding: 8px; font: 13px/1.4 ui-monospace, Menlo, monospace; }
 #noteText { height: 2.4em; overflow-y: auto; }
 .btn-row { display: flex; gap: 6px; align-items: center; }
@@ -458,11 +460,11 @@ function buildBarInfo(question, answers, key, keys, pinnedValues, callIndex) {
   const box = document.createElement('div');
   box.className = 'bar-info';
   addInfoRow(box, 'Choice:', [[choiceText, 'info-value']]);
-  addInfoRow(box, 'Message:', [[messageText, 'info-value']]);
   addInfoRow(box, 'Score:', [[scoreText, 'info-value info-num'], ['  Confidence: ', 'info-label'], [confidenceText, 'info-value info-num']]);
   addInfoRow(box, 'Range:', [['min: ', 'info-label'], [lowText, 'info-value info-num'], ['  max: ', 'info-label'], [highText, 'info-value info-num'], ['  avg: ', 'info-label'], [averageText, 'info-value info-num']]);
   if (isBarShown) addInfoRow(box, 'Top choice in', [[topCountText, 'info-value'], [' of ', 'info-label'], [String(answers.length), 'info-value'], [' runs', 'info-label']]);
   if (pinnedValues !== null) addInfoRow(box, 'Pinned v' + pinnedId + ':', [['min: ', 'info-label'], [pinnedLowText, 'info-value info-num'], ['  max: ', 'info-label'], [pinnedHighText, 'info-value info-num'], ['  avg: ', 'info-label'], [pinnedAverageText, 'info-value info-num']]);
+  addInfoRow(box, 'Message:', [[messageText, 'info-value']]);
   return box;
 }
 
@@ -877,7 +879,12 @@ function render() {
     const hasOutputs = version.outputs.length > 0 && version.outputs[0].answers[names[i]] !== undefined;
     if (!hasOutputs) {
       // boxes[i].textContent = 'no outputs yet';
-      addPart(boxes[i], 'no outputs yet', 'other-label');
+      // boxes[i].style.paddingTop = '20px';
+      boxes[i].style.display = 'flex';
+      boxes[i].style.alignItems = 'center';
+      boxes[i].style.justifyContent = 'center';
+      // addPart(boxes[i], 'no outputs yet', 'other-label');
+      addPart(boxes[i], 'Submit a run to generate a graph', 'other-label');
       continue;
     }
     drawChart(boxes[i], version, names[i]);
@@ -1016,9 +1023,11 @@ el('prev').addEventListener('click', function () { moveBy(-1); });
 el('next').addEventListener('click', function () { moveBy(1); });
 el('pinBtn').addEventListener('click', function () { pinnedId = versions[index].id; render(); });
 el('unpinBtn').addEventListener('click', function () { pinnedId = null; render(); });
-function setTheme(theme) { document.documentElement.dataset.theme = theme; el('themeBtn').textContent = theme; }
+// function setTheme(theme) { document.documentElement.dataset.theme = theme; el('themeBtn').textContent = theme; }
+function setTheme(theme) { document.documentElement.dataset.theme = theme; el('themeBtn').textContent = theme; localStorage.setItem('theme', theme); }
 el('themeBtn').addEventListener('click', function () { setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); });
-setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+// setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+setTheme(localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 // el('modeBtn').addEventListener('click', function () { isAverageMode = !isAverageMode; render(); });
 document.addEventListener('keydown', function (event) {
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
