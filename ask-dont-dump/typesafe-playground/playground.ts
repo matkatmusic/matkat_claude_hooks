@@ -1,5 +1,6 @@
 import { loadHistory, HISTORY_PATH, createSeedHistory } from './playgroundHistory';
 import { executeNoteRequest, executeResetRequest, executeRunRequest } from './playgroundRequests';
+import { executeLoadRequest, executeResetRunsRequest, executeSaveRequest } from './playgroundVersionRequests';
 
 const SERVER_HOSTNAME = '127.0.0.1';
 const SERVER_PORT = 4318;
@@ -62,6 +63,15 @@ if (import.meta.main) {
       const isResetPost = request.method === 'POST' && pathname === '/reset';
       if (isResetPost)
         return executeResetRequest();
+      const isSavePost = request.method === 'POST' && pathname === '/save';
+      if (isSavePost)
+        return executeSaveRequest();
+      const isLoadPost = request.method === 'POST' && pathname === '/load';
+      if (isLoadPost)
+        return executeLoadRequest(request);
+      const isResetRunsPost = request.method === 'POST' && pathname === '/reset-runs';
+      if (isResetRunsPost)
+        return executeResetRunsRequest(request);
       const isPageGet = request.method === 'GET' && pathname === '/';
       if (isPageGet)
         return new Response(await buildPage(), { headers: { 'content-type': 'text/html; charset=utf-8' } });

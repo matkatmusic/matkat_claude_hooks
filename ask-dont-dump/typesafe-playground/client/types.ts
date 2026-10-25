@@ -131,4 +131,15 @@ export interface NoteBody {
   note: string;
 }
 
-export type RequestBody = RunBody | NoteBody | ResetBody;
+export type SaveBody = Record<string, never>;
+
+export interface LoadBody {
+  versions: Version[];
+}
+
+export interface ResetRunsBody {
+  id: number;
+}
+
+// export type RequestBody = RunBody | NoteBody | ResetBody;
+export type RequestBody = RunBody | NoteBody | ResetBody | SaveBody | LoadBody | ResetRunsBody;
