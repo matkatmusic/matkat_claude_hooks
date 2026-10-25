@@ -8,6 +8,7 @@ import { keymap } from '@codemirror/view';
 import type { ViewUpdate } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { createAddQuestion } from './addQuestion';
+import { createPlaceholders } from './placeholders';
 import { createQuestionCompletion } from './questionCompletion';
 import type { EditorPair } from './types';
 import { getElement } from './dom';
@@ -43,7 +44,7 @@ export function createEditors(onDocChange: (update: ViewUpdate) => void): Editor
     lintGutter(),
     keymap.of([indentWithTab]),
   ];
-  const questionsExtensions: Extension[] = [editorExtensions, createQuestionCompletion(), createAddQuestion()];
+  const questionsExtensions: Extension[] = [editorExtensions, createQuestionCompletion(), createAddQuestion(), createPlaceholders()];
   const stateEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: getElement('stateEditor') });
   // const questionsEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: getElement('questionsEditor') });
   const questionsEditor = new EditorView({ doc: '', extensions: questionsExtensions, parent: getElement('questionsEditor') });

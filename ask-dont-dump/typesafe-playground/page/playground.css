@@ -19,6 +19,8 @@
   --tok-key: #1f5fbf;
   --tok-atom: #8a3fb0;
   --tok-punct: #52514e;
+  --placeholder-bg: #ffe58f;
+  --placeholder-border: #b08600;
 }
 /* @media (prefers-color-scheme: dark) { */
 :root[data-theme="light"] { color-scheme: light; }
@@ -43,6 +45,8 @@
     --tok-key: #7ab7ff;
     --tok-atom: #c792ea;
     --tok-punct: #c3c2b7;
+    --placeholder-bg: #5c4600;
+    --placeholder-border: #e5c07b;
   }
 /* } */
 * { box-sizing: border-box; }
@@ -79,6 +83,8 @@ button:active:not(:disabled) { transform: translateY(2px); }
 :is(#stateEditor, #questionsEditor) .cm-activeLine { background: transparent; }
 :is(#stateEditor, #questionsEditor) .cm-cursor { border-left-color: var(--text); }
 :is(#stateEditor, #questionsEditor) .cm-selectionBackground, :is(#stateEditor, #questionsEditor) .cm-focused .cm-selectionBackground { background: var(--grid); }
+:is(#stateEditor, #questionsEditor) .cm-placeholderValue { background: var(--placeholder-bg); border: 1px dashed var(--placeholder-border); border-radius: 3px; font-style: italic; }
+:is(#stateEditor, #questionsEditor) .cm-placeholderValue, :is(#stateEditor, #questionsEditor) .cm-placeholderValue span { color: var(--text); }
 :is(#stateEditor, #questionsEditor) .cm-panels { background: var(--panel); color: var(--text); border-color: var(--grid); }
 :is(#stateEditor, #questionsEditor) .cm-textfield { background: var(--surface); color: var(--text); border: 1px solid var(--grid); border-radius: 4px; }
 :is(#stateEditor, #questionsEditor) button { width: auto; font-size: 13px; padding: 2px 8px; background: var(--panel); background-image: none; color: var(--text); border: 1px solid var(--grid); border-radius: 4px; }
