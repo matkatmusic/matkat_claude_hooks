@@ -1,5 +1,5 @@
 import { rename } from 'node:fs/promises';
-import { HISTORY_PATH, loadHistory, type Version } from './playgroundHistory';
+import { createBlankHistory, HISTORY_PATH, loadHistory, type Version } from './playgroundHistory';
 
 function buildFileStamp() {
   const isoTime = new Date().toISOString();
@@ -12,10 +12,18 @@ function isPlainObject(value: unknown) {
 }
 
 function isVersionShape(item: unknown) {
-  if (!isPlainObject(item))
+  const isItemObject = isPlainObject(item);
+  if (!isItemObject)
     return false;
   const { id, state, questions, calls, outputs } = item as Record<string, unknown>;
   return Number.isInteger(id) && isPlainObject(state) && isPlainObject(questions) && Number.isInteger(calls) && Array.isArray(outputs);
+}
+
+export async function executeNewRequest() {
+  const archivePath = `${import.meta.dir}/results/playground-history-${buildFileStamp()}.json`;
+  await rename(HISTORY_PATH, archivePath);
+  await createBlankHistory();
+  return Response.json(await loadHistory());
 }
 
 export async function executeSaveRequest() {
@@ -32,7 +40,8 @@ export async function executeLoadRequest(request: Request) {
   if (!isVersionsNonEmptyArray)
     return new Response('versions must be a non-empty array', { status: 400 });
   for (const item of versions) {
-    if (!isVersionShape(item))
+    const isItemValid = isVersionShape(item);
+    if (!isItemValid)
       return new Response('each version needs an integer id, object state, object questions, integer calls, and array outputs', { status: 400 });
   }
   const archivePath = `${import.meta.dir}/results/playground-history-${buildFileStamp()}.json`;

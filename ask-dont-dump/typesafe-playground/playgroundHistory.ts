@@ -20,6 +20,15 @@ export async function loadHistory() {
   return history;
 }
 
+export function buildBlankVersion() {
+  const blankVersion: Version = { id: 1, time: new Date().toISOString(), state: {}, questions: {}, calls: 0, outputs: [] };
+  return blankVersion;
+}
+
+export async function createBlankHistory() {
+  await Bun.write(HISTORY_PATH, JSON.stringify([buildBlankVersion()], null, 2) + '\n');
+}
+
 export async function createSeedHistory() {
   const customFile: { questions: { groups: Record<string, QuestionGroup> } } =
     // await Bun.file(`${import.meta.dir}/custom-questions.json`).json();

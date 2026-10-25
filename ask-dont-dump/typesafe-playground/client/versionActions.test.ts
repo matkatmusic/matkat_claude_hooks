@@ -1,7 +1,8 @@
 import { test, expect } from 'bun:test'
-import { loadVersions, openLoadPicker, resetVersionRuns, saveVersions } from './versionActions'
+import { loadVersions, openLoadPicker, resetVersionRuns, saveVersions, createNewHistory } from './versionActions'
 
 function validateModuleLoadsWithoutDom() {
+  expect(typeof createNewHistory).toBe('function')
   expect(typeof saveVersions).toBe('function')
   expect(typeof openLoadPicker).toBe('function')
   expect(typeof loadVersions).toBe('function')

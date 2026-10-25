@@ -1,9 +1,14 @@
 import { basicSetup, EditorView } from 'codemirror';
-import { json } from '@codemirror/lang-json';
+import { indentWithTab } from '@codemirror/commands';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { linter, lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
 import type { ViewUpdate } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
+import { createAddQuestion } from './addQuestion';
+import { createQuestionCompletion } from './questionCompletion';
 import type { EditorPair } from './types';
 import { getElement } from './dom';
 import { applyNoteBox } from './noteBox';
@@ -14,6 +19,8 @@ export const EDITOR_THEME_RULES = {
   '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '13px' },
   '.cm-gutters': { background: 'var(--panel)', color: 'var(--text-muted)', border: 'none' },
   '.cm-panels': { background: 'var(--panel)', color: 'var(--text)' },
+  '.cm-tooltip': { background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--grid)' },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': { background: 'var(--mark-question)', color: 'var(--text)' },
 };
 
 const jsonHighlight = HighlightStyle.define([
@@ -32,9 +39,14 @@ export function createEditors(onDocChange: (update: ViewUpdate) => void): Editor
     syntaxHighlighting(jsonHighlight),
     EditorView.updateListener.of(onDocChange),
     EditorView.theme(EDITOR_THEME_RULES),
+    linter(jsonParseLinter()),
+    lintGutter(),
+    keymap.of([indentWithTab]),
   ];
+  const questionsExtensions: Extension[] = [editorExtensions, createQuestionCompletion(), createAddQuestion()];
   const stateEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: getElement('stateEditor') });
-  const questionsEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: getElement('questionsEditor') });
+  // const questionsEditor = new EditorView({ doc: '', extensions: editorExtensions, parent: getElement('questionsEditor') });
+  const questionsEditor = new EditorView({ doc: '', extensions: questionsExtensions, parent: getElement('questionsEditor') });
   return { stateEditor: stateEditor, questionsEditor: questionsEditor };
 }
 

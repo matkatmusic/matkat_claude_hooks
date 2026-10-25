@@ -132,6 +132,7 @@ export interface NoteBody {
 }
 
 export type SaveBody = Record<string, never>;
+export type NewBody = Record<string, never>;
 
 export interface LoadBody {
   versions: Version[];
@@ -142,4 +143,5 @@ export interface ResetRunsBody {
 }
 
 // export type RequestBody = RunBody | NoteBody | ResetBody;
-export type RequestBody = RunBody | NoteBody | ResetBody | SaveBody | LoadBody | ResetRunsBody;
+// export type RequestBody = RunBody | NoteBody | ResetBody | SaveBody | LoadBody | ResetRunsBody;
+export type RequestBody = RunBody | NoteBody | ResetBody | SaveBody | LoadBody | ResetRunsBody | NewBody;

@@ -1,6 +1,7 @@
-import { loadHistory, HISTORY_PATH, createSeedHistory } from './playgroundHistory';
+// import { loadHistory, HISTORY_PATH, createSeedHistory } from './playgroundHistory';
+import { loadHistory, HISTORY_PATH, createBlankHistory } from './playgroundHistory';
 import { executeNoteRequest, executeResetRequest, executeRunRequest } from './playgroundRequests';
-import { executeLoadRequest, executeResetRunsRequest, executeSaveRequest } from './playgroundVersionRequests';
+import { executeLoadRequest, executeNewRequest, executeResetRunsRequest, executeSaveRequest } from './playgroundVersionRequests';
 
 const SERVER_HOSTNAME = '127.0.0.1';
 const SERVER_PORT = 4318;
@@ -10,7 +11,7 @@ async function buildClientScript(): Promise<string> {
     entrypoints: [`${import.meta.dir}/client/main.ts`],
     target: 'browser',
     format: 'esm',
-    external: ['codemirror', '@codemirror/*', '@lezer/*'],
+    // external: ['codemirror', '@codemirror/*', '@lezer/*'],
   });
   if (!result.success) {
     const logLines: string[] = [];
@@ -48,7 +49,8 @@ export async function buildPage() {
 if (import.meta.main) {
   const isHistoryPresent = await Bun.file(HISTORY_PATH).exists();
   if (!isHistoryPresent)
-    await createSeedHistory();
+    // await createSeedHistory();
+    await createBlankHistory();
   const server = Bun.serve({
     hostname: SERVER_HOSTNAME,
     port: SERVER_PORT,
@@ -63,6 +65,9 @@ if (import.meta.main) {
       const isResetPost = request.method === 'POST' && pathname === '/reset';
       if (isResetPost)
         return executeResetRequest();
+      const isNewPost = request.method === 'POST' && pathname === '/new';
+      if (isNewPost)
+        return executeNewRequest();
       const isSavePost = request.method === 'POST' && pathname === '/save';
       if (isSavePost)
         return executeSaveRequest();

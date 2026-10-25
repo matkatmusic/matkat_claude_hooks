@@ -7,7 +7,7 @@ import { createEditors, loadEditors } from './editors';
 import { render, renderOnDocChange } from './render';
 import { pageState } from './state';
 import { readThemeName, setTheme, toggleTheme } from './theme';
-import { loadVersions, openLoadPicker, resetVersionRuns, saveVersions } from './versionActions';
+import { loadVersions, openLoadPicker, resetVersionRuns, saveVersions, createNewHistory } from './versionActions';
 
 export function parsePageData(text: string): PageData {
   const data: PageData = JSON.parse(text);
@@ -40,6 +40,7 @@ export function initPage(): void {
   pageState.editors = createEditors(renderOnDocChange);
   getElement('noteText').addEventListener('change', saveNote);
   getElement('resetBtn').addEventListener('click', resetHistory);
+  getElement('newBtn').addEventListener('click', createNewHistory);
   getElement('saveBtn').addEventListener('click', saveVersions);
   getElement('loadBtn').addEventListener('click', openLoadPicker);
   getElement('loadInput').addEventListener('change', loadVersions);
