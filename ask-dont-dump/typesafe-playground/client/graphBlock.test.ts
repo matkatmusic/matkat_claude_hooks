@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { createAverageToggle, createGraphBlock, formatGraphTitle } from './graphBlock'
+import { createAverageToggle, createCollapseButton, createGraphBlock, formatGraphTitle } from './graphBlock'
 
 function validateGraphTitleHoldsNumberNameAndInstructions() {
   const title = formatGraphTitle(2, 'needsTask', { type: 'noul', instructions: 'Is it?' })
@@ -11,6 +11,7 @@ function validateGraphTitleHoldsNumberNameAndInstructions() {
 function validateModuleLoadsWithoutDom() {
   expect(typeof createAverageToggle).toBe('function')
   expect(typeof createGraphBlock).toBe('function')
+  expect(typeof createCollapseButton).toBe('function')
 }
 
 test('test_graph_title_holds_number_name_and_instructions', validateGraphTitleHoldsNumberNameAndInstructions)

@@ -5,6 +5,7 @@ export const pageState: PageState = {
   index: 0,
   pinnedId: null,
   averageShownByName: {},
+  collapsedByName: {},
   wasEdited: false,
   restingText: '',
   editors: null,

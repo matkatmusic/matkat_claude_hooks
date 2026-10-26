@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
 import {
-  clearPinned, executeRun, moveBy, moveToNext, moveToPrevious, resetHistory, saveNote, sendJson, setPinnedToShown,
+  clearPinned, executeRun, setAllGraphsCollapsed, setAllGraphsToCollapsed, setAllGraphsToExpanded, moveBy, moveToNext, moveToPrevious, resetHistory, saveNote, sendJson, setPinnedToShown,
 } from './actions'
 
 function validateModuleLoadsWithoutDom() {
@@ -13,6 +13,9 @@ function validateModuleLoadsWithoutDom() {
   expect(typeof executeRun).toBe('function')
   expect(typeof resetHistory).toBe('function')
   expect(typeof saveNote).toBe('function')
+  expect(typeof setAllGraphsToCollapsed).toBe('function')
+  expect(typeof setAllGraphsToExpanded).toBe('function')
+  expect(typeof setAllGraphsCollapsed).toBe('function')
 }
 
 test('test_actions_module_loads_without_touching_the_dom', validateModuleLoadsWithoutDom)

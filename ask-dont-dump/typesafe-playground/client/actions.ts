@@ -100,6 +100,27 @@ export async function resetHistory(): Promise<void> {
   }
 }
 
+export function setAllGraphsCollapsed(isCollapsed: boolean): void {
+  const blocks = getElement('graphs').children;
+  for (const block of blocks) {
+    if (!(block instanceof HTMLElement))
+      throw new Error('graph block is not an element');
+    const name = block.dataset.questionName;
+    if (name === undefined)
+      throw new Error('graph block has no question name');
+    pageState.collapsedByName[name] = isCollapsed;
+  }
+  render();
+}
+
+export function setAllGraphsToCollapsed(): void {
+  setAllGraphsCollapsed(true);
+}
+
+export function setAllGraphsToExpanded(): void {
+  setAllGraphsCollapsed(false);
+}
+
 export async function saveNote(): Promise<void> {
   const errorBox = getElement('error');
   errorBox.textContent = '';

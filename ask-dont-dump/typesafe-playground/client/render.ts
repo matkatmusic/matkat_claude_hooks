@@ -2,9 +2,10 @@ import type { ViewUpdate } from '@codemirror/view';
 import { renderChart } from './chart';
 import { getElement } from './dom';
 import { createGraphBlock } from './graphBlock';
-import { addPart, addParts } from './infoDom';
+import { addPart, addParts, createWinnerLines } from './infoDom';
 import { applyNoteBox } from './noteBox';
 import { getEditors, pageState } from './state';
+import { listAnswers } from './values';
 import {
   computeInputTokens, createEditedVersion, isTextEdited, listCostLineParts, listPinLineParts, listVersionLineParts,
 } from './versionView';
@@ -63,6 +64,11 @@ export function render(): void {
       boxes[i].style.alignItems = 'center';
       boxes[i].style.justifyContent = 'center';
       addPart(boxes[i], 'Submit a run to generate a graph', 'other-label');
+      continue;
+    }
+    const isCollapsed = pageState.collapsedByName[names[i]] === true;
+    if (isCollapsed) {
+      hoverLine.appendChild(createWinnerLines(version.questions[names[i]], listAnswers(version, names[i])));
       continue;
     }
     renderChart(boxes[i], version, names[i]);

@@ -1,10 +1,11 @@
 import type { PageData } from './types';
 import {
-  clearPinned, executeRun, moveBy, moveToNext, moveToPrevious, resetHistory, saveNote, setPinnedToShown,
+  clearPinned, executeRun, moveBy, setAllGraphsToCollapsed, setAllGraphsToExpanded, moveToNext, moveToPrevious, resetHistory, saveNote, setPinnedToShown,
 } from './actions';
 import { getElement } from './dom';
 import { createEditors, loadEditors } from './editors';
 import { render, renderOnDocChange } from './render';
+import { attachResizer } from './rowResizer';
 import { pageState } from './state';
 import { readThemeName, setTheme, toggleTheme } from './theme';
 import { loadVersions, openLoadPicker, resetVersionRuns, saveVersions, createNewHistory } from './versionActions';
@@ -51,6 +52,10 @@ export function initPage(): void {
   getElement('pinBtn').addEventListener('click', setPinnedToShown);
   getElement('unpinBtn').addEventListener('click', clearPinned);
   getElement('themeBtn').addEventListener('click', toggleTheme);
+  getElement('collapseAllBtn').addEventListener('click', setAllGraphsToCollapsed);
+  getElement('expandAllBtn').addEventListener('click', setAllGraphsToExpanded);
+  attachResizer(getElement('rowResizer'), getElement('stateBox'), getElement('stateAndQuestionsBox'), 'rows');
+  attachResizer(getElement('columnResizer'), getElement('inputBox'), getElement('interfaceColumns'), 'columns', render);
   const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(readThemeName(localStorage.getItem('theme'), prefersDark));
   document.addEventListener('keydown', moveOnArrowKey);

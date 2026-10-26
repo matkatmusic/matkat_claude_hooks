@@ -4,6 +4,7 @@ import { getEditors, pageState } from './state'
 function validateStartingState() {
   expect(pageState.versions).toEqual([])
   expect(pageState.pinnedId).toBe(null)
+  expect(pageState.collapsedByName).toEqual({})
   expect(pageState.wasEdited).toBe(false)
   expect(pageState.editors).toBe(null)
 }

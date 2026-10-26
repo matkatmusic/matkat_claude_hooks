@@ -114,6 +114,7 @@ export interface PageState {
   index: number;
   pinnedId: number | null;
   averageShownByName: Record<string, boolean>;
+  collapsedByName: Record<string, boolean>;
   wasEdited: boolean;
   restingText: string;
   editors: EditorPair | null;

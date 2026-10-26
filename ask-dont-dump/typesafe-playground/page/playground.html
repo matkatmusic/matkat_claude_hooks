@@ -30,6 +30,7 @@
 <style>__PAGE_CSS__</style>
 </head>
 <body>
+<!-- old layout
 <main>
   <div class="left">
     <div class="nav-row">
@@ -44,20 +45,20 @@
       <button class="wide" id="resetRunsBtn">Reset this version's runs</button>
     </div>
     <div id="costLine"></div>
-    <!-- <label for="noteText">Note</label> -->
+    <!-- <label for="noteText">Note</label> --&gt;
     <label class="other-label" for="noteText">Note</label>
     <textarea id="noteText" rows="1" wrap="soft" placeholder="Note about this run"></textarea>
-    <!-- <label for="stateText">state</label> -->
+    <!-- <label for="stateText">state</label> --&gt;
     <label class="other-label" for="stateText">state</label>
-    <!-- <textarea id="stateText" wrap="soft" spellcheck="false"></textarea> -->
+    <!-- <textarea id="stateText" wrap="soft" spellcheck="false"></textarea> --&gt;
     <div id="stateEditor"></div>
-    <!-- <label for="questionsText">questions</label> -->
+    <!-- <label for="questionsText">questions</label> --&gt;
     <label class="other-label" for="questionsText">questions</label>
-    <!-- <textarea id="questionsText" wrap="soft" spellcheck="false"></textarea> -->
+    <!-- <textarea id="questionsText" wrap="soft" spellcheck="false"></textarea> --&gt;
     <div id="questionsEditor"></div>
-    <!-- <div class="btn-row"> -->
+    <!-- <div class="btn-row"> --&gt;
     <div class="btn-row" style="justify-content: flex-end">
-      <!-- <label for="callsInput">calls</label> -->
+      <!-- <label for="callsInput">calls</label> --&gt;
       <label class="other-label" for="callsInput">calls</label>
       <input id="callsInput" type="number" min="1" max="10" step="1" value="1">
       <button id="submitBtn" class="wide">Submit (paid)</button>
@@ -65,20 +66,85 @@
     <div id="error" class="error"></div>
   </div>
   <div class="right">
-    <!-- <div class="tabs" id="tabs"></div> -->
-    <!-- <div class="tab-question" id="tabQuestion"></div> -->
+    <!-- <div class="tabs" id="tabs"></div> --&gt;
+    <!-- <div class="tab-question" id="tabQuestion"></div> --&gt;
     <div class="btn-row">
       <button class="wide" id="pinBtn">Pin</button>
       <button class="wide" id="unpinBtn">Unpin</button>
-      <!-- <button class="wide" id="modeBtn"></button> -->
+      <!-- <button class="wide" id="modeBtn"></button> --&gt;
       <span class="pin-info" id="pinInfo"></span>
       <button class="wide" id="themeBtn" style="margin-left: auto"></button>
     </div>
-    <!-- <div class="chart-box" id="chartBox"></div> -->
+    <!-- <div class="chart-box" id="chartBox"></div> --&gt;
     <div class="graphs" id="graphs"></div>
     <div class="result"><div id="hoverLine"></div></div>
   </div>
 </main>
+-->
+<div id="headerRowBox">
+  <button class="wide" id="newBtn">New</button>
+  <button class="wide" id="resetBtn">Reset</button>
+  <button class="wide" id="themeBtn"></button>
+</div>
+<div id="interfaceBox">
+  <div id="interfaceNavigationRow">
+    <div id="pinGroup">
+      <button class="wide" id="pinBtn">Pin</button>
+      <button class="wide" id="unpinBtn">Unpin</button>
+      <span class="pin-info" id="pinInfo"></span>
+    </div>
+    <div id="versionGroup">
+      <button id="prev" aria-label="previous version">&lt;</button>
+      <div class="nav-middle" id="versionMeta"></div>
+      <button id="next" aria-label="next version">&gt;</button>
+    </div>
+    <div id="navigationSpacer"></div>
+  </div>
+  <div id="interfaceColumns">
+    <div id="inputBox">
+      <div id="saveLoadResetBox">
+        <button class="wide" id="saveBtn">Save Versions</button>
+        <button class="wide" id="loadBtn">Load Versions</button>
+        <input type="file" accept=".json,application/json" id="loadInput" hidden>
+        <button class="wide" id="resetRunsBtn">Reset this version's runs</button>
+      </div>
+      <div id="costAnalyticsBox"><div id="costLine"></div></div>
+      <div id="noteBox">
+        <label class="other-label" for="noteText">Note</label>
+        <textarea id="noteText" rows="1" wrap="soft" placeholder="Note about this run"></textarea>
+      </div>
+      <div id="stateAndQuestionsBox">
+        <div id="stateBox">
+          <div class="btn-row">
+            <span class="other-label">state</span>
+            <label class="other-label" for="callsInput">calls</label>
+            <input id="callsInput" type="number" min="1" max="10" step="1" value="1">
+            <button id="submitBtn" class="wide">Submit (paid)</button>
+          </div>
+          <div id="error" class="error"></div>
+          <div id="stateEditor"></div>
+        </div>
+        <div class="row-resizer" id="rowResizer"></div>
+        <div id="questionsBox">
+          <span class="other-label">questions</span>
+          <div id="questionsEditor"></div>
+        </div>
+      </div>
+    </div>
+    <div class="column-resizer" id="columnResizer"></div>
+    <div id="resultBox">
+      <div id="winnersBox"><div id="hoverLine"></div></div>
+      <div id="individualQuestionsBox">
+        <div class="btn-row">
+          <span class="other-label">questions</span>
+          <button class="wide" id="collapseAllBtn">Collapse all</button>
+          <button class="wide" id="expandAllBtn">Expand all</button>
+        </div>
+        <div class="graphs" id="graphs"></div>
+      </div>
+    </div>
+  </div>
+</div>
 <script type="application/json" id="data">__DATA_JSON__</script>
 <!-- <script> -->
 <script type="module">__PAGE_SCRIPT__</script>

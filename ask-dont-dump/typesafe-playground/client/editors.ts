@@ -16,7 +16,8 @@ import { applyNoteBox } from './noteBox';
 import { getEditors, pageState } from './state';
 
 export const EDITOR_THEME_RULES = {
-  '&': { height: '26vh', background: 'var(--panel)', color: 'var(--tok-punct)', border: '1px solid var(--grid)', borderRadius: '6px' },
+  // '&': { height: '26vh', background: 'var(--panel)', color: 'var(--tok-punct)', border: '1px solid var(--grid)', borderRadius: '6px' },
+  '&': { height: '100%', background: 'var(--panel)', color: 'var(--tok-punct)', border: '1px solid var(--grid)', borderRadius: '6px' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '13px' },
   '.cm-gutters': { background: 'var(--panel)', color: 'var(--text-muted)', border: 'none' },
   '.cm-panels': { background: 'var(--panel)', color: 'var(--text)' },
