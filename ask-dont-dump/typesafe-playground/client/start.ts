@@ -2,6 +2,7 @@ import type { PageData } from './types';
 import {
   clearPinned, executeRun, moveBy, setAllGraphsToCollapsed, setAllGraphsToExpanded, moveToNext, moveToPrevious, resetHistory, saveNote, setPinnedToShown,
 } from './actions';
+import { setKeyToVisible, updateSubmitAvailability } from './apiKey';
 import { getElement } from './dom';
 import { createEditors, loadEditors } from './editors';
 import { render, renderOnDocChange } from './render';
@@ -37,6 +38,7 @@ export function initPage(): void {
     throw new Error('data element has no text');
   const data = parsePageData(dataText);
   pageState.versions = data.versions;
+  pageState.hasEnvKey = data.hasEnvKey;
   pageState.index = data.versions.length - 1;
   pageState.editors = createEditors(renderOnDocChange);
   getElement('noteText').addEventListener('change', saveNote);
@@ -52,6 +54,9 @@ export function initPage(): void {
   getElement('pinBtn').addEventListener('click', setPinnedToShown);
   getElement('unpinBtn').addEventListener('click', clearPinned);
   getElement('themeBtn').addEventListener('click', toggleTheme);
+  getElement('apiKeyInput').addEventListener('input', updateSubmitAvailability);
+  getElement('showKeyBtn').addEventListener('click', setKeyToVisible);
+  updateSubmitAvailability();
   getElement('collapseAllBtn').addEventListener('click', setAllGraphsToCollapsed);
   getElement('expandAllBtn').addEventListener('click', setAllGraphsToExpanded);
   attachResizer(getElement('rowResizer'), getElement('stateBox'), getElement('stateAndQuestionsBox'), 'rows');

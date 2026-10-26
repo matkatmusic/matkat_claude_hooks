@@ -8,8 +8,10 @@ const MAX_CALLS = 10;
 export async function executeRunRequest(request: Request) {
   // const body = (await request.json()) as { state?: unknown; questions?: unknown; calls?: unknown };
   // const { state, questions, calls } = body;
-  const body = (await request.json()) as { id?: unknown; state?: unknown; questions?: unknown; calls?: unknown };
-  const { id, state, questions, calls } = body;
+  // const body = (await request.json()) as { id?: unknown; state?: unknown; questions?: unknown; calls?: unknown };
+  // const { id, state, questions, calls } = body;
+  const body = (await request.json()) as { id?: unknown; state?: unknown; questions?: unknown; calls?: unknown; apiKey?: unknown };
+  const { id, state, questions, calls, apiKey } = body;
   const isStateObject = typeof state === 'object' && state !== null && !Array.isArray(state);
   if (!isStateObject)
     return new Response('state must be a JSON object', { status: 400 });
@@ -28,7 +30,13 @@ export async function executeRunRequest(request: Request) {
   const isIdKnown = Number.isInteger(id) && shownVersion !== undefined;
   if (!isIdKnown)
     return new Response('id must be the integer id of an existing version', { status: 400 });
-  const client = new TypeSafeClient();
+  const typedKey = typeof apiKey === 'string' ? apiKey.trim() : '';
+  const envKey = Bun.env.TYPESAFE_API_KEY ?? '';
+  const keyToUse = typedKey !== '' ? typedKey : envKey.trim();
+  if (keyToUse === '')
+    return new Response('Add a TypeSafe API key to submit runs', { status: 400 });
+  // const client = new TypeSafeClient();
+  const client = new TypeSafeClient({ apiKey: keyToUse });
   const outputs: unknown[] = [];
   for (let i = 0; i < (calls as number); i++)
     outputs.push(await client.systemOne({ state: state as Record<string, JsonValue>, questions: questions as Questions }));

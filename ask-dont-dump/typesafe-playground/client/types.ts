@@ -28,6 +28,7 @@ export interface Version {
 
 export interface PageData {
   versions: Version[];
+  hasEnvKey: boolean;
 }
 
 export interface Summary {
@@ -117,6 +118,7 @@ export interface PageState {
   collapsedByName: Record<string, boolean>;
   wasEdited: boolean;
   restingText: string;
+  hasEnvKey: boolean;
   editors: EditorPair | null;
 }
 
@@ -125,6 +127,7 @@ export interface RunBody {
   state: JsonValue;
   questions: Questions;
   calls: number;
+  apiKey?: string;
 }
 
 export interface NoteBody {

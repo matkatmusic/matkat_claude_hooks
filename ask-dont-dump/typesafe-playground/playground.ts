@@ -1,5 +1,6 @@
 // import { loadHistory, HISTORY_PATH, createSeedHistory } from './playgroundHistory';
 import { loadHistory, HISTORY_PATH, createBlankHistory } from './playgroundHistory';
+import { isRequestAllowed } from './playgroundGuard';
 import { executeNoteRequest, executeResetRequest, executeRunRequest } from './playgroundRequests';
 import { executeLoadRequest, executeNewRequest, executeResetRunsRequest, executeSaveRequest } from './playgroundVersionRequests';
 
@@ -31,7 +32,10 @@ export async function buildPage() {
   const css = await cssFile.text();
   // const script = await scriptFile.text();
   const script = await buildClientScript();
-  const safeJson = JSON.stringify({ versions: history }).replaceAll('<', '\\u003c');
+  const envKey = Bun.env.TYPESAFE_API_KEY;
+  const hasEnvKey = envKey !== undefined && envKey.trim() !== '';
+  // const safeJson = JSON.stringify({ versions: history }).replaceAll('<', '\\u003c');
+  const safeJson = JSON.stringify({ versions: history, hasEnvKey: hasEnvKey }).replaceAll('<', '\\u003c');
   function getCss() {
     return css;
   }
@@ -55,6 +59,9 @@ if (import.meta.main) {
     hostname: SERVER_HOSTNAME,
     port: SERVER_PORT,
     async fetch(request) {
+      const isAllowed = isRequestAllowed(request, SERVER_HOSTNAME, SERVER_PORT);
+      if (!isAllowed)
+        return new Response('forbidden', { status: 403 });
       const { pathname } = new URL(request.url);
       const isRunPost = request.method === 'POST' && pathname === '/run';
       if (isRunPost)
@@ -83,7 +90,11 @@ if (import.meta.main) {
       return new Response('not found', { status: 404 });
     },
     error(error) {
-      return new Response(error.message, { status: 500 });
+      // return new Response(error.message, { status: 500 });
+      const envKey = Bun.env.TYPESAFE_API_KEY;
+      const hasEnvKey = envKey !== undefined && envKey.trim() !== '';
+      const message = hasEnvKey ? error.message.replaceAll(envKey, '[key hidden]') : error.message;
+      return new Response(message, { status: 500 });
     },
   });
   console.log(`http://${SERVER_HOSTNAME}:${server.port}/`);

@@ -55,6 +55,7 @@ body { margin: 0; padding: 12px; height: 100vh; display: flex; flex-direction: c
 /* main { height: 100%; display: flex; gap: 12px; } */
 #headerRowBox { flex: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 #headerRowBox #themeBtn { margin-left: auto; }
+#apiKeyInput { width: 880px; background: var(--panel); color: var(--text); border: 1px solid var(--grid); border-radius: 6px; padding: 6px; font: inherit; }
 #interfaceBox { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
 #interfaceNavigationRow { flex: none; display: flex; gap: 8px; align-items: center; }
 #pinGroup { flex: 1 1 0; min-width: 0; display: flex; gap: 8px; align-items: center; }

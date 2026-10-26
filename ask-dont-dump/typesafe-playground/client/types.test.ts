@@ -4,6 +4,7 @@ import type { PageData, RequestBody, RunBody } from './types'
 function validatePageDataSurvivesJson() {
   const data: PageData = {
     versions: [{ id: 1, time: 'now', state: { a: [1, 2] }, questions: { q: { type: 'noul' } }, calls: 0, outputs: [] }],
+    hasEnvKey: false,
   }
   const copy: PageData = JSON.parse(JSON.stringify(data))
   expect(copy).toEqual(data)

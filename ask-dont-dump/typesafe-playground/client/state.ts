@@ -8,6 +8,7 @@ export const pageState: PageState = {
   collapsedByName: {},
   wasEdited: false,
   restingText: '',
+  hasEnvKey: false,
   editors: null,
 };
 

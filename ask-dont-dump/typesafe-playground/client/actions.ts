@@ -1,5 +1,6 @@
 import type { JsonValue, Questions } from '@typesafe-ai/sdk';
 import type { NoteBody, RequestBody, ResetBody, RunBody, Version } from './types';
+import { readTypedKey, updateSubmitAvailability } from './apiKey';
 import { getButton, getElement, getInput, getTextArea } from './dom';
 import { loadEditors } from './editors';
 import { render } from './render';
@@ -58,11 +59,14 @@ export async function executeRun(): Promise<void> {
     return;
   }
   const calls = Number(getInput('callsInput').value);
+  const typedKey = readTypedKey();
   const submitButton = getButton('submitBtn');
   submitButton.disabled = true;
   submitButton.textContent = 'running…';
   try {
     const runBody: RunBody = { id: pageState.versions[pageState.index].id, state: state, questions: questions, calls: calls };
+    if (typedKey !== '')
+      runBody.apiKey = typedKey;
     const response = await sendJson('/run', runBody);
     const version: Version = await response.json();
     pageState.versions[version.id - 1] = version;
@@ -71,11 +75,15 @@ export async function executeRun(): Promise<void> {
     render();
   }
   catch (failure) {
-    errorBox.textContent = 'Run failed: ' + (failure as Error).message;
+    const failureMessage = (failure as Error).message;
+    const safeMessage = typedKey === '' ? failureMessage : failureMessage.replaceAll(typedKey, '[key hidden]');
+    // errorBox.textContent = 'Run failed: ' + (failure as Error).message;
+    errorBox.textContent = 'Run failed: ' + safeMessage;
   }
   finally {
-    submitButton.disabled = false;
+    // submitButton.disabled = false;
     submitButton.textContent = 'Submit (paid)';
+    updateSubmitAvailability();
   }
 }
 
