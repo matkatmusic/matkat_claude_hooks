@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 // Mods cannot import shared code, so these copies must match.
 const REGISTER_PATHS = [
+  "anything-for-me/mod/hooks/register.ts",
   "ask-dont-dump/mod/hooks/register.ts",
   "idle-state/mod/hooks/register.ts",
   "context-exit/mod/hooks/register.ts",

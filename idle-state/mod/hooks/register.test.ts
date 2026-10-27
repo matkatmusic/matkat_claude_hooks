@@ -235,6 +235,30 @@ test('tools are denied while the state prompt is pending, then allowed again', a
   expect(toolsRun).toBe(2)
 })
 
+test('Stop hooks are skipped while the state prompt is pending, then run again', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
+  mock.env(on, { HOME: '/home/u' })
+  let stopHooksRun = 0
+  stubFs(on)
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('classic.Stop', () => {
+    stopHooksRun++
+    return { block: 'run the stop checks' }
+  })
+
+  await $.turn.complete(ANSWER)
+  await clock.advance(IDLE_MS)
+  const pendingResult = await $.classic.Stop({ stop_hook_active: false })
+  expect(pendingResult.block).toBeUndefined()
+  expect(stopHooksRun).toBe(0)
+
+  await $.turn.complete({ ...ANSWER, isAborted: true })
+  const afterResult = await $.classic.Stop({ stop_hook_active: false })
+  expect(afterResult.block).toBe('run the stop checks')
+  expect(stopHooksRun).toBe(1)
+})
+
 test('a user prompt during the state turn lets tools run again', async ($, on) => {
   const clock = mock.clock(on, { now: Date.parse('2026-10-15T10:00:00') })
   mock.env(on, { HOME: '/home/u' })

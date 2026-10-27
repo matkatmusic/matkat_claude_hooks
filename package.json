@@ -1,7 +1,10 @@
 {
   "devDependencies": {
+    "@codemirror/autocomplete": "6.20.4",
+    "@codemirror/commands": "6.11.1",
     "@codemirror/lang-json": "6.0.1",
     "@codemirror/language": "6.13.1",
+    "@codemirror/lint": "6.9.7",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
     "@lezer/common": "1.5.4",
@@ -15,7 +18,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump)/**/*.test.ts\" idle-state/idle-state-check.test.ts",
-    "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod"
+    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump|anything-for-me)/**/*.test.ts\" idle-state/idle-state-check.test.ts",
+    "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod && ~/.local/bin/claude plugin test anything-for-me/mod"
   }
 }

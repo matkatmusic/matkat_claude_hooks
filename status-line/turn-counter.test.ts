@@ -119,6 +119,28 @@ test("a Stop that follows a Stop-hook block is not counted", () => {
   assert.equal(state.sittings[0].turns, 1);
 });
 
+test("SessionEnd keeps the tokens from the last Stop and sets end", async () => {
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-state-`);
+  const sessionId = `sess-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const transcript = `${stateDir}/${sessionId}.jsonl`;
+  const settings = { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: SCRATCH_ROOT, CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14" };
+  const runEvent = (input: object) =>
+    spawnSync("node", [`${import.meta.dirname}/turn-counter.ts`], {
+      input: JSON.stringify({ session_id: sessionId, transcript_path: transcript, settings, ...input }),
+      encoding: "utf8",
+    });
+  await writeFile(transcript, goodLine("msg_1", 10, 2));
+  runEvent({ hook_event_name: "SessionStart" });
+  runEvent({ hook_event_name: "Stop" });
+  await writeFile(transcript, [goodLine("msg_1", 10, 2), goodLine("msg_2", 50, 7)].join("\n"));
+  runEvent({ hook_event_name: "SessionEnd" });
+  const state = JSON.parse(readFileSync(`${stateDir}/${sessionId}.json`, "utf8"));
+  rmSync(stateDir, { recursive: true, force: true });
+  assert.equal(state.sittings[0].tokensIn, 10);
+  assert.equal(state.sittings[0].tokensOut, 2);
+  assert.equal(typeof state.sittings[0].end, "number");
+});
+
 test("no transcript path", async () => {
   assert.equal(await countTranscriptTokens(undefined, SCRATCH_ROOT), undefined);
 });

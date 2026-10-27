@@ -204,8 +204,11 @@ if (import.meta.main) {
     await removeStaleCounters(now, keepDays, stateDir);
   }
 
+  const isSessionStart = input.hook_event_name === "SessionStart";
+  const isSessionEnd = input.hook_event_name === "SessionEnd";
+  const skipsTokenCount = isSessionStart || isSessionEnd;
   const tokens =
-    input.hook_event_name === "SessionStart"
+    skipsTokenCount
       ? undefined
       : await countTranscriptTokens(input.transcript_path, scratchRoot);
   const state = readSessionState(path);

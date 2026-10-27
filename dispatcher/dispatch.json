@@ -17,6 +17,7 @@
     "debt-ratchet": { "Stop": false, "SubagentStop": false },
     "idle-state-reader": { "UserPromptSubmit": false },
     "idle-state-check": { "Stop": false },
+    "anything-for-me": { "session.start": true },
     "ask-dont-dump": { "prompt.submit": true, "turn.complete": true },
     "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
     "context-exit": { "turn.complete": true }

@@ -120,6 +120,18 @@ const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) =
   return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
 };
 
+const blockStopHooksWhileStatePromptPending: Hook<'classic.Stop'> = async ($, e, next) => {
+  if (!isWritingState)
+    return next(e);
+  return {};
+};
+
+const blockSubagentStopHooksWhileStatePromptPending: Hook<'classic.SubagentStop'> = async ($, e, next) => {
+  if (!isWritingState)
+    return next(e);
+  return {};
+};
+
 function encodeRegexCharacters(text: string): string {
   let escaped = '';
   for (const character of text) {
@@ -274,5 +286,7 @@ export const register: Register = on => {
   on('prompt.submit', blockPromptAfterStateSaved);
   on('turn.complete', updateIdleStateOnTurnComplete);
   on('tool.call', denyToolsWhileStatePromptPending);
+  on('classic.Stop', blockStopHooksWhileStatePromptPending);
+  on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending);
   on('command.run', { command: 'exit' }, writeIdleStateBeforeExit);
 };
