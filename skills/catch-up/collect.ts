@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
-type Item = { text: string; file: string; sessionId?: string };
+export type Item = { text: string; file: string; sessionId?: string };
 
 function pushItems(list: Item[], texts: string[], file: string, sessionId?: string): void {
   for (const text of texts) {
@@ -45,6 +45,10 @@ export function collectLists(root: string) {
     pushItems(mistakes, state.traps.mistakes, file, state.sessionId);
   }
   return { not_done, actions, questions, rules, mistakes, files };
+}
+
+export function getProjectFolderName(root: string): string {
+  return root.replace(/[^a-zA-Z0-9]/g, "-");
 }
 
 if (import.meta.main)

@@ -9,7 +9,7 @@ function formatTwoDigits(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function buildStamp(now: Date): string {
+export function buildStamp(now: Date): string {
   const date = `${now.getFullYear()}-${formatTwoDigits(now.getMonth() + 1)}-${formatTwoDigits(now.getDate())}`;
   return `${date}-${formatTwoDigits(now.getHours())}${formatTwoDigits(now.getMinutes())}`;
 }

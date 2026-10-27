@@ -1,8 +1,14 @@
 ---
 name: catch-up
 description: Catch the user up on recent work from the .idleState reports. Use when the user says "/catch-up" or "catch me up".
+allowed-tools: Bash(bun *)
 ---
 
+```!
+bun "${CLAUDE_PLUGIN_ROOT}/skills/catch-up/SkillBodyEmitter.ts"
+```
+
+<!--
 # catch-up
 
 Read the state files of past chats. Show the user what is still open.
@@ -31,3 +37,4 @@ Read the state files of past chats. Show the user what is still open.
 - Do not ask the user anything in this skill. A Stop hook turns the shown items into questions.
 - Do not change the text of an item.
 - If `collect.ts` fails, show the error. Do not guess the lists.
+-->
