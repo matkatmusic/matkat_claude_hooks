@@ -296,7 +296,7 @@ export function formatReflows(
       rewritten,
     }),
     ...(overCap.length > 0 && {
-      instruction: `Spawn a sonnet-5 subagent to rewrite up to ${maxRewrites} of the comments below to under ${WORD_LIMIT} words, keeping each on one line. Return to your primary task after finishing the comment rewrites.  The hook will track when any flagged comments pass the word-length restriction and stop blocking you.`,
+      instruction: `Spawn one sonnet-5 subagent per file to rewrite up to ${maxRewrites} of the comments below to under ${WORD_LIMIT} words, keeping each on one line. Return to your primary task after finishing the comment rewrites.  The hook will track when any flagged comments pass the word-length restriction and stop blocking you.`,
       files: shownFiles,
     }),
   });
