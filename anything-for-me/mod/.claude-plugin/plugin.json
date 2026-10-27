@@ -1,0 +1,5 @@
+{
+  "name": "anything-for-me",
+  "version": "0.1.0",
+  "description": "Adds /anything-for-me, which asks Claude what you can check now to close or unblock tasks"
+}
