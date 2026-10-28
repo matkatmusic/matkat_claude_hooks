@@ -3,9 +3,19 @@ import type { Register, Hook, EngineInterface } from 'claude-code';
 const CHECKER_MODEL = 'claude-haiku-5-5';
 const CHECKER_TIMEOUT_MS = 30 * 1000;
 const PLUGIN_NAME = 'ask-dont-dump';
-const RUBRIC_FILE_NAME = 'ask-dont-dump-prompt.md';
-const ARGUMENTS_PLACEHOLDER = '$ARGUMENTS';
 const DISPATCHER_DIR = '../../dispatcher';
+
+const QUESTION_OR_CHOICE_TEXT = 'Your last message has a question or choice for the user. Use AskUserQuestion to have the user make a decision for each question or choice item in the message.';
+const UNFINISHED_WORK_TEXT = 'Your last message has incomplete or unstarted work. Use TaskCreate to track the work.';
+const BUG_REPORT_TEXT = "Your last message reported a bug. Create a task in the session task list with TaskCreate to track the bug's resolution. Write a regression test for the behavior the user reports.";
+/**
+ * Add more question/result pairs to the REPLY_CHECKS array as needed.
+ */
+const REPLY_CHECKS = [
+  { question: 'a bug report', result: BUG_REPORT_TEXT },
+  { question: 'a question or choice for the user', result: QUESTION_OR_CHOICE_TEXT },
+  { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT },
+];
 
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
@@ -45,6 +55,28 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
+async function isReplyAnswerYes($: EngineInterface, answer: string, query: string): Promise<boolean> {
+  const prompt = `Is ${query} written in this message?\n\nAnswer with the single word yes or no.\n\nThe message:\n${answer}`;
+  const reply = await $.model.complete({ model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
+  if (!reply.isAnswered)
+    throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
+  const answerWord = reply.text.trim().toLowerCase();
+  return answerWord.startsWith('yes');
+}
+
+async function getNudgeTexts($: EngineInterface, answer: string): Promise<string[]> {
+  const pending: Promise<boolean>[] = [];
+  for (const check of REPLY_CHECKS)
+    pending.push(isReplyAnswerYes($, answer, check.question));
+  const answers = await Promise.all(pending);
+  const nudges: string[] = [];
+  for (const [i, check] of REPLY_CHECKS.entries()) {
+    if (answers[i])
+      nudges.push(check.result);
+  }
+  return nudges;
+}
+
 let isAnsweringCheckerReason = false;
 
 const setCheckerReasonFlagOnPrompt: Hook<'prompt.submit'> = async ($, e, next) => {
@@ -68,18 +100,13 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
     return next(e);
   if (e.reason !== 'answer')
     return next(e);
-
-  const rubric = await $.fs.read(`${$.plugin.root}/${RUBRIC_FILE_NAME}`);
-  const hookInput = JSON.stringify({ last_assistant_message: e.answer, stop_hook_active: isAnsweringCheckerReason });
-  const checkerPrompt = rubric.split(ARGUMENTS_PLACEHOLDER).join(hookInput);
-  const reply = await $.model.complete({ model: CHECKER_MODEL, prompt: checkerPrompt, timeoutMs: CHECKER_TIMEOUT_MS });
-  if (!reply.isAnswered)
-    throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
-  const verdictJson = reply.text.slice(reply.text.indexOf('{'), reply.text.lastIndexOf('}') + 1);
-  const verdict = JSON.parse(verdictJson);
-  if (verdict.ok)
+  if (isAnsweringCheckerReason)
     return next(e);
-  void $.prompt.submit({ text: verdict.reason });
+
+  const nudges = await getNudgeTexts($, e.answer);
+  if (nudges.length === 0)
+    return next(e);
+  void $.prompt.submit({ text: nudges.join('\n\n') });
   return next(e);
 };
 

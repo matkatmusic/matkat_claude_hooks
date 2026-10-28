@@ -282,8 +282,8 @@ function writeSettings(config: string, clone: string): void {
   if (settingsExist) {
     settings = JSON.parse(readFileSync(settingsPath, "utf8"));
   }
-  settings.statusLine = { type: "command", command: `node "${clone}/status-line/status.ts"`, refreshInterval: 3 };
-  settings.subagentStatusLine = { type: "command", command: `node "${clone}/status-line/subagentStatusLine.ts"`, refreshInterval: 3 };
+  settings.statusLine = { type: "command", command: `node "${clone}/status-line/status.ts"`, refreshInterval: 1 };
+  settings.subagentStatusLine = { type: "command", command: `node "${clone}/status-line/subagentStatusLine.ts"`, refreshInterval: 1 };
   mkdirSync(config, { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
 }
@@ -939,7 +939,7 @@ function executeDispatchErrorRows(rows: Row[], session: Session, bed: string): v
   addHookRow(rows, session, 52, "dispatcher (unknown hook)", unknownRecords, UNKNOWN_HOOK_MESSAGE, "UserPromptSubmit");
 }
 
-// Rows 65 and 66: the model ignores the hook text, so each hook blocks three stops in a row, then lets the fourth pass.
+// Rows 65 and 66: the model ignores each hook, so it blocks three stops, then passes the fourth.
 function executeChainRows(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
   const ledgerPath = path.join(bed, "array-debt", `${session.id}.json`);
@@ -971,7 +971,7 @@ function readUltraFlag(bed: string, session: Session): boolean {
   return state.ponytailUltraInvoked === true;
 }
 
-// Starts the nudge over: the flag goes back to false and the transcript scan skips the lines written so far.
+// Restarts the nudge: sets the flag to false and skips the transcript lines written so far.
 function resetUltraFlag(bed: string, session: Session): void {
   const statePath = path.join(bed, "state", `${session.id}.json`);
   const state = JSON.parse(readFileSync(statePath, "utf8"));
@@ -980,7 +980,7 @@ function resetUltraFlag(bed: string, session: Session): void {
   writeFileSync(statePath, JSON.stringify(state));
 }
 
-// Rows 62 and 63: typed ponytail commands and a real Skill call decide whether the next prompts get the nudge.
+// Rows 62 and 63: typed ponytail commands and Skill calls decide if later prompts get the nudge.
 function executePonytailRows(rows: Row[], session: Session, bed: string): void {
   resetUltraFlag(bed, session);
   const notUltraRecords = executeFullTurn(session, "/ponytail:ponytail not ultra");
@@ -1009,7 +1009,7 @@ function executePonytailRows(rows: Row[], session: Session, bed: string): void {
   addRow(rows, 63, "ponytail-ultra-nudge (skill)", getSessionModel(session), skillOk, `prompt before the Skill call nudged: ${skillPromptNudged ? "True" : "False"}; next prompt after Skill call with ultra gets no nudge: ${!nextNudged ? "True" : "False"}; flag set: ${skillFlag ? "True" : "False"}`);
 }
 
-// Row 61: an Opus parent may redirect into .idleState, other redirects are denied, and a denial removes saved edits older than a day.
+// Row 61: Opus parents may redirect only into .idleState; a denied redirect removes saved edits over a day old.
 function executeParentFilesRow(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
   const savedEditsDir = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER);
@@ -1176,7 +1176,7 @@ function readSittingTurns(bed: string, session: Session): number {
   return sittings[sittings.length - 1].turns;
 }
 
-// Rows 56, 58 and 59: a tool call during the state prompt is denied, /exit writes the state file, SessionEnd fires.
+// Rows 56, 58, 59: the state prompt denies tool calls, /exit writes the state file, SessionEnd fires.
 function executeExitRows(rows: Row[], session: Session, bed: string): void {
   const model = getSessionModel(session);
   executeFullTurn(session, STANDING_RULE_PROMPT);
@@ -1211,7 +1211,7 @@ function executeExitRows(rows: Row[], session: Session, bed: string): void {
   addRow(rows, 56, "turn-counter (SessionEnd)", model, hasEndTime, `session state file after exit: end time ${hasEndTime ? "set (" + endTime + ")" : "EMPTY"}`);
 }
 
-// The subagent runs on its own after the turn ends; its end sends a message that starts one more turn.
+// The subagent keeps running after the turn ends; the subagent's final message starts one more turn.
 function waitForSubagentLineGone(session: Session): void {
   for (let waited = 0; waited < SUBAGENT_LINE_WAIT_S; waited += 2) {
     const screen = tmux_lib.tmux_capturePane(session.name);
@@ -1228,7 +1228,7 @@ function waitForSubagentLineGone(session: Session): void {
   }
 }
 
-// Polls the colored pane while the prompt runs; returns the subagent line if it shows an unknown model id in red.
+// Polls the colored pane during the prompt; returns the subagent line if an unknown model id shows red.
 function executeRedLineTurn(session: Session, prompt: string): string | undefined {
   clearToIdlePrompt(session);
   tmux_lib.tmux_sendAndSubmit(session.name, prompt + " ");
@@ -1270,7 +1270,7 @@ function listReadPaths(record: JsonRecord): string[] {
   return readPaths;
 }
 
-// Rows 62, 63, 64, 67 and 68: a session started two folders below the repo root, with a subagent on a model the status line does not know.
+// Rows 62-64, 67, 68: session two folders below repo root; subagent model unknown to the status line.
 function executeSubfolderSession(rows: Row[], bed: string, config: string): void {
   const project = path.join(bed, "project");
   const deepDir = path.join(project, "src", "deep");
@@ -1309,13 +1309,13 @@ function executeSubfolderSession(rows: Row[], bed: string, config: string): void
   const statusInterval = readRefreshInterval(settingsPath, "statusLine");
   const subagentInterval = readRefreshInterval(settingsPath, "subagentStatusLine");
   const cloneInterval = readRefreshInterval(path.join(bed, "claude_hooks", "status-line", "hooks.json"), "subagentStatusLine");
-  const refreshOk = statusInterval === 3 && subagentInterval === 3 && cloneInterval === 3;
+  const refreshOk = statusInterval === 1 && subagentInterval === 1 && cloneInterval === 1;
   addRow(rows, 64, "status-line (subagent model)", model, redLine !== undefined && refreshOk, `real subagent on an unknown model id shows the id in red: ${redLine !== undefined ? redLine : "NOT SEEN"}; refreshInterval bed statusLine=${statusInterval} subagentStatusLine=${subagentInterval}, clone subagent=${cloneInterval}`);
   executePonytailRows(rows, session, bed);
   tmux_lib.tmux_killPane(session.name);
 }
 
-// Row 57: a model name that does not exist makes every turn fail, so only StopFailure can count the turn.
+// Row 57: a nonexistent model name fails every turn, so only StopFailure can count turns.
 function executeStopFailureRow(rows: Row[], bed: string, config: string): void {
   const clone = path.join(bed, "claude_hooks");
   setEnablement(clone, "turn-counter", "StopFailure", false);
