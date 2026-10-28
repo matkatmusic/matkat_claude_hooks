@@ -1,0 +1,6 @@
+{
+  "name": "prompt-intent",
+  "version": "0.1.0",
+  "description": "Tells the agent when a typed prompt is a bug report, a feature request or a change request",
+  "types": "./types/index.d.ts"
+}

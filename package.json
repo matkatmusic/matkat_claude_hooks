@@ -18,7 +18,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump|anything-for-me)/**/*.test.ts\" idle-state/idle-state-check.test.ts",
-    "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod && ~/.local/bin/claude plugin test anything-for-me/mod"
+    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump|anything-for-me|prompt-intent)/**/*.test.ts\" idle-state/idle-state-check.test.ts",
+    "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod && ~/.local/bin/claude plugin test anything-for-me/mod && ~/.local/bin/claude plugin test prompt-intent/mod"
   }
 }

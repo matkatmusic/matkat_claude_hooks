@@ -20,7 +20,10 @@
     "anything-for-me": { "session.start": true },
     "ask-dont-dump": { "prompt.submit": true, "turn.complete": true },
     "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
-    "context-exit": { "turn.complete": true }
+    "context-exit": { "turn.complete": true },
+    "bug-report": { "prompt.submit": true },
+    "feature-request": { "prompt.submit": true },
+    "change-request": { "prompt.submit": true }
   },
   "values": {
     "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },

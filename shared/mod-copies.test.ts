@@ -8,6 +8,7 @@ const REGISTER_PATHS = [
   "ask-dont-dump/mod/hooks/register.ts",
   "idle-state/mod/hooks/register.ts",
   "context-exit/mod/hooks/register.ts",
+  "prompt-intent/mod/hooks/register.ts",
 ];
 
 const VALUE_REGISTER_PATHS = [
@@ -46,16 +47,20 @@ function extractCopy(path: string, functionNames = ["parseDefaultFile", "parseUs
   return copy;
 }
 
-test("DISPATCHER_DIR, parse, look-up, readDefault, readUser and isEventEnabled copies are identical in all three mods", () => {
+function assertEnablementCopiesAreIdentical(): void {
   const sourceCopy = extractCopy(REGISTER_PATHS[0]);
   for (let i = 1; i < REGISTER_PATHS.length; i++) {
     const otherCopy = extractCopy(REGISTER_PATHS[i]);
     assert.equal(otherCopy, sourceCopy, `${REGISTER_PATHS[0]} and ${REGISTER_PATHS[i]} differ`);
   }
-});
+}
 
-test("getValue and readValue copies are identical in the idle-state and context-exit mods", () => {
+function assertValueCopiesAreIdentical(): void {
   const sourceCopy = extractCopy(VALUE_REGISTER_PATHS[0], ["getValue", "readValue"]);
   const otherCopy = extractCopy(VALUE_REGISTER_PATHS[1], ["getValue", "readValue"]);
   assert.equal(otherCopy, sourceCopy, `${VALUE_REGISTER_PATHS[0]} and ${VALUE_REGISTER_PATHS[1]} differ`);
-});
+}
+
+test("DISPATCHER_DIR, parse, look-up, readDefault, readUser and isEventEnabled copies are identical in all three mods", assertEnablementCopiesAreIdentical);
+
+test("getValue and readValue copies are identical in the idle-state and context-exit mods", assertValueCopiesAreIdentical);

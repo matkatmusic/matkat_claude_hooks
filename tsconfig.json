@@ -10,5 +10,5 @@
     "types": ["node"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "idle-state/mod", "context-exit/mod", "ask-dont-dump/mod",/* "ask-dont-dump/typesafe-playground", */"tests/external"]
+  "exclude": ["node_modules", "idle-state/mod", "context-exit/mod", "ask-dont-dump/mod", "anything-for-me/mod", "prompt-intent/mod",/* "ask-dont-dump/typesafe-playground", */"tests/external"]
 }
