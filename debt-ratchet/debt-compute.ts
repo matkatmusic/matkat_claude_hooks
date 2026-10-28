@@ -66,7 +66,10 @@ export function blockReason(
   const oversizedFiles: string[] = [];
   for (let i = 0; i < debts.length; i++) {
     const isOversized = debts[i].lineCount > maxFileLines;
-    if (isOversized)
+    const isFileDebtHigh = debts[i].current >= minFileDebt;
+    const shouldFlagOversized = isOversized && isFileDebtHigh;
+    // if (isOversized)
+    if (shouldFlagOversized)
       oversizedFiles.push(`${debts[i].file} (${debts[i].lineCount} lines)`);
   }
   const hasOversizedFiles = oversizedFiles.length > 0;

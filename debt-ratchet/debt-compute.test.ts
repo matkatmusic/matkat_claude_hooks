@@ -6,9 +6,10 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { ARRAY_DEBT_DIR, STYLISTIC_ESLINT_CONFIG, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
+import type { FileDebt } from "./debt-compute.ts";
+import { ARRAY_DEBT_DIR, DEBT_LIMITS, STYLISTIC_ESLINT_CONFIG, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-const { computeDebt } = await import("./debt-compute.ts");
+const { computeDebt, blockReason } = await import("./debt-compute.ts");
 
 test("computeDebt on a repo with no eslint.config.js and no node_modules returns a numeric count", () => {
   const dir = mkdtempSync(`${tmpdir()}/debt-ratchet-noconfig-`);
@@ -102,4 +103,16 @@ test("eslint --fix runs: fixable brace-style debt is fixed in place, and the ref
   assert.match(fixedOnDisk, /\}\s*\n\s*else\s*\{/);
   assert.equal(existsSync(ledgerPath), false);
   rmSync(ledgerPath, { force: true });
+});
+
+test("blockReason does not block a file over the line limit that has 9 flagged items", () => {
+  const longFile: FileDebt = { file: "/x/long.ts", current: 9, lines: [1], reformatted: false, lineCount: 151, missingTest: false };
+  const limits = { ...DEBT_LIMITS, debtTarget: 100 };
+  assert.equal(blockReason([longFile], 9, undefined, [], limits), undefined);
+});
+
+test("blockReason blocks a file over the line limit that has 10 flagged items", () => {
+  const longFile: FileDebt = { file: "/x/long.ts", current: 10, lines: [1], reformatted: false, lineCount: 151, missingTest: false };
+  const limits = { ...DEBT_LIMITS, debtTarget: 100 };
+  assert.match(blockReason([longFile], 10, undefined, [], limits) ?? "", /exceed the hard limit of 150 lines: \/x\/long\.ts \(151 lines\)/);
 });

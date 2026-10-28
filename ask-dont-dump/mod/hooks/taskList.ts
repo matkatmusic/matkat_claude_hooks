@@ -8,10 +8,22 @@ export async function loadOpenTasks($: EngineInterface): Promise<OpenTask[]> {
   const taskListId = settings.env?.CLAUDE_CODE_TASK_LIST_ID;
   if (taskListId === undefined)
     throw new Error(`ask-dont-dump: ${projectRoot}/.claude/settings.json has no env.CLAUDE_CODE_TASK_LIST_ID`);
-  const home = await $.env.get('HOME');
-  if (home === undefined)
-    throw new Error('ask-dont-dump: HOME is not set');
-  const taskDir = `${home}/.claude/tasks/${taskListId}`;
+  const configDir = await $.env.get('CLAUDE_CONFIG_DIR');
+  const hasConfigDir = Boolean(configDir);
+  let taskDir = '';
+  if (hasConfigDir) {
+    taskDir = `${configDir}/tasks/${taskListId}`;
+  }
+  else {
+    const home = await $.env.get('HOME');
+    if (home === undefined)
+      throw new Error('ask-dont-dump: HOME is not set');
+    taskDir = `${home}/.claude/tasks/${taskListId}`;
+  }
+  // const home = await $.env.get('HOME');
+  // if (home === undefined)
+  //   throw new Error('ask-dont-dump: HOME is not set');
+  // const taskDir = `${home}/.claude/tasks/${taskListId}`;
   const entries = await $.fs.list(taskDir);
   const openTasks: OpenTask[] = [];
   for (const entry of entries) {

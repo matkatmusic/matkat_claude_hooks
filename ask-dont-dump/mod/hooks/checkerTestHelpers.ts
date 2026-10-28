@@ -38,7 +38,13 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
   const modelPrompts: string[] = [];
   const modelCalls = { count: 0 };
   on('session.root', () => ({ value: '/work/p' }));
-  on('env.get', () => ({ value: '/home/u' }));
+  // on('env.get', () => ({ value: '/home/u' }));
+  on('env.get', (_$: any, e: any) => {
+    const isConfigDirName = e.name === 'CLAUDE_CONFIG_DIR';
+    if (isConfigDirName)
+      return { value: undefined };
+    return { value: '/home/u' };
+  });
   on('fs.list', () => ({ value: listTaskDirEntries() }));
   on('fs.exists', () => ({ value: userDispatchText !== undefined }));
   on('fs.read', (_$: any, e: any) => {

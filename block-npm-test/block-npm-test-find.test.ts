@@ -47,6 +47,20 @@ test("findTestRun: bun test with a folder keeps the folder as an extra arg", () 
   assert.deepEqual(findTestRun("bun test demo 2>&1 | tail -5"), { file: undefined, cwd: undefined, env: {}, extraArgs: ["demo"], isBunTest: true });
 });
 
+test("findTestRuns: node --test with two named files keeps both files", () => {
+  const run = findTestRuns("node --test a.test.ts b.test.ts")[0];
+  const keptWords = [run.file, ...(run.extraArgs ?? [])];
+  assert.ok(keptWords.includes("a.test.ts"), "a.test.ts is kept");
+  assert.ok(keptWords.includes("b.test.ts"), "b.test.ts is kept");
+});
+
+test("findTestRuns: bun test with two named files keeps both files", () => {
+  const run = findTestRuns("bun test a.test.ts b.test.ts")[0];
+  const keptWords = [run.file, ...(run.extraArgs ?? [])];
+  assert.ok(keptWords.includes("a.test.ts"), "a.test.ts is kept");
+  assert.ok(keptWords.includes("b.test.ts"), "b.test.ts is kept");
+});
+
 test("findTestRun: shell redirects are not extra args", () => {
   assert.deepEqual(findTestRun("node --test tests/index.html.test.ts 2>&1 | tail"), { file: "tests/index.html.test.ts", cwd: undefined, env: {} });
   assert.deepEqual(findTestRun("node --test --watch a.test.ts 2> /dev/null"), { file: "a.test.ts", cwd: undefined, env: {}, extraArgs: ["--watch"] });
