@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync, readdirSyn
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { ARRAY_DEBT_DIR, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
+import { ARRAY_DEBT_DIR, TEN_DEBT_SOURCE, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
 const { removeOldLedgers } = await import("./debt-ratchet.ts");
 
@@ -73,18 +73,15 @@ test("existing ledger with the same total: blocked", () => {
   const sessionId = randomUUID();
   const ledgerPath = `${ARRAY_DEBT_DIR}/${sessionId}.json`;
   mkdirSync(ARRAY_DEBT_DIR, { recursive: true });
-  writeFileSync(ledgerPath, JSON.stringify({ files: {}, total: 1 }));
+  writeFileSync(ledgerPath, JSON.stringify({ files: {}, total: 10 }));
 
   const repo = setUpRepo("export function getNums() {\n  return [1, 2, 3];\n}\n");
-  writeFileSync(
-    `${repo}/subject.ts`,
-    "function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n  return [1, 2, 3].map(addOne);\n}\n",
-  );
+  writeFileSync(`${repo}/subject.ts`, TEN_DEBT_SOURCE);
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-transcript-`);
   const transcript_path = writeTranscript(transcriptDir, `${repo}/subject.ts`);
   const output = executeHook({ transcript_path, session_id: sessionId, stop_hook_active: false });
   assert.match(output, /"decision":"block"/);
-  assert.match(output, /Style debt is 1 and must drop to 0 or fewer/);
+  assert.match(output, /Style debt is 10 and must drop to 0 or fewer/);
   rmSync(ledgerPath, { force: true });
 });
 
@@ -98,7 +95,7 @@ test("two runs, same session id, different files: debts merge into one total", (
   writeFileSync(`${repo}/fileA.ts`, "function getSame(n: number): number {\n  return n;\n}\nexport function getA() {\n  return [1].map(getSame);\n}\n");
   writeFileSync(
     `${repo}/fileB.ts`,
-    "function getSame(n: number): number {\n  return n;\n}\nexport function getB() {\n  return [1, 2].map(getSame).filter(getSame);\n}\n",
+    `function getSame(n: number): number {\n  return n;\n}\nexport function getB() {\n${"  [1, 2].map(getSame).filter(getSame);\n".repeat(5)}}\n`,
   );
   writeFileSync(`${repo}/fileA.test.ts`, "export const check = 1;\n");
   writeFileSync(`${repo}/fileB.test.ts`, "export const check = 1;\n");
@@ -114,7 +111,7 @@ test("two runs, same session id, different files: debts merge into one total", (
   const transcript_path2 = writeTranscript(transcriptDir2, `${repo}/fileB.ts`);
   const output2 = executeHook({ transcript_path: transcript_path2, session_id: sessionId, stop_hook_active: false });
   assert.match(output2, /"decision":"block"/);
-  assert.match(output2, /Style debt is 3 and must drop to 0 or fewer/);
+  assert.match(output2, /Style debt is 11 and must drop to 0 or fewer/);
   assert.match(output2, /fileB\.ts/);
   assert.doesNotMatch(output2, /fileA\.ts/);
 

@@ -10,9 +10,12 @@ export const DEBT_SETTINGS = {
   CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES: "150",
   CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET: "0",
   CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE: "10",
+  CLAUDE_HOOKS_DEBT_RATCHET_MIN_FILE_DEBT: "10",
 };
 
-export const DEBT_LIMITS = { maxFileLines: 150, debtTarget: 0, fixBatchSize: 10 };
+export const DEBT_LIMITS = { maxFileLines: 150, debtTarget: 0, fixBatchSize: 10, minFileDebt: 10 };
+
+export const TEN_DEBT_SOURCE = `function addOne(n: number): number {\n  return n + 1;\n}\nexport function getNums() {\n${"  [1].map(addOne);\n".repeat(10)}}\n`;
 
 export const ESLINT_CONFIG = `
 export default [

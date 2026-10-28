@@ -28,6 +28,7 @@ if (import.meta.main) {
     maxFileLines: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES")),
     debtTarget: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET")),
     fixBatchSize: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE")),
+    minFileDebt: Number(getSetting(input, "CLAUDE_HOOKS_DEBT_RATCHET_MIN_FILE_DEBT")),
   };
   const isReentrant = input.stop_hook_active === true;
   mkdirSync(LEDGER_DIR, { recursive: true });
@@ -121,7 +122,6 @@ if (import.meta.main) {
   for (let i = 0; i < ledgerFilePaths.length; i++) {
     newTotal += ledgerFiles[ledgerFilePaths[i]];
   }
-
   const reformattedFiles: string[] = [];
   for (let i = 0; i < debts.length; i++) {
     const debt = debts[i];

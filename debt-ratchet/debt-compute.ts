@@ -4,8 +4,9 @@ import { spawnSync } from "node:child_process";
 
 const ESLINT_BIN = resolve(import.meta.dirname, "..", "node_modules", ".bin", "eslint");
 const ESLINT_CONFIG = resolve(import.meta.dirname, "eslint.config.js");
+// const MIN_BLOCKING_DEBT = 10;
 
-export type DebtLimits = { maxFileLines: number; debtTarget: number; fixBatchSize: number };
+export type DebtLimits = { maxFileLines: number; debtTarget: number; fixBatchSize: number; minFileDebt: number };
 
 export type FileDebt = { file: string; current: number; lines: number[]; reformatted: boolean; lineCount: number; missingTest: boolean };
 
@@ -61,7 +62,7 @@ export function blockReason(
   reformattedFiles: string[],
   limits: DebtLimits,
 ): string | undefined {
-  const { maxFileLines, debtTarget, fixBatchSize } = limits;
+  const { maxFileLines, debtTarget, fixBatchSize, minFileDebt } = limits;
   const oversizedFiles: string[] = [];
   for (let i = 0; i < debts.length; i++) {
     const isOversized = debts[i].lineCount > maxFileLines;
@@ -70,7 +71,13 @@ export function blockReason(
   }
   const hasOversizedFiles = oversizedFiles.length > 0;
   const isFirstSighting = savedTotal === undefined;
-  const isStyleDebtStuck = newTotal > debtTarget && (isFirstSighting || newTotal >= savedTotal);
+  let isDebtHighEnough = false;
+  for (let i = 0; i < debts.length; i++) {
+    const isFileDebtHigh = debts[i].current >= minFileDebt;
+    if (isFileDebtHigh)
+      isDebtHighEnough = true;
+  }
+  const isStyleDebtStuck = isDebtHighEnough && newTotal > debtTarget && (isFirstSighting || newTotal >= savedTotal);
   const shouldBlock = hasOversizedFiles || isStyleDebtStuck;
   if (!shouldBlock)
     return undefined;
