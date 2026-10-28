@@ -1,52 +1,5 @@
 import { test, expect } from 'claude-code/testing'
-
-const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
-const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
-const NUDGE_REPLY = { text: 'nudge', wait: false, origin: { kind: 'plugin', name: 'ask-dont-dump' } } as const
-const KEYWORDS = ['question or choice', 'incomplete or unstarted', 'a bug report']
-
-const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true } } }'
-const DISPATCH_OFF_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false } } }'
-
-function findKeywordIndex(prompt: string): number {
-  for (const [i, keyword] of KEYWORDS.entries()) {
-    const hasKeyword = prompt.includes(keyword)
-    if (hasKeyword)
-      return i
-  }
-  return -1
-}
-
-// answers are given in this order: question or choice, unfinished work, bug report
-function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true) {
-  const submittedTexts: string[] = []
-  const modelCalls = { count: 0 }
-  on('fs.exists', () => ({ value: userDispatchText !== undefined }))
-  on('fs.read', (_$: any, e: any) => {
-    const isUserDispatchFile = e.path.endsWith('user-dispatch.json')
-    if (isUserDispatchFile)
-      return { value: userDispatchText }
-    return { value: dispatchText }
-  })
-  on('model.complete', (_$: any, e: any) => {
-    modelCalls.count++
-    if (!isAnswered)
-      return { value: { isAnswered: false, reason: 'empty-reply' } }
-    const text = answers[findKeywordIndex(e.prompt)] ?? 'no'
-    return { value: { isAnswered: true, text, usage: USAGE } }
-  })
-  on('prompt.submit', (_$: any, e: any) => {
-    submittedTexts.push(e.text)
-    return { text: e.text }
-  })
-  on('turn.complete', (_$: any, e: any) => ({ text: e.answer }))
-  return { submittedTexts, modelCalls }
-}
-
-async function executeTurnAndWait($: any) {
-  await $.turn.complete(ANSWER)
-  await new Promise(resolve => setTimeout(resolve, 0))
-}
+import { DISPATCH_TEXT, DISPATCH_OFF_TEXT, NUDGE_REPLY, executeTurnAndWait, setUpCheckerStubs } from './checkerTestHelpers'
 
 test('test_all_no_answers_submit_no_prompt', async ($, on) => {
   const { submittedTexts } = setUpCheckerStubs(on, ['no', 'no', 'no'])

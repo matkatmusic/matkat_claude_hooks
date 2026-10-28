@@ -1,4 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
+import { loadOpenTasks, isEveryTaskNumberOpen, formatOpenTasks, type OpenTask } from './taskList';
 
 const CHECKER_MODEL = 'claude-haiku-5-5';
 const CHECKER_TIMEOUT_MS = 30 * 1000;
@@ -10,11 +11,13 @@ const UNFINISHED_WORK_TEXT = 'Your last message has incomplete or unstarted work
 const BUG_REPORT_TEXT = "Your last message reported a bug. Create a task in the session task list with TaskCreate to track the bug's resolution. Write a regression test for the behavior the user reports.";
 /**
  * Add more question/result pairs to the REPLY_CHECKS array as needed.
+ * skipsListedTasks: the check is skipped when every task number in the reply is an open task, and Haiku sees the open tasks.
  */
-const REPLY_CHECKS = [
-  { question: 'a bug report', result: BUG_REPORT_TEXT },
+type ReplyCheck = { question: string; result: string; skipsListedTasks?: boolean };
+const REPLY_CHECKS: ReplyCheck[] = [
+  { question: 'a bug report', result: BUG_REPORT_TEXT, skipsListedTasks: true },
   { question: 'a question or choice for the user', result: QUESTION_OR_CHOICE_TEXT },
-  { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT },
+  { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT, skipsListedTasks: true },
 ];
 
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
@@ -55,8 +58,18 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
-async function isReplyAnswerYes($: EngineInterface, answer: string, query: string): Promise<boolean> {
-  const prompt = `Is ${query} written in this message?\n\nAnswer with the single word yes or no.\n\nThe message:\n${answer}`;
+// async function isReplyAnswerYes($: EngineInterface, answer: string, query: string): Promise<boolean> {
+//   const prompt = `Is ${query} written in this message?\n\nAnswer with the single word yes or no.\n\nThe message:\n${answer}`;
+//   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
+//   if (!reply.isAnswered)
+//     throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
+//   const answerWord = reply.text.trim().toLowerCase();
+//   return answerWord.startsWith('yes');
+// }
+async function isReplyAnswerYes($: EngineInterface, answer: string, check: ReplyCheck, openTasks: OpenTask[]): Promise<boolean> {
+  let prompt = `Is ${check.question} written in this message?\n\nAnswer with the single word yes or no.\n\nThe message:\n${answer}`;
+  if (check.skipsListedTasks)
+    prompt = `Is ${check.question} that is not on this task list written in this message?\n\nAnswer with the single word yes or no.\n\nThe task list:\n${formatOpenTasks(openTasks)}\n\nThe message:\n${answer}`;
   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
   if (!reply.isAnswered)
     throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
@@ -64,13 +77,33 @@ async function isReplyAnswerYes($: EngineInterface, answer: string, query: strin
   return answerWord.startsWith('yes');
 }
 
+// async function getNudgeTexts($: EngineInterface, answer: string): Promise<string[]> {
+//   const pending: Promise<boolean>[] = [];
+//   for (const check of REPLY_CHECKS)
+//     pending.push(isReplyAnswerYes($, answer, check.question));
+//   const answers = await Promise.all(pending);
+//   const nudges: string[] = [];
+//   for (const [i, check] of REPLY_CHECKS.entries()) {
+//     if (answers[i])
+//       nudges.push(check.result);
+//   }
+//   return nudges;
+// }
 async function getNudgeTexts($: EngineInterface, answer: string): Promise<string[]> {
+  const openTasks = await loadOpenTasks($);
+  const isTaskMentioned = isEveryTaskNumberOpen(answer, openTasks);
+  const askedChecks: ReplyCheck[] = [];
   const pending: Promise<boolean>[] = [];
-  for (const check of REPLY_CHECKS)
-    pending.push(isReplyAnswerYes($, answer, check.question));
+  for (const check of REPLY_CHECKS) {
+    const isSkipped = check.skipsListedTasks === true && isTaskMentioned;
+    if (isSkipped)
+      continue;
+    askedChecks.push(check);
+    pending.push(isReplyAnswerYes($, answer, check, openTasks));
+  }
   const answers = await Promise.all(pending);
   const nudges: string[] = [];
-  for (const [i, check] of REPLY_CHECKS.entries()) {
+  for (const [i, check] of askedChecks.entries()) {
     if (answers[i])
       nudges.push(check.result);
   }
