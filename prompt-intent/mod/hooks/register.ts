@@ -46,42 +46,64 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
-async function isTypedPromptAnswerYes($: EngineInterface, e: PromptSubmitInput, pluginName: string, question: string): Promise<boolean> {
+// async function isTypedPromptAnswerYes($: EngineInterface, e: PromptSubmitInput, pluginName: string, question: string): Promise<boolean> {
+//   const enabled = await isEventEnabled($, pluginName, 'prompt.submit');
+//   if (!enabled)
+//     return false;
+//   if (e.command !== undefined)
+//     return false;
+//   const isTypedByPerson = e.origin.kind === 'composer';
+//   if (!isTypedByPerson)
+//     return false;
+//   const prompt = `${question}\n\nAnswer with the single word yes or no.\n\nThe user's prompt:\n${e.text}`;
+//   const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
+//   if (!reply.isAnswered)
+//     throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason}`);
+//   const answer = reply.text.trim().toLowerCase();
+//   return answer.startsWith('yes');
+// }
+
+async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginName: string, question: string): Promise<string[]> {
   const enabled = await isEventEnabled($, pluginName, 'prompt.submit');
   if (!enabled)
-    return false;
+    return [];
   if (e.command !== undefined)
-    return false;
+    return [];
   const isTypedByPerson = e.origin.kind === 'composer';
   if (!isTypedByPerson)
-    return false;
-  const prompt = `${question}\n\nAnswer with the single word yes or no.\n\nThe user's prompt:\n${e.text}`;
+    return [];
+  const prompt = `${question}\n\nReply with only JSON. If yes, reply {"yes": [...]} with one string for each item you find, any number of items. Each string is the first 5 words of the line or sentence that holds that item. If no, reply {"no": []}.\n\nThe user's prompt:\n${e.text}`;
   const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
   if (!reply.isAnswered)
     throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason}`);
-  const answer = reply.text.trim().toLowerCase();
-  return answer.startsWith('yes');
+  const replyJson = reply.text.slice(reply.text.indexOf('{'), reply.text.lastIndexOf('}') + 1);
+  const parsed: { yes?: string[]; no?: string[] } = JSON.parse(replyJson);
+  if (parsed.no !== undefined)
+    return [];
+  if (parsed.yes === undefined)
+    throw new Error(`${pluginName}: the classifier reply has no "yes" or "no" key: ${reply.text}`);
+  return parsed.yes;
 }
 
 async function getBugReportContext($: EngineInterface, e: PromptSubmitInput): Promise<string | undefined> {
-  const isYes = await isTypedPromptAnswerYes($, e, 'bug-report', 'Is the user reporting a bug?');
-  if (!isYes)
+  const items = await getFlaggedItems($, e, 'bug-report', 'Is the user reporting a bug?');
+  if (items.length === 0)
     return undefined;
-  return BUG_REPORT_TEXT;
+  return `${BUG_REPORT_TEXT} Flagged items (first 5 words): ${JSON.stringify(items)}. Create one task for each item.`;
 }
 
 async function getFeatureRequestContext($: EngineInterface, e: PromptSubmitInput): Promise<string | undefined> {
-  const isYes = await isTypedPromptAnswerYes($, e, 'feature-request', 'Is the user stating a feature request?');
-  if (!isYes)
+  const items = await getFlaggedItems($, e, 'feature-request', 'Is the user stating a feature request?');
+  if (items.length === 0)
     return undefined;
-  return FEATURE_REQUEST_TEXT;
+  return `${FEATURE_REQUEST_TEXT} Flagged items (first 5 words): ${JSON.stringify(items)}. Create one task for each item.`;
 }
 
 async function getChangeRequestContext($: EngineInterface, e: PromptSubmitInput): Promise<string | undefined> {
-  const isYes = await isTypedPromptAnswerYes($, e, 'change-request', 'Is the user describing a change they want in the functionality of the tool?');
-  if (!isYes)
+  const items = await getFlaggedItems($, e, 'change-request', 'Is the user describing a change they want in the functionality of the tool?');
+  if (items.length === 0)
     return undefined;
-  return CHANGE_REQUEST_TEXT;
+  return `${CHANGE_REQUEST_TEXT} Flagged items (first 5 words): ${JSON.stringify(items)}. Create one task for each item.`;
 }
 
 // The engine allows one unmatched prompt.submit hook per plugin, so this one runs all three checks.

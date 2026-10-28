@@ -5,11 +5,14 @@ const ALL_ON = '{ "enablements": { "bug-report": { "prompt.submit": true }, "fea
 const ALL_OFF = '{ "enablements": { "bug-report": { "prompt.submit": false }, "feature-request": { "prompt.submit": false }, "change-request": { "prompt.submit": false } } }';
 const TYPED = { text: 'the save button does nothing', wait: false, origin: { kind: 'composer' } } as const;
 const FROM_PLUGIN = { text: 'the save button does nothing', wait: false, origin: { kind: 'plugin', name: 'other-mod' } } as const;
-const KEYWORDS = ['reporting a bug', 'feature request', 'functionality of the tool'];
+const YES = '{"yes": ["the save button does"]}';
+const NO = '{"no": []}';
+const TWO_ITEMS = '{"yes": ["the save button does", "also the load menu is"]}';
+const KEYWORDS =['reporting a bug', 'feature request', 'functionality of the tool'];
 
 function findKeywordIndex(prompt: string): number {
-  for (let i = 0; i < KEYWORDS.length; i++) {
-    const hasKeyword = prompt.includes(KEYWORDS[i]);
+  for (const [i, keyword] of KEYWORDS.entries()) {
+    const hasKeyword = prompt.includes(keyword);
     if (hasKeyword)
       return i;
   }
@@ -27,7 +30,7 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
   }
   function getModelReply(_$: any, e: any) {
     const index = findKeywordIndex(e.prompt);
-    const text = answers[index] ?? 'no';
+    const text = answers[index] ?? NO;
     seen.modelCalls++;
     if (!isAnswered)
       return { value: { isAnswered: false, reason: 'empty-reply' } };
@@ -45,44 +48,44 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
 }
 
 async function assertBugReportYesAddsOneBlock($: any, on: any) {
-  const seen = setUpStubs(on, ['yes', 'no', 'no']);
+  const seen = setUpStubs(on, [YES, NO, NO]);
   await $.prompt.submit(TYPED);
   expect(seen.context).toHaveLength(1);
 }
 
 async function assertFeatureRequestYesAddsOneBlock($: any, on: any) {
-  const seen = setUpStubs(on, ['no', 'yes', 'no']);
+  const seen = setUpStubs(on, [NO, YES, NO]);
   await $.prompt.submit(TYPED);
   expect(seen.context).toHaveLength(1);
 }
 
 async function assertChangeRequestYesAddsOneBlock($: any, on: any) {
-  const seen = setUpStubs(on, ['no', 'no', 'yes']);
+  const seen = setUpStubs(on, [NO, NO, YES]);
   await $.prompt.submit(TYPED);
   expect(seen.context).toHaveLength(1);
 }
 
 async function assertThreeYesAnswersAddThreeDifferentBlocks($: any, on: any) {
-  const seen = setUpStubs(on, ['yes', 'yes', 'yes']);
+  const seen = setUpStubs(on, [YES, YES, YES]);
   await $.prompt.submit(TYPED);
   expect(new Set(seen.context).size).toBe(3);
 }
 
 async function assertAllNoAddsNoContext($: any, on: any) {
-  const seen = setUpStubs(on, ['no', 'no', 'no']);
+  const seen = setUpStubs(on, [NO, NO, NO]);
   await $.prompt.submit(TYPED);
   expect(seen.context).toBeUndefined();
 }
 
 async function assertDisabledHooksAskNoModel($: any, on: any) {
-  const seen = setUpStubs(on, ['yes', 'yes', 'yes'], ALL_OFF);
+  const seen = setUpStubs(on, [YES, YES, YES], ALL_OFF);
   await $.prompt.submit(TYPED);
   expect(seen.context).toBeUndefined();
   expect(seen.modelCalls).toBe(0);
 }
 
 async function assertPluginOriginPromptIsNotClassified($: any, on: any) {
-  const seen = setUpStubs(on, ['yes', 'yes', 'yes']);
+  const seen = setUpStubs(on, [YES, YES, YES]);
   await $.prompt.submit(FROM_PLUGIN);
   expect(seen.context).toBeUndefined();
   expect(seen.modelCalls).toBe(0);
@@ -96,6 +99,32 @@ async function assertNoModelAnswerAddsNoContext($: any, on: any) {
   expect(seen.context).toBeUndefined();
 }
 
+async function assertTwoItemsAreListedInTheContext($: any, on: any) {
+  const seen = setUpStubs(on, [TWO_ITEMS, NO, NO]);
+  await $.prompt.submit(TYPED);
+  expect(seen.context).toHaveLength(1);
+  expect(seen.context?.[0]).toContain('"the save button does"');
+  expect(seen.context?.[0]).toContain('"also the load menu is"');
+}
+
+async function assertNoItemsAddsNoContext($: any, on: any) {
+  const seen = setUpStubs(on, [NO, NO, NO]);
+  await $.prompt.submit(TYPED);
+  expect(seen.modelCalls).toBe(3);
+  expect(seen.context).toBeUndefined();
+}
+
+// The engine skips a hook that throws, so a thrown error shows as a prompt with no context.
+async function assertBadJsonMakesTheHookThrowAndAddsNoContext($: any, on: any) {
+  const seen = setUpStubs(on, ['yes, a bug', NO, NO]);
+  await $.prompt.submit(TYPED);
+  expect(seen.modelCalls).toBeGreaterThan(0);
+  expect(seen.context).toBeUndefined();
+}
+
+test('test_two_items_are_listed_in_the_context', assertTwoItemsAreListedInTheContext);
+test('test_no_items_add_no_context', assertNoItemsAddsNoContext);
+test('test_bad_json_makes_the_hook_throw_and_adds_no_context', assertBadJsonMakesTheHookThrowAndAddsNoContext);
 test('test_bug_report_yes_adds_one_context_block', assertBugReportYesAddsOneBlock);
 test('test_feature_request_yes_adds_one_context_block', assertFeatureRequestYesAddsOneBlock);
 test('test_change_request_yes_adds_one_context_block', assertChangeRequestYesAddsOneBlock);
