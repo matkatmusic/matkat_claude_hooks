@@ -66,7 +66,7 @@ async function assertWrappedReplyWritesNoStateFile($: any, on: any) {
   const writtenPaths: string[] = [];
   for (const file of recorded.written)
     writtenPaths.push(file.path);
-  expect(writtenPaths).toEqual(['/work/my-project/.idleState/.gitignore']);
+  expect(writtenPaths).toEqual(['/work/my-project/.idleState/.gitignore', '/work/my-project/.claude_hooks/logs/2026-10-15/idle-state.log']);
   expect(recorded.commands).toEqual([]);
 }
 

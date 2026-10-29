@@ -1,8 +1,8 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState } from './idleStateShared';
 import { sendStatePrompt, scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
+import { logAndRethrowHookFailure } from './logHookFailure';
 const DISPATCHER_DIR = '../../dispatcher';
-
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
@@ -139,12 +139,12 @@ const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
 };
 
 export const register: Register = on => {
-  on('session.start', clearStateOnSessionStart);
-  on('session.end', clearStateOnSessionEnd);
-  on('prompt.submit', blockPromptAfterStateSaved);
-  on('turn.complete', updateIdleStateOnTurnComplete);
-  on('tool.call', denyToolsWhileStatePromptPending);
-  on('classic.Stop', blockStopHooksWhileStatePromptPending);
-  on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending);
-  on('command.run', { command: 'exit' }, writeIdleStateBeforeExit);
+  on('session.start', clearStateOnSessionStart).catch(logAndRethrowHookFailure);
+  on('session.end', clearStateOnSessionEnd).catch(logAndRethrowHookFailure);
+  on('prompt.submit', blockPromptAfterStateSaved).catch(logAndRethrowHookFailure);
+  on('turn.complete', updateIdleStateOnTurnComplete).catch(logAndRethrowHookFailure);
+  on('tool.call', denyToolsWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  on('command.run', { command: 'exit' }, writeIdleStateBeforeExit).catch(logAndRethrowHookFailure);
 };

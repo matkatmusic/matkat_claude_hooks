@@ -12,6 +12,19 @@ import {
   setUpClockAndEnv,
 } from './idleStateTestHelpers';
 
+test('test_a_throwing_hook_is_logged_under_claude_hooks_logs', async ($, on) => {
+  const writes: { path: string; text: string }[] = [];
+  on('fs.exists', () => ({ value: false }));
+  on('session.start', (_$: any, e: any) => ({ cwd: e.cwd }));
+  on('fs.write', (_$: any, e: any) => { writes.push(e); return { value: undefined }; });
+  on('session.root', () => ({ value: '/work/p' }));
+  on('session.id', () => ({ value: 'sess-9' }));
+  on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }));
+
+  await $.session.start({ cwd: '/work/p', surface: null, isInteractive: false });
+  expect(writes).toEqual([{ path: '/work/p/.claude_hooks/logs/2026-01-02/idle-state.log', text: '2026-01-02T03:04:05.000Z session=sess-9 event=session.start throw: no implementation for fs.read\n' }]);
+});
+
 async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   const clock = setUpClockAndEnv(on);
   const recorded = createRecordedCalls();
