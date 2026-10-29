@@ -1,4 +1,5 @@
 import type { Register, Hook, PromptSubmitInput, EngineInterface } from 'claude-code';
+import { logAndRethrowHookFailure } from './logHookFailure';
 
 const CLASSIFIER_MODEL = 'claude-haiku-5-5';
 const CLASSIFIER_TIMEOUT_MS = 30 * 1000;
@@ -73,9 +74,11 @@ async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginN
   if (!isTypedByPerson)
     return [];
   const prompt = `${question}\n\nReply with only JSON. If yes, reply {"yes": [...]} with one string for each item you find, any number of items. Each string is the first 5 words of the line or sentence that holds that item. If no, reply {"no": []}.\n\nThe user's prompt:\n${e.text}`;
+  const startedAt = await $.clock.now();
   const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
+  const elapsedMs = (await $.clock.now()) - startedAt;
   if (!reply.isAnswered)
-    throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason}`);
+    throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason} after ${elapsedMs} ms`);
   const replyJson = reply.text.slice(reply.text.indexOf('{'), reply.text.lastIndexOf('}') + 1);
   const parsed: { yes?: string[]; no?: string[] } = JSON.parse(replyJson);
   if (parsed.no !== undefined)
@@ -120,5 +123,5 @@ const addIntentContext: Hook<'prompt.submit'> = async ($, e, next) => {
 };
 
 export const register: Register = on => {
-  on('prompt.submit', addIntentContext);
+  on('prompt.submit', addIntentContext).catch(logAndRethrowHookFailure);
 };

@@ -28,6 +28,9 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
   function readDispatchText() {
     return { value: dispatchText };
   }
+  function getClockNow() {
+    return { value: 0 };
+  }
   function getModelReply(_$: any, e: any) {
     const index = findKeywordIndex(e.prompt);
     const text = answers[index] ?? NO;
@@ -42,6 +45,7 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
   }
   on('fs.exists', getNoUserFile);
   on('fs.read', readDispatchText);
+  on('clock.now', getClockNow);
   on('model.complete', getModelReply);
   on('prompt.submit', collectPromptContext);
   return seen;
@@ -122,6 +126,21 @@ async function assertBadJsonMakesTheHookThrowAndAddsNoContext($: any, on: any) {
   expect(seen.context).toBeUndefined();
 }
 
+// The hook throws on bad JSON: it adds no context and its failure is logged.
+async function assertThrowingHookIsLoggedAndAddsNoContext($: any, on: any) {
+  const writes: { path: string; text: string }[] = [];
+  const seen = setUpStubs(on, ['yes, a bug', NO, NO]);
+  on('fs.write', (_$: any, e: any) => { writes.push(e); return { value: undefined }; });
+  on('session.root', () => ({ value: '/work/p' }));
+  on('session.id', () => ({ value: 'sess-9' }));
+  await $.prompt.submit(TYPED);
+  expect(seen.context).toBeUndefined();
+  expect(writes).toHaveLength(1);
+  expect(writes[0]?.path).toBe('/work/p/.claude_hooks/logs/1970-01-01/prompt-intent.log');
+  expect(writes[0]?.text).toContain('1970-01-01T00:00:00.000Z session=sess-9 event=prompt.submit throw: ');
+}
+
+test('test_a_throwing_hook_is_logged_and_adds_no_context', assertThrowingHookIsLoggedAndAddsNoContext);
 test('test_two_items_are_listed_in_the_context', assertTwoItemsAreListedInTheContext);
 test('test_no_items_add_no_context', assertNoItemsAddsNoContext);
 test('test_bad_json_makes_the_hook_throw_and_adds_no_context', assertBadJsonMakesTheHookThrowAndAddsNoContext);
