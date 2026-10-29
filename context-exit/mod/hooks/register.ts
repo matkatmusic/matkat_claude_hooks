@@ -1,4 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
+import { logAndRethrowHookFailure } from './logHookFailure';
 
 const PLUGIN_NAME = 'context-exit';
 const WARNING_PERCENTS_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS';
@@ -91,5 +92,5 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
 };
 
 export const register: Register = on => {
-  on('turn.complete', reportContextUsageOnTurnComplete);
+  on('turn.complete', reportContextUsageOnTurnComplete).catch(logAndRethrowHookFailure);
 };

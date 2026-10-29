@@ -61,6 +61,24 @@ function assertValueCopiesAreIdentical(): void {
   assert.equal(otherCopy, sourceCopy, `${VALUE_REGISTER_PATHS[0]} and ${VALUE_REGISTER_PATHS[1]} differ`);
 }
 
+const LOG_FAILURE_PATHS = [
+  "anything-for-me/mod/hooks/logHookFailure.ts",
+  "ask-dont-dump/mod/hooks/logHookFailure.ts",
+  "idle-state/mod/hooks/logHookFailure.ts",
+  "context-exit/mod/hooks/logHookFailure.ts",
+  "prompt-intent/mod/hooks/logHookFailure.ts",
+];
+
+function assertLogFailureCopiesAreIdentical(): void {
+  const sourceText = readFileSync(new URL(`../${LOG_FAILURE_PATHS[0]}`, import.meta.url), "utf8");
+  for (let i = 1; i < LOG_FAILURE_PATHS.length; i++) {
+    const otherText = readFileSync(new URL(`../${LOG_FAILURE_PATHS[i]}`, import.meta.url), "utf8");
+    assert.equal(otherText, sourceText, `${LOG_FAILURE_PATHS[0]} and ${LOG_FAILURE_PATHS[i]} differ`);
+  }
+}
+
+test("logHookFailure.ts copies are identical in all five mods", assertLogFailureCopiesAreIdentical);
+
 test("DISPATCHER_DIR, parse, look-up, readDefault, readUser and isEventEnabled copies are identical in all three mods", assertEnablementCopiesAreIdentical);
 
 test("getValue and readValue copies are identical in the idle-state and context-exit mods", assertValueCopiesAreIdentical);

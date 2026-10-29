@@ -5,3 +5,4 @@ node_modules
 .plate/
 __pycache__/
 typesafe_paths/
+.claude_hooks/

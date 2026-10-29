@@ -24,7 +24,20 @@ function watchContext($: any, on: any, startPercent: number, dispatchText = DISP
   return { toasts, context }
 }
 
-test('context below the limit shows no message', async ($, on) => {
+test('a hook that throws is logged under .claude_hooks/logs and the failure still stands', async ($, on) => {
+  const writes: { path: string; text: string }[] = []
+  on('fs.exists', () => ({ value: false }))
+  on('fs.write', (_$: any, e: any) => { writes.push(e); return { value: undefined } })
+  on('session.root', () => ({ value: '/work/p' }))
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }))
+  on('turn.complete', (_$: any, e: any) => ({ text: e.answer }))
+
+  await $.turn.complete(ANSWER)
+  expect(writes).toEqual([{ path: '/work/p/.claude_hooks/logs/2026-01-02/context-exit.log', text: '2026-01-02T03:04:05.000Z session=sess-9 event=turn.complete throw: no implementation for fs.read\n' }])
+})
+
+test('context below the limit shows no message',async ($, on) => {
   const { toasts } = watchContext($, on, 29)
   await $.turn.complete(ANSWER)
   expect(toasts).toEqual([])
