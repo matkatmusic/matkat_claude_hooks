@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { executeHooks, type HookEntry } from "./dispatch.ts";
 import { readSettings, getHooks, DISPATCHER_DIR } from "../shared/settings.ts";
@@ -83,6 +83,36 @@ test("Stop with nothing to say returns empty string", () => {
   const settings = { defaults: { enablements: { quiet: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
   const result = executeHooks({ hook_event_name: "Stop", cwd: dir }, hooks, settings);
   assert.equal(result, "");
+});
+
+function executeHookAndGetLogRoot(scriptText: string, hookName: string): string {
+  const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
+  mkdirSync(`${dir}/.git`);
+  writeFileSync(`${dir}/${hookName}.mjs`, scriptText);
+  const hooks: HookEntry[] = [{ event: "Stop", command: ["node", `${dir}/${hookName}.mjs`] }];
+  const settings = { defaults: { enablements: { [hookName]: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  executeHooks({ hook_event_name: "Stop", session_id: "sess-1", cwd: dir }, hooks, settings);
+  return dir;
+}
+
+test("a failing hook writes one log line under .claude_hooks/logs", () => {
+  const dir = executeHookAndGetLogRoot(`process.stderr.write("oops"); process.exit(1);`, "failing");
+  const days = readdirSync(`${dir}/.claude_hooks/logs`);
+  const logText = readFileSync(`${dir}/.claude_hooks/logs/${days[0]}/failing.log`, "utf8");
+  assert.match(logText, /^\S+ session=sess-1 event=Stop exit-code: exit 1: oops\n$/);
+});
+
+test("exit 2 writes no log", () => {
+  const dir = executeHookAndGetLogRoot(`process.stderr.write("blocked"); process.exit(2);`, "blocker");
+  assert.equal(existsSync(`${dir}/.claude_hooks`), false);
+});
+
+test(".gitignore gets .claude_hooks/ once across two failures", () => {
+  const dir = executeHookAndGetLogRoot(`process.exit(1);`, "failing");
+  const settings = { defaults: { enablements: { failing: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  const hooks: HookEntry[] = [{ event: "Stop", command: ["node", `${dir}/failing.mjs`] }];
+  executeHooks({ hook_event_name: "Stop", session_id: "sess-1", cwd: dir }, hooks, settings);
+  assert.equal(readFileSync(`${dir}/.gitignore`, "utf8"), ".claude_hooks/\n");
 });
 
 test("every hook points at a script that exists", () => {

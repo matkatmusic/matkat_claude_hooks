@@ -4,8 +4,8 @@ import { spawnSync } from "node:child_process";
 import { basename, extname } from "node:path";
 import { buildHookOutput } from "./output.ts";
 import { readSettings, isEnabled, getValues, getHooks, DISPATCHER_DIR, type HookEntry, type Settings } from "../shared/settings.ts";
+import { logHookFailure } from "../shared/hook-log.ts";
 // Runs the hooks in the list for one event and merges their outputs.
-
 export { type HookEntry, buildHookOutput };
 
 const HOME = process.env.HOME;
@@ -56,6 +56,7 @@ export function executeHooks(input: any, hooks: HookEntry[], settings: { default
       env: process.env,
       cwd,
     });
+    logHookFailure({ root: cwd, hookName: name, sessionId: input.session_id, event, result });
     if (result.error) {
       console.error(`hook spawn failed, cwd: ${input.cwd}`);
       throw result.error;
