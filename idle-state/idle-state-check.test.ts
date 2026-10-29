@@ -72,6 +72,27 @@ test("a file named in an earlier reply counts as named", () => {
   assert.deepEqual(findUnnamedFiles(files, collectReplyText(transcript)), []);
 });
 
+test("a Read inside an api-request-blob assistant line counts as read", () => {
+  const files = ["/x/.idleState/a.json"];
+  const blobLine = JSON.stringify({
+    type: "api-request-blob",
+    hash: "h",
+    sessionId: "s",
+    message: { role: "assistant", content: [{ type: "tool_use", name: "Read", input: { file_path: "/x/.idleState/a.json" } }, { type: "text", text: "a" }] },
+  });
+  assert.deepEqual(findUnreadFiles(files, [promptLine(), blobLine].join("\n")), []);
+});
+
+test("text inside an api-request-blob assistant line is collected as reply text", () => {
+  const blobLine = JSON.stringify({
+    type: "api-request-blob",
+    hash: "h",
+    sessionId: "s",
+    message: { role: "assistant", content: [{ type: "text", text: "Recent work is in 2026-10-16-1142-aaaa1111" }] },
+  });
+  assert.equal(collectReplyText([promptLine(), blobLine].join("\n")).includes("2026-10-16-1142-aaaa1111"), true);
+});
+
 function writeDispatcherDir(readerEnabled: boolean): string {
   const dir = mkdtempSync(`${tmpdir()}/idle-state-dispatcher-`);
   const dispatch = { enablements: { "idle-state-reader": { UserPromptSubmit: readerEnabled } }, values: {} };

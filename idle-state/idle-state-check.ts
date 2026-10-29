@@ -25,7 +25,10 @@ export function findUnreadFiles(files: string[], transcript: string): string[] {
     if (line === "")
       continue;
     const entry = JSON.parse(line);
-    const isAssistant = entry.type === "assistant";
+    // const isAssistant = entry.type === "assistant";
+    const isAssistantType = entry.type === "assistant";
+    const isAssistantBlob = entry.type === "api-request-blob" && entry.message?.role === "assistant";
+    const isAssistant = isAssistantType || isAssistantBlob;
     if (!isAssistant)
       continue;
     const content = entry.message?.content;
@@ -51,7 +54,10 @@ export function collectReplyText(transcript: string): string {
     if (line === "")
       continue;
     const entry = JSON.parse(line);
-    const isAssistant = entry.type === "assistant";
+    // const isAssistant = entry.type === "assistant";
+    const isAssistantType = entry.type === "assistant";
+    const isAssistantBlob = entry.type === "api-request-blob" && entry.message?.role === "assistant";
+    const isAssistant = isAssistantType || isAssistantBlob;
     if (!isAssistant)
       continue;
     const content = entry.message?.content;
