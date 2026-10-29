@@ -1,4 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
+import { logAndRethrowHookFailure } from './logHookFailure';
 
 const PLUGIN_NAME = 'anything-for-me';
 const DISPATCHER_DIR = '../../dispatcher';
@@ -59,6 +60,6 @@ const sendPromptOnCommandRun: Hook<'command.run'> = async ($) => {
 };
 
 export const register: Register = on => {
-  on('session.start', registerCommandOnSessionStart);
-  on('command.run', { command: 'anything-for-me' }, sendPromptOnCommandRun);
+  on('session.start', registerCommandOnSessionStart).catch(logAndRethrowHookFailure);
+  on('command.run', { command: 'anything-for-me' }, sendPromptOnCommandRun).catch(logAndRethrowHookFailure);
 };
