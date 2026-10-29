@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { after, test } from "node:test";
 import { strict as assert } from "node:assert";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -133,6 +133,20 @@ test("blocks loudly with stderr when tsc fails to start", () => {
   assert.equal(parsed.decision, "block");
   assert.match(parsed.reason, /boom-from-fake-npx/);
 });
+
+function assertMissingHelperLogGetsEmptyLog(): void {
+  const { cwd } = setUpProject("good.ts", "const x: number = 1;\n");
+  const missingDir = `${cwd}/subagents`;
+  const agent_transcript_path = `${missingDir}/agent-side-call.jsonl`;
+  const run = spawnSync("node", [`${import.meta.dirname}/typecheck-on-stop.ts`], {
+    input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "20" }, cwd, agent_transcript_path, stop_hook_active: false }),
+    encoding: "utf8",
+  });
+  assert.equal(run.status, 0);
+  assert.equal(existsSync(missingDir), true);
+  assert.equal(readFileSync(agent_transcript_path, "utf8"), "");
+}
+test("a subagent stop with no helper log makes an empty log and exits clean", assertMissingHelperLogGetsEmptyLog);
 
 test("keeps blocking when stop_hook_active is true, and stops blocking after the limit", () => {
   const { cwd, transcript_path } = setUpProject("bad.ts", 'const x: number = "a";\n');
