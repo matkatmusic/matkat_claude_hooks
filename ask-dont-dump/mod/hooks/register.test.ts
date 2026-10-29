@@ -1,7 +1,20 @@
 import { test, expect } from 'claude-code/testing';
-import { DISPATCH_TEXT, DISPATCH_OFF_TEXT, NUDGE_REPLY, executeTurnAndWait, setUpCheckerStubs } from './checkerTestHelpers';
+import { ANSWER, DISPATCH_TEXT,DISPATCH_OFF_TEXT, NUDGE_REPLY, executeTurnAndWait, setUpCheckerStubs } from './checkerTestHelpers';
 
-test('test_all_no_answers_submit_no_prompt', async ($, on) => {
+test('test_a_throwing_hook_is_logged_under_claude_hooks_logs', async ($, on) => {
+  const writes: { path: string; text: string }[] = [];
+  on('fs.exists', () => ({ value: false }));
+  on('fs.write', (_$: any, e: any) => { writes.push(e); return { value: undefined }; });
+  on('session.root', () => ({ value: '/work/p' }));
+  on('session.id', () => ({ value: 'sess-9' }));
+  on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }));
+  on('turn.complete', (_$: any, e: any) => ({ text: e.answer }));
+
+  await $.turn.complete(ANSWER);
+  expect(writes).toEqual([{ path: '/work/p/.claude_hooks/logs/2026-01-02/ask-dont-dump.log', text: '2026-01-02T03:04:05.000Z session=sess-9 event=turn.complete throw: no implementation for fs.read\n' }]);
+});
+
+test('test_all_no_answers_submit_no_prompt',async ($, on) => {
   const { submittedTexts } = setUpCheckerStubs(on, ['no', 'no', 'no']);
   await executeTurnAndWait($);
   expect(submittedTexts).toHaveLength(0);
@@ -41,8 +54,15 @@ test('test_disabled_in_dispatch_json_skips_the_checker', async ($, on) => {
 test('test_user_dispatch_json_true_overrides_default_false', async ($, on) => {
   const { submittedTexts, modelCalls } = setUpCheckerStubs(on, ['yes', 'yes', 'yes'], DISPATCH_OFF_TEXT, '{ "enablements": { "ask-dont-dump": { "turn.complete": true } } }');
   await executeTurnAndWait($);
-  expect(modelCalls.count).toBe(3);
+  expect(modelCalls.count).toBe(5);
   expect(submittedTexts).toHaveLength(1);
+});
+
+test('test_repo_state_claim_yes_submits_the_git_commit_prompt', async ($, on) => {
+  const { submittedTexts } = setUpCheckerStubs(on, ['no', 'no', 'no', 'yes']);
+  await executeTurnAndWait($);
+  expect(submittedTexts).toHaveLength(1);
+  expect(submittedTexts[0]).toContain('claim about the repo state');
 });
 
 test('test_reply_that_answers_the_nudge_is_skipped', async ($, on) => {

@@ -1,6 +1,6 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 import { loadOpenTasks, isEveryTaskNumberOpen, formatOpenTasks, type OpenTask } from './taskList';
-
+import { logAndRethrowHookFailure } from './logHookFailure';
 const CHECKER_MODEL = 'claude-haiku-5-5';
 const CHECKER_TIMEOUT_MS = 30 * 1000;
 const PLUGIN_NAME = 'ask-dont-dump';
@@ -9,6 +9,8 @@ const DISPATCHER_DIR = '../../dispatcher';
 const QUESTION_OR_CHOICE_TEXT = 'Your last message has a question or choice for the user. Use AskUserQuestion to have the user make a decision for each question or choice item in the message.';
 const UNFINISHED_WORK_TEXT = 'Your last message has incomplete or unstarted work. Use TaskCreate to track the work.';
 const BUG_REPORT_TEXT = "Your last message reported a bug. Create a task in the session task list with TaskCreate to track the bug's resolution. Write a regression test for the behavior the user reports.";
+const GIT_COMMIT_TEXT = "Your last message made a claim about the repo state.  Confirm your claim before telling the user";
+const INCOMPLETE_TASK_TEXT = "Your last message named an incomplete task.  Confirm against the codebase if the task is actually incomplete.  If the task is completed, mark the task as Completed.";
 /**
  * Add more question/result pairs to the REPLY_CHECKS array as needed.
  * skipsListedTasks: the check is skipped when every task number in the reply is an open task, and Haiku sees the open tasks.
@@ -18,6 +20,8 @@ const REPLY_CHECKS: ReplyCheck[] = [
   { question: 'a bug report', result: BUG_REPORT_TEXT, skipsListedTasks: true },
   { question: 'a question or choice for the user', result: QUESTION_OR_CHOICE_TEXT },
   { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT, skipsListedTasks: true },
+  { question: 'a claim about the repo state', result: GIT_COMMIT_TEXT },
+  { question: 'an open or incomplete task', result: INCOMPLETE_TASK_TEXT },
 ];
 
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
@@ -144,6 +148,6 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
 };
 
 export const register: Register = on => {
-  on('prompt.submit', setCheckerReasonFlagOnPrompt);
-  on('turn.complete', validateReplyBeforeStop);
+  on('prompt.submit', setCheckerReasonFlagOnPrompt).catch(logAndRethrowHookFailure);
+  on('turn.complete', validateReplyBeforeStop).catch(logAndRethrowHookFailure);
 };

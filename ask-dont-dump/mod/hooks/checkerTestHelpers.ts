@@ -1,7 +1,7 @@
 export const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const;
 export const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
 export const NUDGE_REPLY = { text: 'nudge', wait: false, origin: { kind: 'plugin', name: 'ask-dont-dump' } } as const;
-export const KEYWORDS = ['question or choice', 'incomplete or unstarted', 'a bug report'];
+export const KEYWORDS = ['question or choice', 'incomplete or unstarted', 'a bug report', 'a claim about the repo state'];
 
 export const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true } } }';
 export const DISPATCH_OFF_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false } } }';
@@ -32,7 +32,7 @@ function listTaskDirEntries() {
   return entries;
 }
 
-// answers are given in this order: question or choice, unfinished work, bug report
+// answers are given in this order: question or choice, unfinished work, bug report, repo state claim
 export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true, settingsText = SETTINGS_TEXT) {
   const submittedTexts: string[] = [];
   const modelPrompts: string[] = [];
