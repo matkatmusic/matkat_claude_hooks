@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Drops rules and mistakes that a memory file or a CLAUDE.md file already holds.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { choice, type ChoiceQuestion, type TypeSafeClient } from "@typesafe-ai/sdk";
 import type { Item } from "./collect.ts";
@@ -24,7 +24,8 @@ export async function removeKnownTraps(client: TypeSafeClient, rules: Item[], mi
   if (hasMemory) {
     for (const name of readdirSync(memoryFolder).sort()) {
       const isIndex = name === "MEMORY.md";
-      if (!isIndex)
+      const isSubfolder = statSync(join(memoryFolder, name)).isDirectory();
+      if (!isIndex && !isSubfolder)
         memoryCriteria[name] = readMemoryDescription(join(memoryFolder, name));
     }
     // ponytail: about 450 memory files at 3 questions per request pass 64k tokens again; size batches by measured tokens (task #255)

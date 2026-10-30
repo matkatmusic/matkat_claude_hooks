@@ -175,7 +175,7 @@ export function writeUserDispatch(clone: string, bed: string, config: string): v
     "idle-state-reader": { UserPromptSubmit: true },
     "idle-state-check": { Stop: true },
     // turn.complete starts off: its follow-up dialog stalls the other rows; row 45 turns it on.
-    "ask-dont-dump": { "prompt.submit": true, "turn.complete": false },
+    "ask-dont-dump": { "prompt.submit": true, "turn.complete": false, "session.end": true },
     "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
     "context-exit": { "turn.complete": true },
   };

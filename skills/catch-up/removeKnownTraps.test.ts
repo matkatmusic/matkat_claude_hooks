@@ -84,6 +84,15 @@ async function trapsThrowWhenMemoryFileHasNoDescription() {
   await assert.rejects(removeKnownTraps(client, buildItems("r0"), buildItems("m0"), folders.memoryFolder, folders.globalPath, folders.projectPath, []), /broken\.md/);
 }
 
+async function trapsSkipSubfoldersInMemoryFolder() {
+  const folders = buildTrapFolders(true, true);
+  mkdirSync(`${folders.memoryFolder}/archive`);
+  writeFileSync(`${folders.memoryFolder}/archive/old.md`, "no frontmatter here");
+  const { client, requests } = buildFakeClient(() => ({ choice: "no", probability: 0.9 }));
+  await removeKnownTraps(client, buildItems("r0"), buildItems("m0"), folders.memoryFolder, folders.globalPath, folders.projectPath, []);
+  assert.deepEqual(Object.keys(requests[0].questions.rules_0_memory.criteria), ["known.md", "none"]);
+}
+
 async function trapsSkipMemoryQuestionsWhenFolderMissing() {
   const folders = buildTrapFolders(false, true);
   const { client, requests } = buildFakeClient(() => ({ choice: "no", probability: 0.9 }));
@@ -104,5 +113,6 @@ async function trapsSkipProjectQuestionsWhenClaudeMdMissing() {
 test("known traps drop on memory or CLAUDE.md above the threshold", trapsDropOnMemoryOrClaudeMdAboveThreshold);
 test("known traps send the memory description, not the body", trapsSendMemoryDescriptionNotBody);
 test("known traps throw when a memory file has no description", trapsThrowWhenMemoryFileHasNoDescription);
+test("known traps skip subfolders in the memory folder", trapsSkipSubfoldersInMemoryFolder);
 test("known traps skip memory questions when the folder is missing", trapsSkipMemoryQuestionsWhenFolderMissing);
 test("known traps skip project questions when CLAUDE.md is missing", trapsSkipProjectQuestionsWhenClaudeMdMissing);
