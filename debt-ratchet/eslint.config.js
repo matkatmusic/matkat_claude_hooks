@@ -1,22 +1,6 @@
 import tseslint from 'typescript-eslint';
 import stylistic from '@stylistic/eslint-plugin';
 
-// const FUNCTION_VERBS = [
-//   'get', 'set', 'find', 'write', 'store', 'create', 'remove', 'modify',
-//   'read', 'load', 'save', 'fetch', 'build', 'make', 'compute', 'calculate', 'count',
-//   'parse', 'format', 'render', 'draw', 'print', 'log', 'emit', 'send', 'receive',
-//   'handle', 'process', 'run', 'execute', 'start', 'stop', 'init', 'open', 'close',
-//   'add', 'append', 'insert', 'push', 'pop', 'delete', 'clear', 'reset', 'update',
-//   'apply', 'merge', 'split', 'join', 'combine', 'filter', 'sort', 'convert', 'transform',
-//   'normalize', 'resolve', 'validate', 'verify', 'check', 'ensure', 'assert', 'match',
-//   'compare', 'collect', 'extract', 'scan', 'search', 'list', 'show', 'hide', 'enable',
-//   'disable', 'toggle', 'wrap', 'encode', 'decode', 'copy', 'move', 'rename', 'spawn',
-//   'launch', 'install', 'register', 'notify', 'dispatch', 'trigger', 'schedule', 'wait',
-//   'retry', 'prune', 'trim', 'strip', 'replace', 'pick', 'select', 'prepare', 'produce',
-//   'generate', 'detect', 'describe', 'report', 'track', 'record', 'mark', 'measure',
-//   'sync', 'refresh', 'fill', 'attach', 'use', 'block', 'allow', 'deny', 'ask',
-//   'is', 'has', 'can', 'should', 'contains', 'exists', 'equals',
-// ];
 const FUNCTION_VERBS = [
   'get', 'read', 'load', 'fetch', 'collect', 'extract', 'open',
   'set', 'write', 'store', 'save', 'fill', 'create', 'update', 'format', 'list', 'emit', 'install', 'copy',
@@ -31,14 +15,7 @@ const FUNCTION_VERBS = [
   'receive', 'attach', 'rename', 'sync', 'report', 'send', 'notify', 'mark',
   'refresh', 'render', 'print', 'log', 'spawn', 'register', 'assert',
 ];
-// const capitalizedVerbs = [];
-// for (const verb of FUNCTION_VERBS)
-//   capitalizedVerbs.push(verb[0].toUpperCase() + verb.slice(1));
-// // A verb counts as a whole word: start of name, after "_", or a capitalized camelCase word.
-// const VERB_WORD = `(^|_)(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|(${capitalizedVerbs.join('|')})([A-Z0-9_]|$)`;
-// A name starts with a verb, after an optional "prefix_".
-// const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)`;
-// const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|^(toJSON|toString)$`;
+
 const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|^(toJSON|toString|writeln|scrollToBottom|onSelectionChange|resize|fit|proposeDimensions|observe|unobserve|disconnect)$`;
 const FUNCTION_NAME_SELECTOR = [
   `FunctionDeclaration > Identifier.id[name!=/${VERB_WORD}/]`,
