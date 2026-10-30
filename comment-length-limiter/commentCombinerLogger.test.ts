@@ -36,6 +36,14 @@ test("an edited file path is recorded once in the session state", () => {
   assert.equal(timesRecorded, 1);
 });
 
+test("an edit is recorded well inside the dispatcher's 60 second timeout", () => {
+  const path = fileWith("const x = 1;");
+  const start = performance.now();
+  run({ file_path: path });
+  const elapsedMs = performance.now() - start;
+  assert.ok(elapsedMs < 10_000, `hook took ${elapsedMs}ms`);
+});
+
 test("missing path or notebook edit: silent", () => {
   assert.equal(run({ notebook_path: "/nope/x.ipynb" }), "");
   assert.equal(run({ file_path: "/definitely/not/here.ts" }), "");
