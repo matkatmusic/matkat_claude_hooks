@@ -1,7 +1,5 @@
 {
   "devDependencies": {
-    "@lezer/common": "1.5.4",
-    "@lezer/highlight": "1.2.5",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/bun": "^1.4.3",
     "@types/node": "^26.5.0",

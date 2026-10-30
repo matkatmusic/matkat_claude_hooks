@@ -21,11 +21,6 @@ export async function buildSkillBody(): Promise<string> {
   const lists = collectLists(root);
   const client = new TypeSafeClient();
   const log: TypesafeLog = [];
-  lists.not_done = await mergeSameMeaningItems(client, lists.not_done, "not_done", log);
-  lists.actions = await mergeSameMeaningItems(client, lists.actions, "actions", log);
-  lists.questions = await mergeSameMeaningItems(client, lists.questions, "questions", log);
-  lists.rules = await mergeSameMeaningItems(client, lists.rules, "rules", log);
-  lists.mistakes = await mergeSameMeaningItems(client, lists.mistakes, "mistakes", log);
   const tasksFolder = join(claudeFolder, "tasks", taskListId);
   lists.not_done = await removeCompletedItems(client, lists.not_done, tasksFolder, "not_done", log);
   lists.actions = await removeCompletedItems(client, lists.actions, tasksFolder, "actions", log);
@@ -33,6 +28,11 @@ export async function buildSkillBody(): Promise<string> {
   const traps = await removeKnownTraps(client, lists.rules, lists.mistakes, memoryFolder, join(claudeFolder, "CLAUDE.md"), join(root, "CLAUDE.md"), log);
   lists.rules = traps.rules;
   lists.mistakes = traps.mistakes;
+  lists.not_done = await mergeSameMeaningItems(client, lists.not_done, "not_done", log);
+  lists.actions = await mergeSameMeaningItems(client, lists.actions, "actions", log);
+  lists.questions = await mergeSameMeaningItems(client, lists.questions, "questions", log);
+  lists.rules = await mergeSameMeaningItems(client, lists.rules, "rules", log);
+  lists.mistakes = await mergeSameMeaningItems(client, lists.mistakes, "mistakes", log);
   writeTypesafeLog(root, log, new Date());
 
   return `# catch-up
