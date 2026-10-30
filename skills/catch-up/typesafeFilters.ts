@@ -14,7 +14,8 @@ export type TypesafeLog = LogEntry[];
 export const DROP_THRESHOLD = 0.5;
 // ponytail: no documented max, raise if the service allows
 const MAX_QUESTIONS_PER_REQUEST = 100;
-const MAX_COMPLETED_QUESTIONS_PER_REQUEST = 10;
+// ponytail: each question holds every completed task; about 600 completed tasks at 3 per request pass 64k tokens again (task #255)
+const MAX_COMPLETED_QUESTIONS_PER_REQUEST = 3;
 
 export async function sendQuestions(client: TypeSafeClient, step: string, state: any, questions: Record<string, ChoiceQuestion>, itemTexts: string[], batchSize: number, log: TypesafeLog): Promise<AnswerMap> {
   const names = Object.keys(questions);

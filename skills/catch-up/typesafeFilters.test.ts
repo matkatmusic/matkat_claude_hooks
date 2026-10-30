@@ -86,6 +86,19 @@ async function completedTasksDropAboveThresholdOnly() {
   assert.equal(labels.task_1, "Fix the bug");
 }
 
+async function completedStepBatchesAtThreeQuestions() {
+  const tasksFolder = mkdtempSync(`${tmpdir()}/catch-up-tasks-`);
+  writeFileSync(`${tasksFolder}/1.json`, JSON.stringify({ id: "1", subject: "Fix the bug", status: "completed" }));
+  const { client, requests } = buildFakeClient(() => ({ choice: "none", probability: 0.99 }));
+  const texts = Array.from({ length: 7 }, (_, index) => `item ${index}`);
+  const kept = await removeCompletedItems(client, buildItems(...texts), tasksFolder, "not_done", []);
+  assert.equal(kept.length, 7);
+  assert.equal(requests.length, 3);
+  assert.equal(Object.keys(requests[0].questions).length, 3);
+  assert.equal(Object.keys(requests[1].questions).length, 3);
+  assert.equal(Object.keys(requests[2].questions).length, 1);
+}
+
 async function logHoldsItemTextAndAnswers() {
   const root = mkdtempSync(`${tmpdir()}/catch-up-log-`);
   mkdirSync(`${root}/.idleState`);
@@ -106,4 +119,5 @@ test("merge drops the older item on yes and keeps both on unclear", mergeDropsOl
 test("merge sends at most 100 questions per request", mergeBatchesAtOneHundredQuestions);
 test("merge sends nothing for one item", mergeSendsNothingForOneItem);
 test("completed tasks drop an item only above the threshold", completedTasksDropAboveThresholdOnly);
+test("completed step sends at most 3 questions per request", completedStepBatchesAtThreeQuestions);
 test("the log file holds item text and answers", logHoldsItemTextAndAnswers);
