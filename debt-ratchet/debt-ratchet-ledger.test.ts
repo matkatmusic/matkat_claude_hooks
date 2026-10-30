@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { ARRAY_DEBT_DIR, TEN_DEBT_SOURCE, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-const { removeOldLedgers } = await import("./debt-ratchet.ts");
+const { removeOldLedgers } = await import("./debt-ratchet-ledger-cleanup.ts");
 
 test("already-clean fixture: no reformat message", () => {
   const sessionId = randomUUID();

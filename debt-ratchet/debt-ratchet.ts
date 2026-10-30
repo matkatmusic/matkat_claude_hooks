@@ -1,24 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, statSync, unlinkSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, basename } from "node:path";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";
 import { filterUniqueNonTestTsFiles } from "../shared/debt-files.ts";
 import { getSetting } from "../shared/settings.ts";
 import { computeDebt, blockReason, type FileDebt } from "./debt-compute.ts";
+import { removeOldLedgers } from "./debt-ratchet-ledger-cleanup.ts";
 // Stop hook: blocks the turn if its edits raised eslint violation counts above the HEAD baseline.
 
 const MAX_CHAIN_BLOCKS = 3;
-
-// Deletes ledger files older than maxAgeMs from dir.
-export function removeOldLedgers(dir: string, now: number, maxAgeMs: number): void {
-  const files = readdirSync(dir);
-  for (let i = 0; i < files.length; i++) {
-    const path = `${dir}/${files[i]}`;
-    const isOld = now - statSync(path).mtimeMs > maxAgeMs;
-    if (isOld)
-      unlinkSync(path);
-  }
-}
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
