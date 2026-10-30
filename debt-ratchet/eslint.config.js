@@ -72,6 +72,7 @@ export default [
       '@stylistic/indent': ['error', 2],
       '@stylistic/no-trailing-spaces': 'error',
       '@stylistic/semi': ['error', 'always'],
+      'max-lines-per-function': ['error', { max: 15, skipBlankLines: true, skipComments: true }],
       'no-restricted-syntax': [
         'error',
         {
