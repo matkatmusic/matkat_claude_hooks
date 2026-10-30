@@ -57,6 +57,11 @@ if (import.meta.main) {
         files.push(subagentFiles[i]);
     }
   }
+  for (let i = files.length - 1; i >= 0; i--) {
+    const isDeleted = !existsSync(files[i]);
+    if (isDeleted)
+      files.splice(i, 1);
+  }
   const uniqueFiles = filterUniqueNonTestTsFiles(files);
   const debts: FileDebt[] = [];
   for (let i = 0; i < uniqueFiles.length; i++) {

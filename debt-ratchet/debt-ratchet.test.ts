@@ -36,6 +36,23 @@ function assertMissingHelperLogGetsEmptyLog(): void {
 }
 test("a subagent stop with no helper log makes an empty log and exits clean", assertMissingHelperLogGetsEmptyLog);
 
+function assertDeletedEditedFilesAreSkipped(): void {
+  const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-transcript-`);
+  const transcript_path = `${transcriptDir}/transcript.jsonl`;
+  const testEdit = { type: "tool_use", id: "t1", name: "Edit", input: { file_path: `${transcriptDir}/zz-scratch-repro.test.ts` } };
+  const sourceEdit = { type: "tool_use", id: "t2", name: "Edit", input: { file_path: `${transcriptDir}/zz-scratch-repro.ts` } };
+  const editLine = JSON.stringify({ type: "assistant", message: { content: [testEdit, sourceEdit] } });
+  writeFileSync(transcript_path, `${JSON.stringify({ type: "user", message: { content: "hello" } })}\n${editLine}\n`);
+  const run = spawnSync("node", [`${import.meta.dirname}/debt-ratchet.ts`], {
+    input: JSON.stringify({ settings: DEBT_SETTINGS, transcript_path, session_id: "e2e-deleted-files", stop_hook_active: false }),
+    encoding: "utf8",
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(run.stdout, "");
+  rmSync(transcriptDir, { recursive: true, force: true });
+}
+test("edited files that no longer exist are skipped and do not crash the hook", assertDeletedEditedFilesAreSkipped);
+
 function assertMissingLedgerDirFailsHook(): void {
   const settings = { ...DEBT_SETTINGS } as Record<string, string>;
   delete settings.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR;
