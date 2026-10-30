@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "types": ["node", "bun", "claude-code"],
+    "typeRoots": ["../../node_modules/@types", "../mod/.claude-plugin/types"]
+  },
+  "include": ["*.ts"],
+  "exclude": []
+}

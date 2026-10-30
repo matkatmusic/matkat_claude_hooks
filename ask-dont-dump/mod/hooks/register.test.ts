@@ -1,5 +1,6 @@
 import { test, expect } from 'claude-code/testing';
-import { ANSWER, DISPATCH_TEXT,DISPATCH_OFF_TEXT, NUDGE_REPLY, executeTurnAndWait, setUpCheckerStubs } from './checkerTestHelpers';
+import { ANSWER, DISPATCH_TEXT,DISPATCH_OFF_TEXT, NUDGE_PATH, NUDGE_REPLY, executeTurnAndWait, readNudgeFile, setUpCheckerStubs } from './checkerTestHelpers';
+import { REPLY_CHECKS } from './register';
 
 test('test_a_throwing_hook_is_logged_under_claude_hooks_logs', async ($, on) => {
   const writes: { path: string; text: string }[] = [];
@@ -54,15 +55,61 @@ test('test_disabled_in_dispatch_json_skips_the_checker', async ($, on) => {
 test('test_user_dispatch_json_true_overrides_default_false', async ($, on) => {
   const { submittedTexts, modelCalls } = setUpCheckerStubs(on, ['yes', 'yes', 'yes'], DISPATCH_OFF_TEXT, '{ "enablements": { "ask-dont-dump": { "turn.complete": true } } }');
   await executeTurnAndWait($);
-  expect(modelCalls.count).toBe(5);
+  expect(modelCalls.count).toBe(6);
   expect(submittedTexts).toHaveLength(1);
 });
 
-test('test_repo_state_claim_yes_submits_the_git_commit_prompt', async ($, on) => {
-  const { submittedTexts } = setUpCheckerStubs(on, ['no', 'no', 'no', 'yes']);
+test('test_repo_state_claim_yes_writes_the_repo_state_item_to_the_nudge_file', async ($, on) => {
+  const { submittedTexts, fileWrites } = setUpCheckerStubs(on, ['no', 'no', 'no', 'yes']);
   await executeTurnAndWait($);
   expect(submittedTexts).toHaveLength(1);
-  expect(submittedTexts[0]).toContain('claim about the repo state');
+  const repoStateCheck = REPLY_CHECKS[3];
+  if (repoStateCheck === undefined)
+    throw new Error('REPLY_CHECKS has no fourth check');
+  expect(readNudgeFile(fileWrites).did).toEqual([repoStateCheck.did]);
+});
+
+test('test_missing_functionality_yes_writes_the_missing_functionality_item_to_the_nudge_file', async ($, on) => {
+  const { fileWrites } = setUpCheckerStubs(on, ['no', 'no', 'no', 'no', 'no', 'yes']);
+  await executeTurnAndWait($);
+  const missingFunctionalityCheck = REPLY_CHECKS[5];
+  if (missingFunctionalityCheck === undefined)
+    throw new Error('REPLY_CHECKS has no sixth check');
+  const nudgeFile = readNudgeFile(fileWrites);
+  expect(nudgeFile.did).toEqual([missingFunctionalityCheck.did]);
+  expect(nudgeFile.do).toEqual([missingFunctionalityCheck.do]);
+});
+
+test('test_yes_with_a_sentence_in_the_reply_writes_the_file_and_submits_the_short_text', async ($, on) => {
+  const { submittedTexts, fileWrites } = setUpCheckerStubs(on, ['yes', 'no', 'yes']);
+  await executeTurnAndWait($, 'What next? There is a crash.');
+  const nudgeFile = readNudgeFile(fileWrites);
+  expect(nudgeFile.did).toHaveLength(2);
+  expect(nudgeFile.do).toHaveLength(2);
+  expect(nudgeFile.phrases).toEqual(['What next? There is a crash.', 'What next? There is a crash.']);
+  expect(submittedTexts).toHaveLength(1);
+  expect(submittedTexts[0]).toContain(NUDGE_PATH);
+});
+
+test('test_yes_with_a_sentence_not_in_the_reply_submits_nothing', async ($, on) => {
+  const { submittedTexts, fileWrites } = setUpCheckerStubs(on, ['yes-sentence-not-in-reply', 'yes-sentence-not-in-reply', 'yes-sentence-not-in-reply']);
+  await executeTurnAndWait($);
+  expect(submittedTexts).toHaveLength(0);
+  expect(fileWrites).toHaveLength(0);
+});
+
+test('test_session_end_removes_the_nudge_file', async ($, on) => {
+  const { processCalls } = setUpCheckerStubs(on, [], DISPATCH_TEXT, undefined, true, undefined, [NUDGE_PATH]);
+  on('session.end', (_$: any, e: any) => ({ sessionId: e.sessionId }));
+  await $.session.end({ reason: 'other', sessionId: 'sess-9', resume: { sessionId: 'sess-9' } } as never);
+  expect(processCalls).toEqual([['rm', NUDGE_PATH]]);
+});
+
+test('test_session_end_without_a_nudge_file_removes_nothing', async ($, on) => {
+  const { processCalls } = setUpCheckerStubs(on, []);
+  on('session.end', (_$: any, e: any) => ({ sessionId: e.sessionId }));
+  await $.session.end({ reason: 'other', sessionId: 'sess-9', resume: { sessionId: 'sess-9' } } as never);
+  expect(processCalls).toHaveLength(0);
 });
 
 test('test_reply_that_answers_the_nudge_is_skipped', async ($, on) => {

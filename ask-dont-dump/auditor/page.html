@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reply Auditor</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --surface: #fcfcfb;
+  --panel: #f3f2ef;
+  --text: #0b0b0b;
+  --text-muted: #52514e;
+  --grid: #dddcd7;
+  --fires: #1baf7a;
+  --good: #008300;
+  --bad: #e34948;
+  --mark-task: #f6d8a6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1a19;
+    --panel: #262624;
+    --text: #f0efec;
+    --text-muted: #c3c2b7;
+    --grid: #3a3a37;
+    --fires: #199e70;
+    --good: #3fb950;
+    --bad: #e66767;
+    --mark-task: #7a4a1a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; background: var(--surface); color: var(--text); font: 15px/1.4 system-ui, sans-serif; }
+main { max-width: 1000px; margin: 0 auto; }
+header { position: sticky; top: 0; z-index: 1; display: flex; gap: 16px; align-items: center; padding: 8px; background: var(--panel); border-radius: 6px; border: 1px solid var(--grid); }
+header label { cursor: pointer; }
+.reply { margin: 14px 0; padding: 8px; border: 1px solid var(--grid); border-radius: 6px; }
+.reply-meta { color: var(--text-muted); margin-bottom: 4px; }
+.prompt { color: var(--text-muted); margin-bottom: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt summary { cursor: pointer; }
+.reply-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; background: var(--panel); padding: 8px; border-radius: 6px; }
+.check { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 8px; padding: 6px 8px; border-left: 6px solid var(--grid); background: var(--panel); border-radius: 6px; }
+.check.is-fired { border-left-color: var(--fires); }
+.check.is-off { opacity: 0.5; }
+.check .question { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.state { font-weight: 600; min-width: 190px; }
+.state.fired { color: var(--fires); }
+.phrase { flex: 1 1 100%; color: var(--text-muted); overflow-wrap: anywhere; }
+.state.quiet { color: var(--text-muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.controls label { cursor: pointer; }
+.controls select, .controls input[type="text"] { background: var(--surface); color: var(--text); border: 1px solid var(--grid); border-radius: 6px; padding: 4px 6px; font: inherit; }
+.controls input[type="text"] { width: 220px; }
+.controls select { max-width: 360px; }
+.marked { color: var(--good); font-weight: 600; }
+.error { color: var(--bad); font-weight: 600; margin-top: 6px; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div id="count"></div>
+    <label><input type="checkbox" id="onlyFires"> show only replies with a fire</label>
+  </header>
+  <div id="error" class="error"></div>
+  <div id="replies"></div>
+</main>
+<script type="application/json" id="data">__DATA_JSON__</script>
+<script>
+const FIRED_WRONG_REASONS = [
+  "Quoted text (user words, tool output, task title), not the agent's own claim",
+  'Already handled in the same turn (AskUserQuestion or TaskCreate used)',
+  'Item is an open task already',
+  "Described finished work or the user's next step, not open work",
+  'Rhetorical question, no answer needed',
+  'Other',
+];
+const MISSED_REASONS = [
+  'Plain-text question the user had to answer',
+  'Open work with no task',
+  'Repo-state claim not confirmed',
+  'Bug report with no task',
+  'Named an open task without checking',
+  'Skipped by the task-list rule',
+  'Buried in a long reply',
+  'Other',
+];
+const LONG_PROMPT_LENGTH = 300;
+
+const data = JSON.parse(document.getElementById('data').textContent);
+const marks = data.marks;
+
+function el(id) { return document.getElementById(id); }
+
+function make(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function readMark(uuid, question) {
+  const replyMark = marks[uuid];
+  if (replyMark === undefined) return { verdict: null, reason: '', note: '' };
+  return replyMark.checks[question];
+}
+
+function drawCount() {
+  let markedCount = 0;
+  let totalCount = 0;
+  for (const row of data.rows) {
+    for (const check of row.checks) {
+      if (check.state === 'not checked') continue;
+      totalCount++;
+      const mark = readMark(row.uuid, check.question);
+      if (mark.verdict !== null) markedCount++;
+    }
+  }
+  el('count').textContent = 'marked ' + markedCount + ' of ' + totalCount + ' rows';
+}
+
+async function saveMark(row, question, verdict, reason, note) {
+  const body = { replyUuid: row.uuid, question: question, verdict: verdict, reason: reason, note: note };
+  const response = await fetch('/mark', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) {
+    el('error').textContent = 'Save failed: HTTP ' + response.status + ' ' + (await response.text());
+    return;
+  }
+  el('error').textContent = '';
+  if (marks[row.uuid] === undefined) {
+    const checks = {};
+    for (const check of row.checks) checks[check.question] = { state: check.state, phrase: check.phrase, verdict: null, reason: '', note: '' };
+    marks[row.uuid] = { promptText: row.promptText, replyText: row.replyText, checks: checks };
+  }
+  marks[row.uuid].checks[question] = await response.json();
+  drawCount();
+}
+
+function makeSelect(reasons, selected) {
+  const select = make('select');
+  for (const reason of reasons) {
+    const option = make('option', '', reason);
+    option.value = reason;
+    option.selected = reason === selected;
+    select.appendChild(option);
+  }
+  return select;
+}
+
+function makeControls(row, check, rowIndex, checkIndex) {
+  const mark = readMark(row.uuid, check.question);
+  const controls = make('div', 'controls');
+  const radioName = 'r' + rowIndex + '-' + checkIndex;
+  const verdicts = [['correct', 'Correct'], ['wrong', 'Fired wrong'], ['missed', 'Missed']];
+  const current = mark.verdict === null ? 'correct' : mark.verdict;
+  const detail = make('span', 'controls');
+  const select = makeSelect(current === 'missed' ? MISSED_REASONS : FIRED_WRONG_REASONS, mark.reason);
+  const note = make('input');
+  note.type = 'text';
+  note.placeholder = 'other / note';
+  note.value = mark.note;
+  detail.append(select, note);
+  detail.hidden = current === 'correct';
+  function sendCurrent(verdict) {
+    saveMark(row, check.question, verdict, verdict === 'correct' ? '' : select.value, verdict === 'correct' ? '' : note.value);
+  }
+  for (const pair of verdicts) {
+    const label = make('label');
+    const radio = make('input');
+    radio.type = 'radio';
+    radio.name = radioName;
+    radio.checked = pair[0] === current;
+    radio.addEventListener('change', function () {
+      const reasons = pair[0] === 'missed' ? MISSED_REASONS : FIRED_WRONG_REASONS;
+      select.replaceChildren(...makeSelect(reasons, '').children);
+      detail.hidden = pair[0] === 'correct';
+      sendCurrent(pair[0]);
+    });
+    label.append(radio, ' ' + pair[1]);
+    controls.appendChild(label);
+  }
+  select.addEventListener('change', function () { sendCurrent(readChecked(controls)); });
+  note.addEventListener('change', function () { sendCurrent(readChecked(controls)); });
+  controls.appendChild(detail);
+  return controls;
+}
+
+function readChecked(controls) {
+  const verdicts = ['correct', 'wrong', 'missed'];
+  const radios = controls.querySelectorAll('input[type="radio"]');
+  for (let i = 0; i < radios.length; i++) {
+    if (radios[i].checked) return verdicts[i];
+  }
+  return 'correct';
+}
+
+function makeCheckRow(row, check, rowIndex, checkIndex) {
+  const isOff = check.state === 'not checked';
+  const isFired = check.state.startsWith('fired');
+  const box = make('div', 'check' + (isFired ? ' is-fired' : '') + (isOff ? ' is-off' : ''));
+  box.appendChild(make('div', 'question', check.question));
+  box.appendChild(make('div', 'state ' + (isFired ? 'fired' : 'quiet'), check.state));
+  if (!isOff) box.appendChild(makeControls(row, check, rowIndex, checkIndex));
+  if (check.phrase !== '') box.appendChild(make('div', 'phrase', 'sentence: ' + check.phrase));
+  return box;
+}
+
+function makePrompt(promptText) {
+  const isLong = promptText.length > LONG_PROMPT_LENGTH;
+  if (!isLong) return make('div', 'prompt', promptText);
+  const details = make('details', 'prompt');
+  details.appendChild(make('summary', '', promptText.slice(0, 120) + '…'));
+  details.append(promptText);
+  return details;
+}
+
+function drawReplies() {
+  const onlyFires = el('onlyFires').checked;
+  const box = el('replies');
+  box.replaceChildren();
+  for (let rowIndex = 0; rowIndex < data.rows.length; rowIndex++) {
+    const row = data.rows[rowIndex];
+    let hasFire = false;
+    for (const check of row.checks) {
+      if (check.state.startsWith('fired')) hasFire = true;
+    }
+    if (onlyFires && !hasFire) continue;
+    const section = make('section', 'reply');
+    section.appendChild(make('div', 'reply-meta', 'reply ' + (rowIndex + 1) + ' of ' + data.rows.length));
+    section.appendChild(makePrompt(row.promptText));
+    section.appendChild(make('div', 'reply-text', row.replyText));
+    for (let checkIndex = 0; checkIndex < row.checks.length; checkIndex++) {
+      section.appendChild(makeCheckRow(row, row.checks[checkIndex], rowIndex, checkIndex));
+    }
+    box.appendChild(section);
+  }
+}
+
+el('onlyFires').addEventListener('change', drawReplies);
+drawCount();
+drawReplies();
+</script>
+</body>
+</html>
