@@ -7,7 +7,7 @@ export const NUDGE =
   'You are starting work on a task. Make or add to the project\'s task list (TaskCreate) before you continue. Delegate the build to subagents. If the work has two or more features that touch the same files, give each feature its own subagent in its own worktree (Agent isolation: "worktree") and merge afterward.';
 
 export const NO_ID_NOTE =
-  " Tell the user that CLAUDE_CODE_TASK_LIST_ID is not set. Setting it lets the task list persist across sessions in this project.";
+  " Tell the user that CLAUDE_CODE_TASK_LIST_ID is not set or is not a good value. Setting it lets the task list persist across sessions in this project.";
 
 // Lowercase substrings; the message is lowercased before matching.
 export const STARTING_WORK_PHRASES = [
@@ -58,8 +58,8 @@ export function isStartingWork(message: string): boolean {
   return false;
 }
 
-export function getReason(taskListId: string | undefined, setupHelp: string): string {
-  return taskListId ? NUDGE : `${NUDGE}${NO_ID_NOTE} Show the user this setup help:\n${setupHelp}`;
+export function getReason(setupHelp: string): string {
+  return setupHelp ? `${NUDGE}${NO_ID_NOTE} Show the user this setup help:\n${setupHelp}` : NUDGE;
 }
 
 if (import.meta.main) {
@@ -70,5 +70,5 @@ if (import.meta.main) {
   if (!isStarting)
     process.exit(0);
   const setupHelp = checkTaskListId(process.env.CLAUDE_CODE_TASK_LIST_ID) ?? "";
-  console.log(JSON.stringify({ decision: "block", reason: getReason(process.env.CLAUDE_CODE_TASK_LIST_ID, setupHelp) }));
+  console.log(JSON.stringify({ decision: "block", reason: getReason(setupHelp) }));
 }

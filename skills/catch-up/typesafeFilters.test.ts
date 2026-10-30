@@ -60,6 +60,13 @@ async function mergeBatchesAtOneHundredQuestions() {
   assert.equal(Object.keys(requests[1].questions).length, 5);
 }
 
+async function mergeSkipsPairsThatDifferOnlyByTaskPrefix() {
+  const { client, requests } = buildFakeClient(() => ({ choice: "no", probability: 0.9 }));
+  const kept = await mergeSameMeaningItems(client, buildItems("Task #1: x", "#1: x"), "actions", []);
+  assert.equal(requests.length, 0);
+  assert.deepEqual(kept.map((item) => item.text), ["#1: x"]);
+}
+
 async function mergeSendsNothingForOneItem() {
   const { client, requests } = buildFakeClient(() => ({ choice: "no", probability: 0.9 }));
   const kept = await mergeSameMeaningItems(client, buildItems("only"), "rules", []);
@@ -137,6 +144,7 @@ async function logHoldsItemTextAndAnswers() {
 
 test("merge drops the older item on yes and keeps both on unclear", mergeDropsOlderOnYesKeepsOnUnclear);
 test("merge sends at most 100 questions per request", mergeBatchesAtOneHundredQuestions);
+test("merge skips pairs that differ only by a Task prefix", mergeSkipsPairsThatDifferOnlyByTaskPrefix);
 test("merge sends nothing for one item", mergeSendsNothingForOneItem);
 test("completed tasks drop an item only above the threshold", completedTasksDropAboveThresholdOnly);
 test("completed step sends at most 3 questions per request", completedStepBatchesAtThreeQuestions);

@@ -15,7 +15,7 @@ CLAUDE_HOOKS_PLANNING_GUIDE_PATH=../plan-file-reminder/planning.md
 2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
 
 ```ts
-{ event: "PostToolUse", matcher: "Write|Edit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: true },
+{ event: "PostToolUse", matcher: "Write|Edit|MultiEdit|NotebookEdit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: true },
 ```
 
 ## How it works

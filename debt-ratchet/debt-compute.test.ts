@@ -37,6 +37,12 @@ test("computeDebt outside dotfiles is not ignored by the eslint base path: real 
   assert.deepEqual(debt?.lines, [1]);
 });
 
+test("computeDebt does not count eslint's ignored-file warning for a .test.ts file", () => {
+  const repo = setUpRepo("export const value = 1;\n");
+  const debt = computeDebt(`${repo}/subject.test.ts`);
+  assert.deepEqual(debt?.lines, []);
+});
+
 test("a source file with no test file is flagged missingTest and costs 1 more debt point", () => {
   // Steps: a repo has a source file and no test file. Compute debt: missingTest is true.
   const repo = setUpRepo("export const value = 1;\n");

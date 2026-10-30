@@ -37,8 +37,17 @@ export async function sendQuestions(client: TypeSafeClient, step: string, state:
 export async function mergeSameMeaningItems(client: TypeSafeClient, items: Item[], listName: string, log: TypesafeLog): Promise<Item[]> {
   const questions: Record<string, ChoiceQuestion> = {};
   const pairs: { name: string; older: number }[] = [];
+  const olderDuplicates = new Set<number>();
   for (let older = 0; older < items.length; older++) {
     for (let newer = older + 1; newer < items.length; newer++) {
+      // ponytail: exact match after stripping "Task " only; widen when the log shows another prefix
+      const olderText = items[older].text.replace(/^Task /, "");
+      const newerText = items[newer].text.replace(/^Task /, "");
+      const isSameAfterStrippingPrefix = olderText === newerText;
+      if (isSameAfterStrippingPrefix) {
+        olderDuplicates.add(older);
+        continue;
+      }
       const name = `pair_${older}_${newer}`;
       questions[name] = choice(`Do \`items[${older}].text\` and \`items[${newer}].text\` say the same thing using different words?`, { yes: null, no: null, unclear: null });
       pairs.push({ name, older });
@@ -48,7 +57,6 @@ export async function mergeSameMeaningItems(client: TypeSafeClient, items: Item[
   for (const item of items)
     itemTexts.push(item.text);
   const answers = await sendQuestions(client, `merge:${listName}`, { items }, questions, itemTexts, MAX_QUESTIONS_PER_REQUEST, log);
-  const olderDuplicates = new Set<number>();
   for (const pair of pairs) {
     const isSameThing = answers[pair.name].choice === "yes";
     if (isSameThing)

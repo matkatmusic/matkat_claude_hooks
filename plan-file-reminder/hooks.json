@@ -2,7 +2,7 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           { "type": "command", "command": "node \"/path/to/claude_hooks/plan-file-reminder/plan-file-reminder.ts\"", "timeout": 120 }
         ]

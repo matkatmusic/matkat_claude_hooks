@@ -2,24 +2,23 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { isBashContentWrite } from "../shared/bash-content-write.ts";
-import { isBashEdit } from "./block-bash-edits.ts";
 
 test("blocks a file descriptor redirect to a file", () => {
-  assert.equal(isBashEdit("make 2> err.log"), true);
-  assert.equal(isBashEdit("make 2>>err.log"), true);
+  assert.equal(isBashContentWrite("make 2> err.log"), true);
+  assert.equal(isBashContentWrite("make 2>>err.log"), true);
 });
 
 test("blocks python inline code", () => {
-  assert.equal(isBashEdit('python -c "open(1).write(2)"'), true);
-  assert.equal(isBashEdit("python3 -c 'print(1)'"), true);
+  assert.equal(isBashContentWrite('python -c "open(1).write(2)"'), true);
+  assert.equal(isBashContentWrite("python3 -c 'print(1)'"), true);
 });
 
 test("allows descriptor dups, dev null, and quoted text", () => {
-  assert.equal(isBashEdit("ls 2>&1"), false);
-  assert.equal(isBashEdit("make 2>/dev/null"), false);
-  assert.equal(isBashEdit("make 2> /dev/null"), false);
-  assert.equal(isBashEdit('git commit -m "run python -c and 2> x"'), false);
-  assert.equal(isBashEdit("python script.py"), false);
+  assert.equal(isBashContentWrite("ls 2>&1"), false);
+  assert.equal(isBashContentWrite("make 2>/dev/null"), false);
+  assert.equal(isBashContentWrite("make 2> /dev/null"), false);
+  assert.equal(isBashContentWrite('git commit -m "run python -c and 2> x"'), false);
+  assert.equal(isBashContentWrite("python script.py"), false);
 });
 
 test("blocks commands that write file content", () => {

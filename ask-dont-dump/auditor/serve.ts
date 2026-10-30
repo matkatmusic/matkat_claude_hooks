@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { parseTranscript, type ParsedTranscript } from './parseTranscript';
 
 const SERVER_HOSTNAME = '127.0.0.1';
@@ -15,8 +16,10 @@ type MarkBody = { replyUuid?: unknown; question?: unknown; verdict?: unknown; re
 async function loadMarks(transcriptPath: string, sessionId: string): Promise<MarksFile> {
   const marksFile = Bun.file(`${MARKS_DIR}/${sessionId}.json`);
   const hasMarksFile = await marksFile.exists();
-  if (!hasMarksFile)
-    return { transcriptPath, replies: {} };
+  if (!hasMarksFile) {
+    const tildePath = transcriptPath.replace(homedir(), '~');
+    return { transcriptPath: tildePath, replies: {} };
+  }
   return await marksFile.json();
 }
 

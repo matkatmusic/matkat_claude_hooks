@@ -28,11 +28,11 @@ test("ignores phrases inside quotes or backticks", () => {
   assert.ok(isStartingWork('He said "hello". Starting with the parser.'));
 });
 
-function runHook(input: object): string {
+function runHook(input: object, taskListId = "test"): string {
   const result = spawnSync("node", [new URL("./nudge-task-list.ts", import.meta.url).pathname], {
     input: JSON.stringify(input),
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_CODE_TASK_LIST_ID: "test" },
+    env: { ...process.env, CLAUDE_CODE_TASK_LIST_ID: taskListId },
   });
   return result.stdout;
 }
@@ -43,8 +43,13 @@ test("blocks the first stop and lets the second stop pass", () => {
   assert.equal(runHook({ last_assistant_message: message, stop_hook_active: true }), "");
 });
 
-test("adds the missing-id note and setup help only when CLAUDE_CODE_TASK_LIST_ID is unset", () => {
-  assert.equal(getReason("dotfiles", "help"), NUDGE);
-  assert.ok(getReason(undefined, "help").startsWith(NUDGE + NO_ID_NOTE));
-  assert.ok(getReason(undefined, "help").endsWith("\nhelp"));
+test("adds the note and setup help only when the id check gives a message", () => {
+  assert.equal(getReason(""), NUDGE);
+  assert.ok(getReason("help").startsWith(NUDGE + NO_ID_NOTE));
+  assert.ok(getReason("help").endsWith("\nhelp"));
+});
+
+test("a bad id value gets the note and setup help", () => {
+  const output = JSON.parse(runHook({ last_assistant_message: "Starting on the parser now." }, "../tasks"));
+  assert.ok(output.reason.includes(NO_ID_NOTE));
 });

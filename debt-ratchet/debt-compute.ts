@@ -39,7 +39,7 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, "--fix", realFilePath], { cwd: repoRoot, encoding: "utf8" });
   const afterFix = readFileSync(realFilePath, "utf8");
   const reformatted = beforeFix !== afterFix;
-  const result = countEslintMessages(["--format", "json", realFilePath], repoRoot);
+  const result = countEslintMessages(["--format", "json", "--no-warn-ignored", realFilePath], repoRoot);
   const lineCount = afterFix.trimEnd().split("\n").length;
   const baseName = basename(realFilePath, ".ts");
   const testFileCandidates = [`${dir}/${baseName}.test.ts`, `${repoRoot}/tests/${baseName}.test.ts`, `${repoRoot}/tests/test-${baseName}.ts`];

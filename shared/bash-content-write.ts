@@ -46,7 +46,13 @@ const sdOrSedInPlace = matchAnyOf(sdNotRightAfterSinglePipe + wordBoundary + "sd
 // `tee` writes its stdin to a file while piping it through. e.g. "echo hi | tee f.txt".
 const teeCommand = wordBoundary + "tee" + wordBoundary;
 
-const BASH_CONTENT_WRITE_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, outputFlag, sdOrSedInPlace, teeCommand));
+// A single-digit fd redirect to a file, e.g. `2> err.log`; `2>&1` and `2>/dev/null` are excused.
+const fdRedirectToFile = "(?<=^|" + whitespace + ")" + digit + ">{1,2}" + whitespaceStar + assertNoLookahead(whitespaceStar + matchAnyOf("&", "/dev/null"));
+
+// `python -c` / `python3 -c` runs inline code that can write files.
+const pythonInlineCode = wordBoundary + "python[" + digit + ".]" + zeroOrMore + whitespacePlus + "-c" + wordBoundary;
+
+const BASH_CONTENT_WRITE_PATTERN = new RegExp(matchAnyOf(redirectToFile, heredoc, outputFlag, sdOrSedInPlace, teeCommand, fdRedirectToFile, pythonInlineCode));
 
 export function isBashContentWrite(command: string): boolean {
   const strippedCommand = command.replace(/'[^']*'|"[^"]*"/g, "");

@@ -10,7 +10,6 @@ type SubagentTask = {
   description: string;
   startTime: number;
   model?: string;
-  // effort?: keyof typeof EFFORT_ABBREVIATION | number; // not in stdin payload; read from transcript instead
   tokenCount: number;
 };
 

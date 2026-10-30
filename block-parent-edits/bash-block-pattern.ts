@@ -1,4 +1,4 @@
-import { isBashEdit } from "../block-bash-edits/block-bash-edits.ts";
+import { isBashContentWrite } from "../shared/bash-content-write.ts";
 
 // --- regex token vocabulary (jfred's regex_expressions.ts style: named source-string fragments, composed with
 // `+`, wrapped in `new RegExp(...)` only at the end) -------------------------------------------------------
@@ -63,6 +63,6 @@ export function isBashCommandBlocked(command: string): boolean {
   const commandWithoutIdleStateWrites = command.replace(IDLE_STATE_REDIRECT, "");
   const strippedCommand = commandWithoutIdleStateWrites.replace(/'[^']*'|"[^"]*"/g, "");
   const isPatternBlocked = BASH_BLOCK_PATTERN.test(strippedCommand);
-  const isSharedBashEdit = isBashEdit(commandWithoutIdleStateWrites);
+  const isSharedBashEdit = isBashContentWrite(commandWithoutIdleStateWrites);
   return isPatternBlocked || isSharedBashEdit;
 }

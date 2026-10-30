@@ -34,8 +34,7 @@ When a turn stops, the hook reads the transcript and finds the `.ts` files that 
 
 ### What it does
 
-It runs when Claude stops a turn. A subagent stop also runs it. It finds the `.ts` files that were edited in the turn. It runs eslint with `--fix` on each file. It counts the eslint findings that remain. It counts one extra point for each file that has no test file. It blocks the stop if the total did not drop. It also blocks the stop if a file is too long. A re-entrant stop (when `stop_hook_active` is true) passes without a check.
-
+It runs when Claude stops a turn. A subagent stop also runs it. It finds the `.ts` files that were edited in the turn. It runs eslint with `--fix` on each file. It counts the eslint findings that remain. It counts one extra point for each file that has no test file. It blocks the stop if the total did not drop. It also blocks the stop if a file is too long. A re-entrant stop (when `stop_hook_active` is true) is checked again. The hook counts its blocks in a chain. It passes after 3 blocks in a row.
 `debt-ratchet-report.ts` is a second script. It counts the same debt for every `.ts` file in a git repo. It never blocks. You run it by hand.
 
 ### The problem it solves

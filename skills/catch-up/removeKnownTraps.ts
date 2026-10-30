@@ -27,7 +27,7 @@ export async function removeKnownTraps(client: TypeSafeClient, rules: Item[], mi
       if (!isIndex)
         memoryCriteria[name] = readMemoryDescription(join(memoryFolder, name));
     }
-    // ponytail: about 1000 memory files at 3 questions per request pass 64k tokens again; size batches by measured tokens (task #255)
+    // ponytail: about 450 memory files at 3 questions per request pass 64k tokens again; size batches by measured tokens (task #255)
     memoryCriteria.none = "No memory matches this item.";
   }
   const state: Record<string, unknown> = { rules, mistakes, globalClaudeMd: readFileSync(globalClaudeMdPath, "utf8") };

@@ -7,7 +7,10 @@ import { basename } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const stateDir = mkdtempSync(`${tmpdir()}/typecheck-on-stop-state-`);
-after(() => rmSync(stateDir, { recursive: true, force: true }));
+function removeStateDir(): void {
+  rmSync(stateDir, { recursive: true, force: true });
+}
+after(removeStateDir);
 
 function getBlockCountPath(transcriptPath: string): string {
   return `${stateDir}/typecheck-blocks-${basename(transcriptPath, ".jsonl")}.json`;
@@ -29,7 +32,7 @@ function writeTranscript(dir: string, filePath: string): string {
   return path;
 }
 
-function runHook(input: { transcript_path: string; [key: string]: unknown }, maxErrorLines: string = "20", extraEnv: Record<string, string> = {}, keepsBlockCount: boolean = false): string {
+function executeHook(input: { transcript_path: string; [key: string]: unknown }, maxErrorLines: string = "20", extraEnv: Record<string, string> = {}, keepsBlockCount: boolean = false): string {
   const run = spawnSync("node", [`${import.meta.dirname}/typecheck-on-stop.ts`], {
     input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: maxErrorLines }, ...input }),
     encoding: "utf8",
@@ -55,84 +58,99 @@ function setUpProject(fileName: string, source: string): { cwd: string; transcri
   return setUpProjectFiles(fileName, { [fileName]: source });
 }
 
-test("blocks the stop when an edited .ts file has a type error", () => {
+function assertTsTypeErrorBlocksStop(): void {
   const { cwd, transcript_path } = setUpProject("bad.ts", 'const x: number = "a";\n');
-  const output = runHook({ cwd, transcript_path, stop_hook_active: false });
+  const output = executeHook({ cwd, transcript_path, stop_hook_active: false });
   const parsed = JSON.parse(output);
   assert.equal(parsed.decision, "block");
   assert.match(parsed.reason, /TS2322/);
-});
+}
+test("blocks the stop when an edited .ts file has a type error", assertTsTypeErrorBlocksStop);
 
-test("allows the stop when the project type checks", () => {
+function assertCleanProjectAllowsStop(): void {
   const { cwd, transcript_path } = setUpProject("good.ts", "const x: number = 1;\n");
-  const output = runHook({ cwd, transcript_path, stop_hook_active: false });
+  const output = executeHook({ cwd, transcript_path, stop_hook_active: false });
   assert.equal(output, "");
-});
+}
+test("allows the stop when the project type checks", assertCleanProjectAllowsStop);
 
-test("keeps only as many error lines as the env limit allows", () => {
+function assertEnvLimitCapsErrorLines(): void {
   const source = 'const a: number = "a";\nconst b: number = "b";\n';
   const { cwd, transcript_path } = setUpProject("two.ts", source);
-  const output = runHook({ cwd, transcript_path, stop_hook_active: false }, "1");
+  const output = executeHook({ cwd, transcript_path, stop_hook_active: false }, "1");
   const parsed = JSON.parse(output);
-  const errorCount = parsed.reason.split("\n").filter((line: string) => line.includes("error TS")).length;
-  assert.equal(errorCount, 1);
-});
+  const reasonLines: string[] = parsed.reason.split("\n");
+  const errorLines: string[] = [];
+  for (let i = 0; i < reasonLines.length; i++) {
+    const isErrorLine = reasonLines[i].includes("error TS");
+    if (isErrorLine)
+      errorLines.push(reasonLines[i]);
+  }
+  assert.equal(errorLines.length, 1);
+}
+test("keeps only as many error lines as the env limit allows", assertEnvLimitCapsErrorLines);
 
-test("blocks the stop when an edited .tsx file has a type error", () => {
+function assertTsxTypeErrorBlocksStop(): void {
   const { cwd, transcript_path } = setUpProject("bad.tsx", 'const x: number = "a";\n');
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }));
   assert.equal(parsed.decision, "block");
   assert.match(parsed.reason, /bad\.tsx/);
-});
+}
+test("blocks the stop when an edited .tsx file has a type error", assertTsxTypeErrorBlocksStop);
 
-test("blocks the stop when an edited .mts file has a type error", () => {
+function assertMtsTypeErrorBlocksStop(): void {
   const cwd = mkdtempSync(`${tmpdir()}/typecheck-on-stop-`);
   writeFileSync(`${cwd}/tsconfig.json`, JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ["*.mts"] }));
   writeFileSync(`${cwd}/bad.mts`, 'const x: number = "a";\n');
   const transcript_path = writeTranscript(cwd, `${cwd}/bad.mts`);
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }));
   assert.equal(parsed.decision, "block");
-});
+}
+test("blocks the stop when an edited .mts file has a type error", assertMtsTypeErrorBlocksStop);
 
-test("does not block on errors in files that were not edited, and lists them as a note", () => {
+function assertUneditedFileErrorsOnlyNote(): void {
   const { cwd, transcript_path } = setUpProjectFiles("good.ts", {
     "good.ts": "const x: number = 1;\n",
     "old.ts": 'const y: number = "old";\n',
   });
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }));
   assert.equal(parsed.decision, undefined);
   assert.match(parsed.systemMessage, /old\.ts/);
-});
+}
+test("does not block on errors in files that were not edited, and lists them as a note", assertUneditedFileErrorsOnlyNote);
 
-test("blocks on the edited file errors and lists the other file errors as a note", () => {
+function assertEditedFileErrorsBlockWithNote(): void {
   const { cwd, transcript_path } = setUpProjectFiles("bad.ts", {
     "bad.ts": 'const x: number = "a";\n',
     "old.ts": 'const y: number = "old";\n',
   });
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }));
   assert.equal(parsed.decision, "block");
   assert.match(parsed.reason, /bad\.ts\(/);
   assert.match(parsed.reason, /old\.ts\(/);
-});
+}
+test("blocks on the edited file errors and lists the other file errors as a note", assertEditedFileErrorsBlockWithNote);
 
-test("reports the total error count even when the error lines are capped", () => {
+function assertTotalErrorCountSurvivesCap(): void {
   const source = 'const a: number = "a";\nconst b: number = "b";\nconst c: number = "c";\n';
   const { cwd, transcript_path } = setUpProject("three.ts", source);
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }, "1"));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }, "1"));
   assert.match(parsed.reason, /3 errors/);
-});
+}
+test("reports the total error count even when the error lines are capped", assertTotalErrorCountSurvivesCap);
 
-test("blocks loudly with stderr when tsc fails to start", () => {
+function assertTscStartFailureBlocksWithStderr(): void {
   const { cwd, transcript_path } = setUpProject("good.ts", "const x: number = 1;\n");
   const fakeBin = mkdtempSync(`${tmpdir()}/typecheck-on-stop-bin-`);
   mkdirSync(fakeBin, { recursive: true });
   writeFileSync(`${fakeBin}/npx`, "#!/bin/sh\necho boom-from-fake-npx >&2\nexit 1\n");
   chmodSync(`${fakeBin}/npx`, 0o755);
   const env = { PATH: `${fakeBin}:${process.env.PATH}` };
-  const parsed = JSON.parse(runHook({ cwd, transcript_path, stop_hook_active: false }, "20", env));
+  const parsed = JSON.parse(executeHook({ cwd, transcript_path, stop_hook_active: false }, "20", env));
   assert.equal(parsed.decision, "block");
   assert.match(parsed.reason, /boom-from-fake-npx/);
-});
+}
+test("blocks loudly with stderr when tsc fails to start", assertTscStartFailureBlocksWithStderr);
 
 function assertMissingHelperLogGetsEmptyLog(): void {
   const { cwd } = setUpProject("good.ts", "const x: number = 1;\n");
@@ -148,15 +166,16 @@ function assertMissingHelperLogGetsEmptyLog(): void {
 }
 test("a subagent stop with no helper log makes an empty log and exits clean", assertMissingHelperLogGetsEmptyLog);
 
-test("keeps blocking when stop_hook_active is true, and stops blocking after the limit", () => {
+function assertActiveStopBlocksUntilLimit(): void {
   const { cwd, transcript_path } = setUpProject("bad.ts", 'const x: number = "a";\n');
   const decisions: (string | undefined)[] = [];
   for (let i = 0; i < 6; i++) {
-    const output = runHook({ cwd, transcript_path, stop_hook_active: true }, "20", {}, true);
+    const output = executeHook({ cwd, transcript_path, stop_hook_active: true }, "20", {}, true);
     decisions.push(JSON.parse(output).decision);
   }
   rmSync(getBlockCountPath(transcript_path), { force: true });
   assert.equal(decisions[0], "block");
   assert.equal(decisions[1], "block");
   assert.notEqual(decisions[5], "block");
-});
+}
+test("keeps blocking when stop_hook_active is true, and stops blocking after the limit", assertActiveStopBlocksUntilLimit);

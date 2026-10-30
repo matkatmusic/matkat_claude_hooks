@@ -184,7 +184,8 @@ The `statusLine` and `subagentStatusLine` settings always go in `settings.json`.
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\""
+    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
+    "refreshInterval": 1
   }
 }
 ```

@@ -4681,7 +4681,7 @@
     },
     {
       "id": "s2-old-behavior-back",
-      "userPrompt": "i refactored to make the intention obvious and follow the Single Responsibility Principle.\n\nread and confirm:\n/Users/matkatmusicllc/Programming/dotfiles/claude/claude_hooks/context-exit/mod/hooks/register.ts",
+      "userPrompt": "i refactored to make the intention obvious and follow the Single Responsibility Principle.\n\nread and confirm:\n~/Programming/dotfiles/claude/claude_hooks/context-exit/mod/hooks/register.ts",
       "originalReply": [
         "I checked the context-exit file. It behaves the same as before: the user value wins, then the default, and a missing default still throws. Three issues remain.",
         "",
@@ -7683,7 +7683,7 @@
       "userPrompt": "one of the hooks is throwing errors now.  the subagent chat shows this:\n\n\n\n<pasted_content id=\"3874\">\nPostToolUse:Write hook error\nFailed with non-blocking status code: node:internal/modules/cjs/loader:1607\nPostToolUse:Write hook error\nFailed with non-blocking status code: node:internal/modules/cjs/loader:1607\n</pasted_content id=\"3874\">\n",
       "originalReply": [
         "The error comes from the taskTools plugin, not from claude_hooks. Another session moved one of its hook scripts, but this chat still runs the hook list it loaded when it started.",
-        "- **The error:** `Cannot find module '/Users/matkatmusicllc/Programming/taskTools/scripts/hooks/reflow-comments-post.ts'`.",
+        "- **The error:** `Cannot find module '~/Programming/taskTools/scripts/hooks/reflow-comments-post.ts'`.",
         "- **Cause:** `~/Programming/taskTools` (branch `reusable-blocks-in-new-diagrams`) has uncommitted changes:",
         "  - The changes delete `scripts/hooks/reflow-comments-post.ts` and `reflowComments.ts`.",
         "  - The changes also edit `hooks/hooks.json`. It no longer lists that script.",
@@ -8271,7 +8271,7 @@
         },
         {
           "category": [],
-          "text": "- **The error:** `Cannot find module '/Users/matkatmusicllc/Programming/taskTools/scripts/hooks/reflow-comments-post.ts'`."
+          "text": "- **The error:** `Cannot find module '~/Programming/taskTools/scripts/hooks/reflow-comments-post.ts'`."
         },
         {
           "category": [],
