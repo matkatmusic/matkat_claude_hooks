@@ -38,7 +38,8 @@ const FUNCTION_VERBS = [
 // const VERB_WORD = `(^|_)(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|(${capitalizedVerbs.join('|')})([A-Z0-9_]|$)`;
 // A name starts with a verb, after an optional "prefix_".
 // const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)`;
-const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|^(toJSON|toString)$`;
+// const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|^(toJSON|toString)$`;
+const VERB_WORD = `^([a-z0-9]+_)?(${FUNCTION_VERBS.join('|')})([A-Z0-9_]|$)|^(toJSON|toString|writeln|scrollToBottom|onSelectionChange|resize|fit|proposeDimensions|observe|unobserve|disconnect)$`;
 const FUNCTION_NAME_SELECTOR = [
   `FunctionDeclaration > Identifier.id[name!=/${VERB_WORD}/]`,
   `VariableDeclarator[init.type=/^(ArrowFunctionExpression|FunctionExpression)$/] > Identifier.id[name!=/${VERB_WORD}/]`,
