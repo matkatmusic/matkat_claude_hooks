@@ -73,15 +73,15 @@ async function completedTasksDropAboveThresholdOnly() {
   writeFileSync(`${tasksFolder}/2.json`, JSON.stringify({ id: "2", subject: "Open work", status: "pending" }));
   writeFileSync(`${tasksFolder}/.lock`, "not json");
   const { client, requests } = buildFakeClient((name) => {
-    if (name === "item_0")
+    if (name === "item_0_from_0")
       return { choice: "task_1", probability: 0.9 };
-    if (name === "item_1")
+    if (name === "item_1_from_0")
       return { choice: "task_1", probability: 0.4 };
     return { choice: "none", probability: 0.99 };
   });
   const kept = await removeCompletedItems(client, buildItems("a", "b", "c"), tasksFolder, "not_done", []);
   assert.deepEqual(kept.map((item) => item.text), ["b", "c"]);
-  const labels = requests[0].questions.item_0.criteria;
+  const labels = requests[0].questions.item_0_from_0.criteria;
   assert.deepEqual(Object.keys(labels), ["task_1", "none"]);
   assert.equal(labels.task_1, "Fix the bug");
 }
@@ -97,6 +97,26 @@ async function completedStepBatchesAtThreeQuestions() {
   assert.equal(Object.keys(requests[0].questions).length, 3);
   assert.equal(Object.keys(requests[1].questions).length, 3);
   assert.equal(Object.keys(requests[2].questions).length, 1);
+}
+
+async function completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria() {
+  const tasksFolder = mkdtempSync(`${tmpdir()}/catch-up-tasks-`);
+  for (let id = 1; id <= 300; id++)
+    writeFileSync(`${tasksFolder}/${id}.json`, JSON.stringify({ id: String(id), subject: `Task ${id}`, status: "completed" }));
+  // sorted as text, 99.json sorts last, so task_99 sits in the second group
+  const { client, requests } = buildFakeClient((name) => {
+    if (name === "item_0_from_254")
+      return { choice: "task_99", probability: 0.9 };
+    return { choice: "none", probability: 0.99 };
+  });
+  const kept = await removeCompletedItems(client, buildItems("a", "b"), tasksFolder, "not_done", []);
+  assert.deepEqual(kept.map((item) => item.text), ["b"]);
+  for (const request of requests) {
+    for (const name of Object.keys(request.questions)) {
+      const criteriaCount = Object.keys(request.questions[name].criteria).length;
+      assert.ok(criteriaCount <= 255, `${name} has ${criteriaCount} criteria`);
+    }
+  }
 }
 
 async function logHoldsItemTextAndAnswers() {
@@ -120,4 +140,5 @@ test("merge sends at most 100 questions per request", mergeBatchesAtOneHundredQu
 test("merge sends nothing for one item", mergeSendsNothingForOneItem);
 test("completed tasks drop an item only above the threshold", completedTasksDropAboveThresholdOnly);
 test("completed step sends at most 3 questions per request", completedStepBatchesAtThreeQuestions);
+test("completed step keeps each question at 255 criteria or fewer", completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria);
 test("the log file holds item text and answers", logHoldsItemTextAndAnswers);

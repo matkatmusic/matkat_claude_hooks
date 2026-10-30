@@ -16,6 +16,8 @@ export const DROP_THRESHOLD = 0.5;
 const MAX_QUESTIONS_PER_REQUEST = 100;
 // ponytail: each question holds every completed task; about 600 completed tasks at 3 per request pass 64k tokens again (task #255)
 const MAX_COMPLETED_QUESTIONS_PER_REQUEST = 3;
+// TypeSafe refuses more than 255 criteria; one is "none"
+const MAX_TASKS_PER_CRITERIA = 254;
 
 export async function sendQuestions(client: TypeSafeClient, step: string, state: any, questions: Record<string, ChoiceQuestion>, itemTexts: string[], batchSize: number, log: TypesafeLog): Promise<AnswerMap> {
   const names = Object.keys(questions);
@@ -62,7 +64,7 @@ export async function mergeSameMeaningItems(client: TypeSafeClient, items: Item[
 }
 
 export async function removeCompletedItems(client: TypeSafeClient, items: Item[], tasksFolder: string, listName: string, log: TypesafeLog): Promise<Item[]> {
-  const criteria: Record<string, string> = {};
+  const completedTasks: Record<string, string> = {};
   for (const name of readdirSync(tasksFolder).sort()) {
     const isJson = name.endsWith(".json");
     if (!isJson)
@@ -70,22 +72,32 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
     const task = JSON.parse(readFileSync(join(tasksFolder, name), "utf8"));
     const isCompleted = task.status === "completed";
     if (isCompleted)
-      criteria[`task_${task.id}`] = task.subject;
+      completedTasks[`task_${task.id}`] = task.subject;
   }
-  criteria.none = "No completed task matches this item.";
+  const taskNames = Object.keys(completedTasks);
   const questions: Record<string, ChoiceQuestion> = {};
-  const itemTexts: string[] = [];
-  for (let index = 0; index < items.length; index++) {
-    questions[`item_${index}`] = choice(`Which completed task-list entry does \`items[${index}].text\` most closely match?`, criteria);
-    itemTexts.push(items[index].text);
+  for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
+    const criteria: Record<string, string> = {};
+    for (const taskName of taskNames.slice(start, start + MAX_TASKS_PER_CRITERIA))
+      criteria[taskName] = completedTasks[taskName];
+    criteria.none = "No completed task matches this item.";
+    for (let index = 0; index < items.length; index++)
+      questions[`item_${index}_from_${start}`] = choice(`Which completed task-list entry does \`items[${index}].text\` most closely match?`, criteria);
   }
+  const itemTexts: string[] = [];
+  for (const item of items)
+    itemTexts.push(item.text);
   const answers = await sendQuestions(client, `completed:${listName}`, { items }, questions, itemTexts, MAX_COMPLETED_QUESTIONS_PER_REQUEST, log);
   const kept: Item[] = [];
   for (let index = 0; index < items.length; index++) {
-    const answer = answers[`item_${index}`];
-    const isMatch = answer.choice !== "none";
-    const isConfident = answer.probabilities[answer.choice] > DROP_THRESHOLD;
-    const isDone = isMatch && isConfident;
+    let isDone = false;
+    for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
+      const answer = answers[`item_${index}_from_${start}`];
+      const isMatch = answer.choice !== "none";
+      const isConfident = answer.probabilities[answer.choice] > DROP_THRESHOLD;
+      if (isMatch && isConfident)
+        isDone = true;
+    }
     if (!isDone)
       kept.push(items[index]);
   }
