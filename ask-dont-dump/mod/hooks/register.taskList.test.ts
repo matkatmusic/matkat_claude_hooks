@@ -8,7 +8,7 @@ test('test_reply_naming_an_open_task_skips_the_two_task_checks', async ($, on) =
   expect(modelCalls.count).toBe(4)
   expect(modelPrompts[0]).toContain('question or choice')
   expect(submittedTexts).toHaveLength(1)
-  expect(readNudgeFile(fileWrites).did).toHaveLength(1)
+  expect(readNudgeFile(fileWrites)).toHaveLength(1)
 })
 
 test('test_reply_naming_an_in_progress_task_skips_the_two_task_checks', async ($, on) => {
@@ -37,7 +37,7 @@ test('test_reply_naming_only_a_completed_task_asks_the_model_about_all_six_check
   const unfinishedWorkCheck = REPLY_CHECKS[2]
   if (unfinishedWorkCheck === undefined)
     throw new Error('REPLY_CHECKS has no third check')
-  expect(readNudgeFile(fileWrites).did).toEqual([unfinishedWorkCheck.did])
+  expect(readNudgeFile(fileWrites).map(item => item.did)).toEqual([unfinishedWorkCheck.did])
 })
 
 test('test_reply_without_numbers_sends_open_task_subjects_to_the_model', async ($, on) => {

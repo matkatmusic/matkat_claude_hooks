@@ -1,6 +1,7 @@
 import { REPLY_CHECKS } from '../mod/hooks/register';
-import type { FlaggedChecks } from '../mod/hooks/nudgeFile';
-import { addReadCalls, addReadResults, findNudgeDetails, hasToolResult, isNewFormatNudge, readTextBlocks, type Content, type ReadCall } from './nudgeDetails';
+import type { FlaggedCheck } from '../mod/hooks/nudgeFile';
+import { assertOldNudgeDidsHaveChecks, containsOldNudge } from './oldNudgeTexts';
+import { addReadCalls, addReadResults, containsToolResult, findNudgeDetails, isNewFormatNudge, readTextBlocks, type Content, type ReadCall } from './nudgeDetails';
 
 const PLUGIN_NAME = 'ask-dont-dump';
 const TASK_NUMBER_PATTERN = /#\d+/;
@@ -23,7 +24,7 @@ type Turn = {
   promptText: string;
   isNudge: boolean;
   nudgeText: string;
-  flagged: FlaggedChecks | undefined;
+  flagged: FlaggedCheck[] | undefined;
   isDetailsUnread: boolean;
   replyUuid: string;
   replyMessageId: string;
@@ -31,7 +32,7 @@ type Turn = {
 };
 
 function addPromptTurn(turns: Turn[], line: Line) {
-  const isToolResult = hasToolResult(line.message.content);
+  const isToolResult = containsToolResult(line.message.content);
   const isMeta = line.isMeta === true;
   const isSkippedPrompt = isToolResult || isMeta;
   if (isSkippedPrompt)
@@ -74,7 +75,8 @@ function applyNudges(turns: Turn[], reads: ReadCall[]) {
     if (checkedTurn === undefined)
       throw new Error(`nudge has no reply before it: ${turn.promptText}`);
     checkedTurn.nudgeText = turn.promptText;
-    if (!isNewFormatNudge(turn.promptText))
+    const isNewFormat = isNewFormatNudge(turn.promptText);
+    if (!isNewFormat)
       continue;
     let endTurnIndex = turns.length;
     for (let k = turns.length - 1; k > i; k--) {
@@ -90,9 +92,18 @@ function buildChecks(turn: Turn): CheckRow[] {
   const hasTaskNumber = TASK_NUMBER_PATTERN.test(turn.replyText);
   const checks: CheckRow[] = [];
   for (const check of REPLY_CHECKS) {
-    const flaggedIndex = turn.flagged === undefined ? -1 : turn.flagged.did.indexOf(check.did);
-    const isFiredByDetails = flaggedIndex >= 0;
-    const isFired = turn.nudgeText.includes(check.result) || isFiredByDetails;
+    // const flaggedIndex = turn.flagged === undefined ? -1 : turn.flagged.did.indexOf(check.did);
+    // const isFiredByDetails = flaggedIndex >= 0;
+    let flaggedProof = '';
+    let isFiredByDetails = false;
+    for (const item of turn.flagged ?? []) {
+      if (item.did === check.did) {
+        isFiredByDetails = true;
+        flaggedProof = item.proof;
+      }
+    }
+    const isFiredByOldText = containsOldNudge(turn.nudgeText, check.did);
+    const isFired = isFiredByOldText || isFiredByDetails;
     const isMaybeSkipped = check.skipsListedTasks === true && hasTaskNumber;
     let state: CheckState = 'quiet';
     let phrase = '';
@@ -103,7 +114,7 @@ function buildChecks(turn: Turn): CheckRow[] {
     if (isFired)
       state = 'fired';
     if (isFiredByDetails)
-      phrase = (turn.flagged as FlaggedChecks).phrases[flaggedIndex] as string;
+      phrase = flaggedProof;
     if (turn.isNudge)
       state = 'not checked';
     checks.push({ question: check.question, state, phrase });
@@ -112,6 +123,7 @@ function buildChecks(turn: Turn): CheckRow[] {
 }
 
 export function parseTranscript(rawText: string): ParsedTranscript {
+  assertOldNudgeDidsHaveChecks();
   const turns: Turn[] = [];
   const reads: ReadCall[] = [];
   let sessionId = '';

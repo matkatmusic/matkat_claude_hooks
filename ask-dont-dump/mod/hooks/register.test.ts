@@ -66,7 +66,7 @@ test('test_repo_state_claim_yes_writes_the_repo_state_item_to_the_nudge_file', a
   const repoStateCheck = REPLY_CHECKS[3];
   if (repoStateCheck === undefined)
     throw new Error('REPLY_CHECKS has no fourth check');
-  expect(readNudgeFile(fileWrites).did).toEqual([repoStateCheck.did]);
+  expect(readNudgeFile(fileWrites).map(item => item.did)).toEqual([repoStateCheck.did]);
 });
 
 test('test_missing_functionality_yes_writes_the_missing_functionality_item_to_the_nudge_file', async ($, on) => {
@@ -76,17 +76,17 @@ test('test_missing_functionality_yes_writes_the_missing_functionality_item_to_th
   if (missingFunctionalityCheck === undefined)
     throw new Error('REPLY_CHECKS has no sixth check');
   const nudgeFile = readNudgeFile(fileWrites);
-  expect(nudgeFile.did).toEqual([missingFunctionalityCheck.did]);
-  expect(nudgeFile.do).toEqual([missingFunctionalityCheck.do]);
+  expect(nudgeFile).toHaveLength(1);
+  expect(nudgeFile[0]?.did).toBe(missingFunctionalityCheck.did);
+  expect(nudgeFile[0]?.do).toBe(missingFunctionalityCheck.do);
 });
 
 test('test_yes_with_a_sentence_in_the_reply_writes_the_file_and_submits_the_short_text', async ($, on) => {
   const { submittedTexts, fileWrites } = setUpCheckerStubs(on, ['yes', 'no', 'yes']);
   await executeTurnAndWait($, 'What next? There is a crash.');
   const nudgeFile = readNudgeFile(fileWrites);
-  expect(nudgeFile.did).toHaveLength(2);
-  expect(nudgeFile.do).toHaveLength(2);
-  expect(nudgeFile.phrases).toEqual(['What next? There is a crash.', 'What next? There is a crash.']);
+  expect(nudgeFile).toHaveLength(2);
+  expect(nudgeFile.map(item => item.proof)).toEqual(['What next? There is a crash.', 'What next? There is a crash.']);
   expect(submittedTexts).toHaveLength(1);
   expect(submittedTexts[0]).toContain(NUDGE_PATH);
 });

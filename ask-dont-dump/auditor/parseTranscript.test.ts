@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { REPLY_CHECKS } from '../mod/hooks/register';
 import { parseTranscript } from './parseTranscript';
+import { OLD_BUG_REPORT_TEXT, OLD_QUESTION_OR_CHOICE_TEXT } from './oldNudgeTexts';
 
 let counter = 0;
 
@@ -9,7 +10,7 @@ function makeLine(type: string, content: unknown, extra: Record<string, unknown>
   return JSON.stringify({ type, uuid: `u${counter}`, sessionId: 's1', message: { id: messageId, content }, ...extra });
 }
 
-const NUDGE_TEXT = `The ask-dont-dump plugin sent a message:\n${REPLY_CHECKS[0].result}\n\n${REPLY_CHECKS[1].result}`;
+const NUDGE_TEXT = `The ask-dont-dump plugin sent a message:\n${OLD_BUG_REPORT_TEXT}\n\n${OLD_QUESTION_OR_CHOICE_TEXT}`;
 
 function makeTranscript() {
   return [
@@ -72,7 +73,7 @@ const NEW_NUDGE_PATH = '/work/p/.claude_hooks/ask-dont-dump/s1.json';
 const NEW_NUDGE_TEXT = `The ask-dont-dump plugin sent a message:\nask-dont-dump flagged your last reply. Read ${NEW_NUDGE_PATH} and do each item in its "do" list.`;
 
 function makeNewFormatLines(hasReadResult: boolean) {
-  const detailsJson = JSON.stringify({ did: [REPLY_CHECKS[1].did, REPLY_CHECKS[3].did], do: ['a', 'b'], phrases: ['first phrase', 'second phrase'] }, null, 2);
+  const detailsJson = JSON.stringify([{ did: REPLY_CHECKS[1].did, do: 'a', proof: 'first phrase' }, { did: REPLY_CHECKS[3].did, do: 'b', proof: 'second phrase' }], null, 2);
   const numberedJson = detailsJson.split('\n').map((text, i) => `${String(i + 1).padStart(6, ' ')}→${text}`).join('\n');
   const readCall = [{ type: 'tool_use', id: 'read1', name: 'Read', input: { file_path: NEW_NUDGE_PATH } }];
   const lines = [

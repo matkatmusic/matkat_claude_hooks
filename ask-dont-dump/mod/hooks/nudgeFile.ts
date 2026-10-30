@@ -1,6 +1,7 @@
 import type { EngineInterface } from 'claude-code';
 
-export type FlaggedChecks = { did: string[]; do: string[]; phrases: string[] };
+// export type FlaggedChecks = { did: string[]; do: string[]; phrases: string[] };
+export type FlaggedCheck = { did: string; do: string; proof: string };
 
 const NUDGE_FOLDER = '.claude_hooks/ask-dont-dump';
 const YES_PATTERN = /^yes/i;
@@ -11,18 +12,31 @@ export function buildNudgePath(root: string, sessionId: string): string {
   return `${root}/${NUDGE_FOLDER}/${sessionId}.json`;
 }
 
-export function parseYesPhrase(replyText: string): string {
+// export function parseYesPhrase(replyText: string): string {
+//   const trimmedText = replyText.trim();
+//   const isYes = YES_PATTERN.test(trimmedText);
+//   if (!isYes)
+//     return '';
+//   const afterYes = trimmedText.slice('yes'.length);
+//   const withoutFiller = afterYes.replace(LEADING_FILLER_PATTERN, '');
+//   const unquoted = withoutFiller.replace(SURROUNDING_QUOTES_PATTERN, '');
+//   return unquoted.trim();
+// }
+export function parseYesPhrase(replyText: string, answer: string): string {
   const trimmedText = replyText.trim();
   const isYes = YES_PATTERN.test(trimmedText);
-  if (!isYes)
+  if (isYes == false)
     return '';
   const afterYes = trimmedText.slice('yes'.length);
   const withoutFiller = afterYes.replace(LEADING_FILLER_PATTERN, '');
-  const unquoted = withoutFiller.replace(SURROUNDING_QUOTES_PATTERN, '');
-  return unquoted.trim();
+  const unquoted = withoutFiller.replace(SURROUNDING_QUOTES_PATTERN, '').trim();
+  const isInAnswer = answer.includes(unquoted);
+  if (isInAnswer == false)
+    return '';
+  return unquoted;
 }
 
-export async function writeNudgeFile($: EngineInterface, flagged: FlaggedChecks): Promise<string> {
+export async function writeNudgeFile($: EngineInterface, flagged: FlaggedCheck[]): Promise<string> {
   const root = await $.session.root();
   const sessionId = await $.session.id();
   const path = buildNudgePath(root, sessionId);

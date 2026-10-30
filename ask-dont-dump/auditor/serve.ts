@@ -24,28 +24,31 @@ async function loadParsed(transcriptPath: string): Promise<ParsedTranscript> {
   return parseTranscript(await Bun.file(transcriptPath).text());
 }
 
-async function buildPage(transcriptPath: string) {
+export async function buildPage(transcriptPath: string) {
   const parsed = await loadParsed(transcriptPath);
   const marks = await loadMarks(transcriptPath, parsed.sessionId);
   const pageData = { transcriptPath, rows: parsed.rows, marks: marks.replies };
   const safeJson = JSON.stringify(pageData).replaceAll('<', '\\u003c');
   const template = await Bun.file(PAGE_PATH).text();
-  return template.replace(DATA_MARKER, () => safeJson);
+  function getSafeJson() {
+    return safeJson;
+  }
+  return template.replace(DATA_MARKER, getSafeJson);
 }
 
-function rejectMark(message: string) {
+function denyMark(message: string) {
   return new Response(message, { status: 400 });
 }
 
-async function handleMarkRequest(request: Request, transcriptPath: string) {
+export async function applyMarkRequest(request: Request, transcriptPath: string) {
   const body = (await request.json()) as MarkBody;
   const { replyUuid, question, verdict, reason, note } = body;
   const isVerdictValid = typeof verdict === 'string' && VERDICTS.includes(verdict);
   if (!isVerdictValid)
-    return rejectMark('verdict must be correct, wrong or missed');
+    return denyMark('verdict must be correct, wrong or missed');
   const isTextValid = typeof reason === 'string' && typeof note === 'string';
   if (!isTextValid)
-    return rejectMark('reason and note must be strings');
+    return denyMark('reason and note must be strings');
   const parsed = await loadParsed(transcriptPath);
   let foundRow: ParsedTranscript['rows'][number] | undefined;
   for (const row of parsed.rows) {
@@ -53,7 +56,7 @@ async function handleMarkRequest(request: Request, transcriptPath: string) {
       foundRow = row;
   }
   if (foundRow === undefined)
-    return rejectMark('unknown replyUuid');
+    return denyMark('unknown replyUuid');
   const marks = await loadMarks(transcriptPath, parsed.sessionId);
   let replyMark = marks.replies[foundRow.uuid];
   if (replyMark === undefined) {
@@ -65,7 +68,7 @@ async function handleMarkRequest(request: Request, transcriptPath: string) {
   }
   const checkMark = replyMark.checks[question as string];
   if (checkMark === undefined)
-    return rejectMark('unknown question');
+    return denyMark('unknown question');
   checkMark.verdict = verdict;
   checkMark.reason = reason;
   checkMark.note = note;
@@ -86,7 +89,7 @@ if (import.meta.main) {
       const { pathname } = new URL(request.url);
       const isMarkPost = request.method === 'POST' && pathname === '/mark';
       if (isMarkPost)
-        return handleMarkRequest(request, transcriptPath);
+        return applyMarkRequest(request, transcriptPath);
       const isPageGet = request.method === 'GET' && pathname === '/';
       if (isPageGet)
         return new Response(await buildPage(transcriptPath), { headers: { 'content-type': 'text/html; charset=utf-8' } });

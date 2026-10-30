@@ -53,7 +53,7 @@ export function readNudgeFile(fileWrites: { path: string; text: string }[]) {
   }
   if (nudgeText === undefined)
     throw new Error('the nudge file was not written');
-  return JSON.parse(nudgeText) as { did: string[]; do: string[]; phrases: string[] };
+  return JSON.parse(nudgeText) as { did: string; do: string; proof: string }[];
 }
 
 // answers ('yes', 'yes-sentence-not-in-reply', 'no') in order: question or choice, unfinished work, bug, repo state, task, missing feature
@@ -63,32 +63,36 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
   const fileWrites: { path: string; text: string }[] = [];
   const processCalls: string[][] = [];
   const modelCalls = { count: 0 };
-  on('session.root', () => ({ value: '/work/p' }));
-  on('session.id', () => ({ value: 'sess-9' }));
-  on('fs.write', (_$: any, e: any) => {
+  function getWorkRoot() {
+    return { value: '/work/p' };
+  }
+  function getSessionId() {
+    return { value: 'sess-9' };
+  }
+  function appendFileWrite(_$: any, e: any) {
     fileWrites.push({ path: e.path, text: e.text });
     return { value: undefined };
-  });
-  on('process.run', (_$: any, e: any) => {
+  }
+  function appendProcessCall(_$: any, e: any) {
     processCalls.push(e.argv);
     return { value: { exitCode: 0, stdout: '', stderr: '' } };
-  });
-  // on('env.get', () => ({ value: '/home/u' }));
-  on('env.get', (_$: any, e: any) => {
+  }
+  function getEnvValue(_$: any, e: any) {
     const isConfigDirName = e.name === 'CLAUDE_CONFIG_DIR';
     if (isConfigDirName)
       return { value: undefined };
     return { value: '/home/u' };
-  });
-  on('fs.list', () => ({ value: listTaskDirEntries() }));
-  // on('fs.exists', () => ({ value: userDispatchText !== undefined }));
-  on('fs.exists', (_$: any, e: any) => {
+  }
+  function listTaskDirectory() {
+    return { value: listTaskDirEntries() };
+  }
+  function getFileExists(_$: any, e: any) {
     const isUserDispatchFile = e.path.endsWith('user-dispatch.json');
     if (isUserDispatchFile)
       return { value: userDispatchText !== undefined };
     return { value: existingFiles.includes(e.path) };
-  });
-  on('fs.read', (_$: any, e: any) => {
+  }
+  function readFileText(_$: any, e: any) {
     const isUserDispatchFile = e.path.endsWith('user-dispatch.json');
     if (isUserDispatchFile)
       return { value: userDispatchText };
@@ -99,8 +103,8 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
     if (isTaskFile)
       return { value: TASK_FILES[e.path.split('/').pop()] };
     return { value: dispatchText };
-  });
-  on('model.complete', (_$: any, e: any) => {
+  }
+  function getModelReply(_$: any, e: any) {
     modelCalls.count++;
     modelPrompts.push(e.prompt);
     if (!isAnswered)
@@ -108,12 +112,25 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
     const answerKind = answers[findKeywordIndex(e.prompt)] ?? 'no';
     const text = formatStubAnswer(answerKind, e.prompt);
     return { value: { isAnswered: true, text, usage: USAGE } };
-  });
-  on('prompt.submit', (_$: any, e: any) => {
+  }
+  function appendSubmittedText(_$: any, e: any) {
     submittedTexts.push(e.text);
     return { text: e.text };
-  });
-  on('turn.complete', (_$: any, e: any) => ({ text: e.answer }));
+  }
+  function getTurnText(_$: any, e: any) {
+    return { text: e.answer };
+  }
+  on('session.root', getWorkRoot);
+  on('session.id', getSessionId);
+  on('fs.write', appendFileWrite);
+  on('process.run', appendProcessCall);
+  on('env.get', getEnvValue);
+  on('fs.list', listTaskDirectory);
+  on('fs.exists', getFileExists);
+  on('fs.read', readFileText);
+  on('model.complete', getModelReply);
+  on('prompt.submit', appendSubmittedText);
+  on('turn.complete', getTurnText);
   return { submittedTexts, modelCalls, modelPrompts, fileWrites, processCalls };
 }
 
