@@ -1,9 +1,10 @@
 import { REPLY_CHECKS } from '../mod/hooks/register';
 import type { FlaggedCheck } from '../mod/hooks/nudgeFile';
-import { assertOldNudgeDidsHaveChecks, containsOldNudge } from './oldNudgeTexts';
+// import { assertOldNudgeDidsHaveChecks, containsOldNudge } from './oldNudgeTexts';
 import { addReadCalls, addReadResults, containsToolResult, findNudgeDetails, isNewFormatNudge, readTextBlocks, type Content, type ReadCall } from './nudgeDetails';
 
 const PLUGIN_NAME = 'ask-dont-dump';
+const AUDIT_START_TIME = '2026-10-30T06:00:00.000Z';
 const TASK_NUMBER_PATTERN = /#\d+/;
 
 export type CheckState = 'fired' | 'fired (details not read)' | 'quiet' | 'quiet (maybe task-list skip)' | 'not checked';
@@ -17,6 +18,7 @@ type Line = {
   isMeta?: boolean;
   uuid: string;
   sessionId: string;
+  timestamp: string;
   origin?: { kind: string; name?: string };
   message: { id?: string; content: Content };
 };
@@ -102,8 +104,9 @@ function buildChecks(turn: Turn): CheckRow[] {
         flaggedProof = item.proof;
       }
     }
-    const isFiredByOldText = containsOldNudge(turn.nudgeText, check.did);
-    const isFired = isFiredByOldText || isFiredByDetails;
+    // const isFiredByOldText = containsOldNudge(turn.nudgeText, check.did);
+    // const isFired = isFiredByOldText || isFiredByDetails;
+    const isFired = isFiredByDetails;
     const isMaybeSkipped = check.skipsListedTasks === true && hasTaskNumber;
     let state: CheckState = 'quiet';
     let phrase = '';
@@ -123,7 +126,7 @@ function buildChecks(turn: Turn): CheckRow[] {
 }
 
 export function parseTranscript(rawText: string): ParsedTranscript {
-  assertOldNudgeDidsHaveChecks();
+  // assertOldNudgeDidsHaveChecks();
   const turns: Turn[] = [];
   const reads: ReadCall[] = [];
   let sessionId = '';
@@ -136,8 +139,18 @@ export function parseTranscript(rawText: string): ParsedTranscript {
     const isSkippedLine = !isConversationLine || isSidechain;
     if (isSkippedLine)
       continue;
-    if (sessionId === '')
+    // if (sessionId === '')
+    //   sessionId = line.sessionId;
+    const isFirstConversationLine = sessionId === '';
+    if (isFirstConversationLine) {
+      const isTimestampMissing = line.timestamp === undefined;
+      if (isTimestampMissing)
+        throw new Error(`first conversation line has no timestamp: ${line.uuid}`);
+      const isBeforeAuditStart = Date.parse(line.timestamp) < Date.parse(AUDIT_START_TIME);
+      if (isBeforeAuditStart)
+        throw new Error(`chat log starts at ${line.timestamp}, before the audit start ${AUDIT_START_TIME}`);
       sessionId = line.sessionId;
+    }
     if (line.type === 'user') {
       addReadResults(reads, line.message.content);
       addPromptTurn(turns, line);

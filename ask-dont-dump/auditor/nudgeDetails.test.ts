@@ -4,7 +4,7 @@ import { addReadCalls, addReadResults, containsToolResult, findNudgeDetails, isN
 const PATH = '/work/p/.claude_hooks/ask-dont-dump/s1.json';
 const NUDGE_TEXT = `ask-dont-dump flagged your last reply. Read ${PATH} and do each item in its "do" list.`;
 const DETAILS = [{ did: 'Reported a bug', do: 'Fix it', proof: 'There is a crash.' }];
-const OLD_DETAILS = { did: ['Reported a bug'], do: ['Fix it'], phrases: ['There is a crash.'] };
+// const OLD_DETAILS = { did: ['Reported a bug'], do: ['Fix it'], phrases: ['There is a crash.'] };
 
 function makeReads(turnIndex: number, resultText?: string) {
   const reads: ReadCall[] = [];
@@ -19,9 +19,14 @@ test('a Read result with line numbers parses into the details', () => {
   expect(findNudgeDetails(makeReads(3, numbered), NUDGE_TEXT, 3, 5)).toEqual(DETAILS);
 });
 
-test('an old-shape Read result still parses into the array', () => {
-  const numbered = JSON.stringify(OLD_DETAILS, null, 2).split('\n').map((text, i) => `     ${i + 1}→${text}`).join('\n');
-  expect(findNudgeDetails(makeReads(3, numbered), NUDGE_TEXT, 3, 5)).toEqual(DETAILS);
+// test('an old-shape Read result still parses into the array', () => {
+//   const numbered = JSON.stringify(OLD_DETAILS, null, 2).split('\n').map((text, i) => `     ${i + 1}→${text}`).join('\n');
+//   expect(findNudgeDetails(makeReads(3, numbered), NUDGE_TEXT, 3, 5)).toEqual(DETAILS);
+// });
+
+test('an old-shape Read result throws', () => {
+  const oldShape = JSON.stringify({ did: [], do: [], phrases: [] }, null, 2);
+  expect(() => findNudgeDetails(makeReads(3, oldShape), NUDGE_TEXT, 3, 5)).toThrow();
 });
 
 test('a Read outside the nudge window is ignored', () => {

@@ -6,8 +6,8 @@ const TRANSCRIPT_PATH = `${tmpdir()}/auditor-serve-test-transcript.jsonl`;
 const REPLY_TEXT = 'a reply with <b>markup</b>';
 
 async function writeTranscript() {
-  const prompt = { type: 'user', uuid: 'u1', sessionId: 'serve-test', origin: { kind: 'human' }, message: { content: 'a question' } };
-  const reply = { type: 'assistant', uuid: 'u2', sessionId: 'serve-test', message: { id: 'm1', content: [{ type: 'text', text: REPLY_TEXT }] } };
+  const prompt = { type: 'user', uuid: 'u1', sessionId: 'serve-test', timestamp: '2026-10-30T06:00:00.000Z', origin: { kind: 'human' }, message: { content: 'a question' } };
+  const reply = { type: 'assistant', uuid: 'u2', sessionId: 'serve-test', timestamp: '2026-10-30T06:00:01.000Z', message: { id: 'm1', content: [{ type: 'text', text: REPLY_TEXT }] } };
   await Bun.write(TRANSCRIPT_PATH, `${JSON.stringify(prompt)}\n${JSON.stringify(reply)}\n`);
 }
 
