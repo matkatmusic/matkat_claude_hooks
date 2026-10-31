@@ -27,6 +27,7 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     correction: 'Your last message has at least one question or choice for the user. Use AskUserQuestion to have the user make a decision for each question or choice item in the message.',
     did: 'Asked the user a question or gave a choice',
     do: 'Use AskUserQuestion for each question or choice.',
+    footnote: 'a status sentence about who decides, or when a helper or another chat does queued work (for example "You decide when it does the work."), does not count when it asks nothing.',
   },
   // { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT, skipsListedTasks: true },
   {
@@ -36,7 +37,9 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     did: 'Declared unfinished work',
     do: 'Use TaskCreate to track the work.',
     skipsListedTasks: true,
-    footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work.',
+    // footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work.',
+    // footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work. A sentence that only reports that a helper, subagent or another chat is working on something, or has made no change yet, does not count as Declaring Unfinished Work.',
+    footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work. A sentence that only reports that a helper, subagent or another chat is working on something, or has made no change yet, does not count as Declaring Unfinished Work. A sentence that only says code or changes wait for a commit does not count as Declaring Unfinished Work.',
   },
   {
     name: 'Repo-state Claim',
@@ -53,7 +56,8 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     correction: 'Your last message named an incomplete task.',
     did: 'Declared an open task',
     do: 'Confirm against the codebase if the task is actually incomplete.  If the task is completed, mark the task as Completed.  Otherwise, use AskUserQuestion to ask the user if they want to tackle that incomplete task now.',
-    footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task',
+    // footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task',
+    footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task. A sentence that only says a helper or subagent is running or working on a task does not count as a Declaring Open Task, because someone already works on it.',
   },
   {
     name: 'Describing Missing Functionality',
