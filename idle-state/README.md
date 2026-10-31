@@ -6,17 +6,16 @@ A fresh chat should continue the old work without loss, and the state file keeps
 
 ## Install
 
-1. Add this line to `.env`:
+1. The value has a default of 86400000 in `dispatcher/dispatch.json`, under `idle-state-reader`. To change it, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS=86400000
+```json
+{ "values": { "idle-state-reader": { "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS": "86400000" } } }
 ```
 
-2. Set `enabled: true` on these two entries in `dispatcher/hooks-list.ts`:
+2. Set these two entries to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-reader.ts`], enabled: true },
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../idle-state/idle-state-check.ts`], enabled: true },
+```json
+{ "enablements": { "idle-state-reader": { "UserPromptSubmit": true }, "idle-state-check": { "Stop": true } } }
 ```
 
 3. Start Claude with the mod. The dispatcher does not run the mod.
@@ -55,17 +54,17 @@ Claude keeps a cache of the chat. The cache expires when the chat is idle for to
 8. On the first prompt in the new chat, the reader finds the state files in the project folder that are newer than the window. It prints one line that names them. It also saves their paths in the session state file.
 9. At the end of the first turn, the check reads the saved paths. It blocks the stop until Claude read each file and named each file in any reply in the first turn. A name is the file name without `.json`. The check does nothing after the first turn.
 
-The check works only when the reader entry is enabled in the list that `CLAUDE_HOOKS_LIST` points to.
+The check works only when the `idle-state-reader` entry is `true` in `user-dispatch.json` or `dispatch.json`.
 
 ### Values
 
-A missing `.env` value makes the reader throw an error.
+A missing value in `input.settings` makes the reader throw an error.
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.
 
 The constant `IDLE_STATE_FOLDER_NAME` (`.idleState`) at the top of `idle-state-reader.ts` and `mod/hooks/register.ts` names the state folder. Both files must use the same name.
 
-The constants `IDLE_MINUTES`, `LATE_LIMIT_MINUTES`, and `EXIT_KEY_DELAY_MINUTES` at the top of `mod/hooks/register.ts` set the idle time, the sleep limit, and the key delay.
+The mod reads the idle time from `CLAUDE_HOOKS_IDLE_MINUTES` in the `idle-state` values of `dispatcher/dispatch.json`. The default is 55. The constants `LATE_LIMIT_MINUTES` and `EXIT_KEY_DELAY_MINUTES` in `mod/hooks/idleStateShared.ts` set the sleep limit and the key delay.
 
 ### Turn the reader on alone
 

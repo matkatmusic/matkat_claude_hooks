@@ -6,19 +6,16 @@ A test run can take a long time and can fill the context of Claude with a long l
 
 ## Install
 
-1. Set these four values in `.env`:
+1. The four values have defaults in `dispatcher/dispatch.json`. To change one, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR=/path/to/test-logs
-CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS=...
-CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS=...
-CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS=...
+```json
+{ "values": { "block-npm-test": { "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": "/path/to/test-logs" } } }
 ```
 
-2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+2. Set this entry to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-npm-test/block-npm-test.ts`], timeout: 300, enabled: true },
+```json
+{ "enablements": { "block-npm-test": { "PreToolUse": true } } }
 ```
 
 ## How it works
@@ -49,7 +46,9 @@ It knows these test commands: `npm test`, `npm t`, `npm run test:*`, `yarn test`
 6. The hook starts the script in the background. It blocks the original command. Its message gives the command `monitor-test-run.ts <log>`.
 7. `monitor-test-run.ts` waits for the `.done` file. It prints the result, or it says the run is still in progress.
 
-### .env values
+### Settings values
+
+The hook reads these values from `input.settings`. The defaults are in `dispatch.json`.
 
 | Name | What it sets |
 | --- | --- |

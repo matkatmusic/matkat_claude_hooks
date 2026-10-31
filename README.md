@@ -42,7 +42,6 @@ Requirements:
 git clone https://github.com/matkatmusic/matkat_claude_hooks.git /path/to/claude_hooks
 cd /path/to/claude_hooks
 npm install
-cp .env.example .env
 claude plugin marketplace add DietrichGebert/ponytail
 claude plugin install ponytail@ponytail
 claude plugin install typescript-lsp@claude-plugins-official
@@ -50,18 +49,17 @@ claude plugin install typescript-lsp@claude-plugins-official
 
 Or just run `./install.sh` after you clone.
 
-Then do these two steps:
+Then start Claude with `claude --plugin-dir /path/to/claude_hooks`.
 
-1. Open `.env` and fill in every value.
-2. Start Claude with `claude --plugin-dir /path/to/claude_hooks`.
-
-To turn a hook on, set `enabled: true` on its entry in `dispatcher/hooks-list.ts`.
+To turn a hook on, set it to `true` in `dispatcher/user-dispatch.json`. The defaults are in `dispatcher/dispatch.json`.
 
 ## How it works
 
-The file `hooks/hooks.json` (or a `hooks` block in `settings.json`) sends every hook event to one TypeScript file: `dispatcher/dispatch.ts`. Claude starts a new `node` process for each event. That process reads the hook list in `dispatcher/hooks-list.ts`. It runs the `command` of each enabled entry that matches the event. A normal entry is `node <script>`. The dispatcher sends the event as JSON on stdin. An entry matches when its `event` equals the event name. If the entry has a `matcher`, the matcher is also a regular expression that must match the tool name.
+The file `hooks/hooks.json` (or a `hooks` block in `settings.json`) sends every hook event to one TypeScript file: `dispatcher/dispatch.ts`. Claude starts a new `node` process for each event. That process reads the hook list in `dispatcher/dispatch.json` and `dispatcher/user-dispatch.json`. It runs the `command` of each enabled entry that matches the event. A normal entry is `node <script>`. The dispatcher sends the event as JSON on stdin. An entry matches when its `event` equals the event name. If the entry has a `matcher`, the matcher is also a regular expression that must match the tool name.
 
 This lets you turn single hooks on and off. It also lets you edit a hook script while Claude runs. The list and the scripts load again on every event, so you do not restart Claude.
+
+Some hooks are mods that handle the `prompt.submit` event. This event fires when a prompt is sent. The mods are `ask-dont-dump`, `idle-state`, and `prompt-intent`. You turn each one on or off with its `prompt.submit` entry under `enablements` in `dispatcher/dispatch.json`. The `prompt-intent` entries are named `bug-report`, `feature-request`, and `change-request`.
 
 ## More details
 
@@ -77,13 +75,11 @@ In every example, `/path/to/claude_hooks` must be the real path of your clone. T
 
 A new `CLAUDE_CONFIG_DIR` starts signed out. Run `claude` once and sign in.
 
-### The .env file
+### The settings files
 
-Replace each `/path/to/...` in `.env` with a real path on your computer. Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. Its default is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. A missing value makes a hook stop with an error that names the value. A missing `.env` file stops the dispatcher.
+The folder `dispatcher/` holds two settings files. `dispatch.json` has the defaults: `enablements`, `values`, and `hooks`. `user-dispatch.json` has your overrides. Git ignores `user-dispatch.json`.
 
-Warning: a `CLAUDE_HOOKS_*` value that is already set in the shell overrides the value in `.env`. `process.loadEnvFile` in `shared/env.ts` does not replace a value that is already set. Run `unset` on each `CLAUDE_HOOKS_*` value in the shell first.
-
-To load `.env` into the shell, use bash: `set -a; source .env; set +a`. Other shells can fail on the `#` comments after the values.
+Most values are folders. `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` is a file path, not a folder. Its default is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. A value that starts with `~/` resolves from your home folder. A missing value makes a hook stop with an error that names the value.
 
 `CLAUDE_HOOKS_TASKS_DIR` must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
 
@@ -99,47 +95,35 @@ Some hooks need more in the project where Claude runs. `typecheck-on-stop` needs
 
 The plugin file `hooks/hooks.json` sends these events to `dispatcher/dispatch.ts`: PreToolUse, PostToolUse, Stop, SubagentStop, SessionStart, SessionEnd, StopFailure, and UserPromptSubmit.
 
-The dispatcher then runs the hooks in its list. Every hook in the shipped list is set to `enabled: false`. Nothing runs until you turn a hook on.
+The dispatcher then runs the hooks in its list. Every command hook in `dispatch.json` is set to `false`. Nothing runs until you turn a hook on.
 
 ### Turn a hook on or off
 
-The list is `dispatcher/hooks-list.ts`. Each entry has an `enabled` flag. Change it:
+Each hook has an entry under `enablements`. The key is the hook name, then the event name. Override it in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-bash-edits/block-bash-edits.ts`], enabled: true },
+```json
+{ "enablements": { "block-bash-edits": { "PreToolUse": true } } }
 ```
-
-The entries with `/path/to/...` paths in `dispatcher/hooks-list.ts` are examples. Leave them disabled.
 
 `true` turns the hook on. `false` turns it off. The next hook event picks up the change. You do not restart anything.
 
-### Use your own list
+### Add your own hook
 
-Copy `dispatcher/hooks-list.ts` to a file of your own. Keep the `HOOKS` export. Use full paths in `command`.
+Add an entry to the `hooks` array in `dispatcher/user-dispatch.json`. Use the same shape as in `dispatch.json`: `event`, `matcher`, `command`, and `timeout`. Use a full path in the last part of `command`. Then add an `enablements` entry for the hook. The hook name is the script file name with no extension.
 
-Then point `CLAUDE_HOOKS_LIST` at your file, in `.env` or in the shell:
-
-```sh
-CLAUDE_HOOKS_LIST=/path/to/my-hooks-list.ts
-```
-
-A relative path is read from the repo root, not from your current folder. `dispatch.ts` does this: `resolve(import.meta.dirname, "..", CLAUDE_HOOKS_LIST)`. The default `dispatcher/hooks-list.ts` is a relative path of this kind. Only `dispatch.ts` reads `CLAUDE_HOOKS_LIST`. The hook scripts do not.
-
-A value that is already set in the shell wins over the value in `.env`.
+A name in `user-dispatch.json` that `dispatch.json` and your `hooks` do not know makes the dispatcher stop with an error.
 
 ### Where a hook reads its values
 
-Every hook reads its values from `.env` in the repo root. The dispatcher loads `.env` on every hook event. A value already set in the shell wins over `.env`, so a `.env` change is not live when the shell set that value at launch. An `env` value in a list entry wins over both, and it is live on the next event.
+Each hook gets its values as `input.settings` on stdin. The dispatcher builds `input.settings` from the `values` entries on every hook event. A change is live on the next event.
 
-An entry in your list file can carry an `env` object. Those values win over `.env` for that one hook only:
+The order of `values` is: `shared` in `dispatch.json`, `shared` in `user-dispatch.json`, the hook entry in `dispatch.json`, and the hook entry in `user-dispatch.json`. The last one wins. This example sets one value for one hook:
 
-```ts
-{ event: "Stop", command: ["node", "/path/to/typecheck-on-stop.ts"], env: { CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "40" }, enabled: true },
+```json
+{ "values": { "typecheck-on-stop": { "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES": "40" } } }
 ```
 
-Fixed numbers that no machine needs to change live as constants at the top of each script. `.env` holds only paths and names.
-
-<!-- The idle-state mod reads the Claude process env. Claude sets that env when it starts. The mod does not pick up `.env` changes live. -->
+Fixed numbers that no machine needs to change live as constants at the top of each script. `values` holds only paths and names.
 
 ### Send every event to dispatch.ts from settings.json
 
@@ -161,7 +145,7 @@ Copy the `hooks` block from `hooks/hooks.json` into your `settings.json`. Replac
 }
 ```
 
-Copy all eight events from `hooks/hooks.json`, with their matchers and timeouts. The list and the `.env` rules are the same as for the plugin.
+Copy all eight events from `hooks/hooks.json`, with their matchers and timeouts. The list and the settings rules are the same as for the plugin.
 
 ### Use one hook alone
 
@@ -200,14 +184,7 @@ The idle-state mod is a second plugin. It loads with its own `--plugin-dir`:
 claude --plugin-dir /path/to/claude_hooks --plugin-dir /path/to/claude_hooks/idle-state/mod
 ```
 
-<!--
-The mod reads its values from the process environment. It does not read `.env`. Load `.env` into the shell before you start Claude:
-
-```sh
-set -a; source .env; set +a
-claude --plugin-dir /path/to/claude_hooks --plugin-dir /path/to/claude_hooks/idle-state/mod
-```
--->
+The mod reads its settings from `dispatcher/dispatch.json` and `dispatcher/user-dispatch.json`. It reads the files on every event.
 
 ### Tests
 

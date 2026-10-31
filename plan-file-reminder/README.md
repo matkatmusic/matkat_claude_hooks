@@ -6,16 +6,16 @@ Claude forgets your planning rules while it edits a plan, and a reminder at the 
 
 ## Install
 
-1. Add this line to `.env`:
+1. The value has a default in `dispatcher/dispatch.json`. To change it, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_PLANNING_GUIDE_PATH=../plan-file-reminder/planning.md
+```json
+{ "values": { "plan-file-reminder": { "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md" } } }
 ```
 
-2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+2. Set this entry to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "PostToolUse", matcher: "Write|Edit|MultiEdit|NotebookEdit", command: ["node", `${import.meta.dirname}/../plan-file-reminder/plan-file-reminder.ts`], enabled: true },
+```json
+{ "enablements": { "plan-file-reminder": { "PostToolUse": true } } }
 ```
 
 ## How it works
@@ -41,7 +41,7 @@ You keep planning rules in one guide file.
 
 ### The guide path
 
-The guide path comes from `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` in the `.env` file. The default is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. If the value is missing, the hook throws an error.
+The guide path comes from `CLAUDE_HOOKS_PLANNING_GUIDE_PATH` in `input.settings`. The default in `dispatcher/dispatch.json` is `../plan-file-reminder/planning.md`. A value that starts with `../` resolves from the `dispatcher` folder. If the value is missing, the hook throws an error.
 
 ### Turn it on alone
 

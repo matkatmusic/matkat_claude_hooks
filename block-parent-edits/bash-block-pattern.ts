@@ -41,7 +41,8 @@ const fileMutatingCommandNames = matchAnyOf("cp", "mv", "rm", "mkdir", "touch", 
 const fileCommand = commandBoundaryOperators + whitespaceStar + fileMutatingCommandNames + wordBoundary;
 
 // A CLI `-o <path>` output flag that writes a file, excused right after `rg`/`grep` (their `-o` means something else).
-const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep");
+// const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep");
+const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep", "ps");
 const sameCommandChars = matchNoneOf("|;&") + zeroOrMore;
 // const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
 const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;

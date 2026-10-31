@@ -71,23 +71,35 @@ export async function mergeSameMeaningItems(client: TypeSafeClient, items: Item[
   return kept;
 }
 
+function compareTaskFileNumbers(a: string, b: string): number {
+  return parseInt(a) - parseInt(b);
+}
+
 export async function removeCompletedItems(client: TypeSafeClient, items: Item[], tasksFolder: string, listName: string, log: TypesafeLog): Promise<Item[]> {
-  const completedTasks: Record<string, string> = {};
-  for (const name of readdirSync(tasksFolder).sort()) {
+  const completedTasks: Record<string, { subject: string; description: string }> = {};
+  const jsonNames: string[] = [];
+  for (const name of readdirSync(tasksFolder)) {
     const isJson = name.endsWith(".json");
-    if (!isJson)
-      continue;
+    if (isJson)
+      jsonNames.push(name);
+  }
+  jsonNames.sort(compareTaskFileNumbers);
+  // for (const name of readdirSync(tasksFolder).sort()) {
+  for (const name of jsonNames) {
+    // const isJson = name.endsWith(".json");
+    // if (!isJson)
+    //   continue;
     const task = JSON.parse(readFileSync(join(tasksFolder, name), "utf8"));
     const isCompleted = task.status === "completed";
     if (isCompleted)
-      completedTasks[`task_${task.id}`] = task.subject;
+      completedTasks[`task_${task.id}`] = { subject: task.subject, description: task.description };
   }
   const taskNames = Object.keys(completedTasks);
   const questions: Record<string, ChoiceQuestion> = {};
   for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
     const criteria: Record<string, string> = {};
     for (const taskName of taskNames.slice(start, start + MAX_TASKS_PER_CRITERIA))
-      criteria[taskName] = completedTasks[taskName];
+      criteria[taskName] = completedTasks[taskName].subject;
     criteria.none = "No completed task matches this item.";
     for (let index = 0; index < items.length; index++)
       questions[`item_${index}_from_${start}`] = choice(`Which completed task-list entry does \`items[${index}].text\` most closely match?`, criteria);
@@ -96,20 +108,45 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
   for (const item of items)
     itemTexts.push(item.text);
   const answers = await sendQuestions(client, `completed:${listName}`, { items }, questions, itemTexts, MAX_COMPLETED_QUESTIONS_PER_REQUEST, log);
-  const kept: Item[] = [];
+  const bestTasks: Record<string, { subject: string; description: string }> = {};
+  const doneQuestions: Record<string, ChoiceQuestion> = {};
   for (let index = 0; index < items.length; index++) {
-    let isDone = false;
+    let bestTaskName = "";
+    let bestProbability = -1;
     for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
       const answer = answers[`item_${index}_from_${start}`];
-      const isMatch = answer.choice !== "none";
-      const isConfident = answer.probabilities[answer.choice] > DROP_THRESHOLD;
-      if (isMatch && isConfident)
-        isDone = true;
+      for (const key of Object.keys(answer.probabilities)) {
+        const isNone = key === "none";
+        const isHigher = answer.probabilities[key] > bestProbability;
+        if (!isNone && isHigher) {
+          bestTaskName = key;
+          bestProbability = answer.probabilities[key];
+        }
+      }
     }
+    const hasBestTask = bestTaskName !== "";
+    if (hasBestTask) {
+      bestTasks[bestTaskName] = completedTasks[bestTaskName];
+      doneQuestions[`done_${index}`] = choice(`Does the completed task \`tasks.${bestTaskName}\` cover \`items[${index}].text\`, so the item needs no more work?`, { yes: null, no: null });
+    }
+  }
+  const doneAnswers = await sendQuestions(client, `completed-check:${listName}`, { items, tasks: bestTasks }, doneQuestions, itemTexts, MAX_QUESTIONS_PER_REQUEST, log);
+  const kept: Item[] = [];
+  for (let index = 0; index < items.length; index++) {
+    const doneAnswer = doneAnswers[`done_${index}`];
+    const isDone = doneAnswer !== undefined && doneAnswer.probabilities.yes > DROP_THRESHOLD;
     if (!isDone)
       kept.push(items[index]);
   }
   return kept;
+  // let isDone = false;
+  // for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
+  //   const answer = answers[`item_${index}_from_${start}`];
+  //   const isMatch = answer.choice !== "none";
+  //   const isConfident = answer.probabilities[answer.choice] > DROP_THRESHOLD;
+  //   if (isMatch && isConfident)
+  //     isDone = true;
+  // }
 }
 
 export function writeTypesafeLog(root: string, log: TypesafeLog, now: Date): void {

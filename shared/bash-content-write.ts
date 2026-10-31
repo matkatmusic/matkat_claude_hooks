@@ -33,7 +33,8 @@ const redirectToFile =
 const heredoc = "<<" + whitespaceStar + wordChar + oneOrMore;
 
 // A CLI `-o <path>` output flag that writes a file, excused right after `rg`/`grep` (their `-o` means something else).
-const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep");
+// const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep");
+const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep", "ps");
 const sameCommandChars = matchNoneOf("|;&") + zeroOrMore;
 // const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
 const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;

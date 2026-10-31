@@ -6,16 +6,16 @@ A big model that edits files itself wastes money on simple work, and a small sub
 
 ## Install
 
-1. Set this value in `.env`. Example: `CLAUDE_HOOKS_BLOCKED_EDITS_DIR=/tmp/claude-blocked-edits`.
+1. The value has a default in `dispatcher/dispatch.json`. To change it, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_BLOCKED_EDITS_DIR=/path/to/blocked-edits
+```json
+{ "values": { "block-parent-edits": { "CLAUDE_HOOKS_BLOCKED_EDITS_DIR": "/tmp/claude-blocked-edits" } } }
 ```
 
-2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+2. Set this entry to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "PreToolUse", matcher: "Edit|Write|NotebookEdit|Bash", command: ["node", `${import.meta.dirname}/../block-parent-edits/block-parent-edits.ts`], enabled: true },
+```json
+{ "enablements": { "block-parent-edits": { "PreToolUse": true } } }
 ```
 
 ## How it works
@@ -56,9 +56,9 @@ The rule "the main session must not edit" was only text in a prompt. The model f
 6. The hook saves the blocked tool input as a JSON file in the folder named by `CLAUDE_HOOKS_BLOCKED_EDITS_DIR`.
 7. The hook prints a deny decision. The message names the saved file, so the subagent can read it and apply the edit.
 
-### The .env value
+### The settings value
 
-`CLAUDE_HOOKS_BLOCKED_EDITS_DIR` is the folder where the hook saves blocked tool calls. Add it to your `.env` file.
+`CLAUDE_HOOKS_BLOCKED_EDITS_DIR` is the folder where the hook saves blocked tool calls. The hook reads it from `input.settings`. The default is in `dispatch.json`.
 
 ### Turn it on alone
 

@@ -6,18 +6,16 @@ A task list only helps when it holds all the work.
 
 ## Install
 
-1. Add these lines to `.env`:
+1. The three values have defaults in `dispatcher/dispatch.json`. To change one, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_TASKS_DIR=/Users/you/.claude/tasks
-CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH=5
-CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS=2
+```json
+{ "values": { "unlisted-items": { "CLAUDE_HOOKS_TASKS_DIR": "/Users/you/.claude/tasks" } } }
 ```
 
-2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+2. Set this entry to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../unlisted-items/unlisted-items.ts`], enabled: true },
+```json
+{ "enablements": { "unlisted-items": { "Stop": true } } }
 ```
 
 ## How it works
@@ -42,9 +40,9 @@ Claude often says "this still needs to be written" and then stops. The work is l
 
 The match cuts words to their stems, skips common filler words, and needs at least half of the line's words to appear in one task. It does not check meaning. A task with truly different words can still look unlisted. The hook reads the reply from `last_assistant_message` and skips phrases inside quotes or backticks.
 
-### The .env values
+### The settings values
 
-A missing value makes the hook throw an error.
+The hook reads these values from `input.settings`. A missing value makes the hook throw an error.
 
 - `CLAUDE_HOOKS_TASKS_DIR` is the folder that holds one task folder for each task list. Use a full path. It must be `<CLAUDE_CONFIG_DIR>/tasks` when `CLAUDE_CONFIG_DIR` is set. If not, it must be `~/.claude/tasks`.
 - `CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH` is how many letters a word needs to count.

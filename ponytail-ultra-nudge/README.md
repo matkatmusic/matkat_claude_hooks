@@ -8,17 +8,17 @@ You want ultra mode in every session, and the hook reminds the agent so you do n
 
 1. Run `./install.sh` once in the `claude_hooks` folder. It installs the ponytail plugin.
 
-2. Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+2. Set this entry to `true` in `dispatcher/user-dispatch.json`. The default is in `dispatcher/dispatch.json`.
 
-```ts
-{ event: "UserPromptSubmit", command: ["node", `${import.meta.dirname}/../ponytail-ultra-nudge/ponytail-ultra-nudge.ts`], enabled: true },
+```json
+{ "enablements": { "ponytail-ultra-nudge": { "UserPromptSubmit": true } } }
 ```
 
 ## How it works
 
 The hook runs each time you send a prompt. It checks your prompt and the new part of the transcript for a use of the ponytail skill at the ultra level. The arguments must be the word `ultra` alone. If it finds one, it records that in the state file and stays quiet for the rest of the session. If it finds none, it adds a message that tells the agent to invoke the skill with `args: "ultra"`. It adds this message on every prompt until ultra is used.
 
-The hook can also run on the `PostToolUse` event with matcher `Skill`. Then it sets the flag at once when the agent runs the skill. This needs an extra entry in the hooks list and in `hooks/hooks.json`.
+The hook can also run on the `PostToolUse` event with matcher `Skill`. Then it sets the flag at once when the agent runs the skill. Set `"PostToolUse": true` for `ponytail-ultra-nudge` in `dispatcher/user-dispatch.json` to turn this on.
 
 ## More details
 
@@ -35,10 +35,10 @@ The ponytail plugin. Run `./install.sh` in the `claude_hooks` folder.
 1. You send a prompt and Claude runs the hook.
 2. The hook reads the session state file. If the file says ultra is done, the hook stops and prints nothing.
 3. If not, the hook reads the session transcript. It looks for the typed command `/ponytail:ponytail ultra` or a `Skill` tool call for `ponytail:ponytail` with `ultra` in the arguments.
-4. If it finds one, it writes `ponytailUltraInvoked: true` to the session state file. The state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`.
+4. If it finds one, it writes `ponytailUltraInvoked: true` to the session state file. The state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `input.settings`.
 5. If it finds none, it prints a JSON object with a message. The message tells the agent to invoke the skill with `args: "ultra"`.
 
-The hook has no paths and no tunable numbers to set. It needs no `.env` value of its own.
+The hook has no paths and no tunable numbers to set. It needs only `CLAUDE_HOOKS_SESSION_STATE_DIR`, from the `shared` entry in `dispatcher/dispatch.json`.
 
 ### Turn it on alone
 

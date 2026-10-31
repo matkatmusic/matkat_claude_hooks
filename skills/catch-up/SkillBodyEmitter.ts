@@ -63,6 +63,7 @@ ${JSON.stringify(lists, null, 2)}
 
 ## Rules
 - Do not ask the user anything in this skill. A Stop hook turns the shown items into questions.
+- When the user answers or settles a shown item, remove its exact text from the newest \`-merged.json\` file in \`${root}/.idleState/\` with the Edit tool. Then the next /catch-up does not show it again.
 - Do not change the text of an item.
 - If the script fails, show the error. Do not guess the lists.
 `;

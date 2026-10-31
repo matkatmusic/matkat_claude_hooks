@@ -18,3 +18,8 @@ test("isBashCommandBlocked: rg -o is allowed but sort -o file is blocked", () =>
   assert.equal(isBashCommandBlocked("rg -o foo | head -2"), false);
   assert.equal(isBashCommandBlocked("sort -o out.txt in"), true);
 });
+
+test("isBashCommandBlocked: read-only ps is allowed", () => {
+  assert.equal(isBashCommandBlocked("ps -p 1234 -o pid,etime"), false);
+  assert.equal(isBashCommandBlocked("ps aux"), false);
+});

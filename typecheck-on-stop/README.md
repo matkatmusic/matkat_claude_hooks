@@ -6,17 +6,16 @@ A type error is cheap to fix right after the edit and costs much more later.
 
 ## Install
 
-1. Add this line to `.env`:
+1. The value has a default of 20 in `dispatcher/dispatch.json`. To change it, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES=20
+```json
+{ "values": { "typecheck-on-stop": { "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES": "20" } } }
 ```
 
-2. Set `enabled: true` on these two entries in `dispatcher/hooks-list.ts`:
+2. Set these two entries to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: true },
-{ event: "SubagentStop", command: ["node", `${import.meta.dirname}/../typecheck-on-stop/typecheck-on-stop.ts`], timeout: 300, enabled: true },
+```json
+{ "enablements": { "typecheck-on-stop": { "Stop": true, "SubagentStop": true } } }
 ```
 
 ## How it works
@@ -42,13 +41,13 @@ The project needs a `tsconfig.json` and a local `typescript` package.
 5. If no edited file ends in `.ts`, the hook exits.
 6. The hook runs `npx tsc --noEmit -p .` in the project folder.
 7. If the checker passes, the hook prints nothing.
-8. If the checker fails, the hook prints a JSON object with `decision: "block"` and a `reason`. The reason lists the error lines. It lists no more lines than the `.env` limit allows.
+8. If the checker fails, the hook prints a JSON object with `decision: "block"` and a `reason`. The reason lists the error lines. It lists no more lines than the `CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES` limit allows.
 
 The hook imports `debt-transcript.ts` from `shared/`.
 
-### The .env value
+### The settings value
 
-`CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES` goes in the `.env` file in the `claude_hooks` folder. It sets the most error lines that the hook puts in the reason.
+The hook reads `CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES` from `input.settings`. The default is in `dispatcher/dispatch.json`. It sets the most error lines that the hook puts in the reason.
 
 ### Turn it on alone
 

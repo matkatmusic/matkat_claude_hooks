@@ -84,6 +84,10 @@ async function completedTasksDropAboveThresholdOnly() {
       return { choice: "task_1", probability: 0.9 };
     if (name === "item_1_from_0")
       return { choice: "task_1", probability: 0.4 };
+    if (name === "done_0")
+      return { choice: "yes", probability: 0.9 };
+    if (name === "done_1")
+      return { choice: "yes", probability: 0.4 };
     return { choice: "none", probability: 0.99 };
   });
   const kept = await removeCompletedItems(client, buildItems("a", "b", "c"), tasksFolder, "not_done", []);
@@ -91,6 +95,41 @@ async function completedTasksDropAboveThresholdOnly() {
   const labels = requests[0].questions.item_0_from_0.criteria;
   assert.deepEqual(Object.keys(labels), ["task_1", "none"]);
   assert.equal(labels.task_1, "Fix the bug");
+}
+
+function buildCodeMirrorFixture(yesProbability: number) {
+  const tasksFolder = mkdtempSync(`${tmpdir()}/catch-up-tasks-`);
+  writeFileSync(`${tasksFolder}/267.json`, JSON.stringify({ id: "267", subject: "Decide: pin the 5 CodeMirror sub-packages to exact versions", description: "Pin all five.", status: "completed" }));
+  const requests: any[] = [];
+  const client = {
+    async systemOne(request: any) {
+      requests.push(request);
+      const answers: any = {};
+      for (const name of Object.keys(request.questions)) {
+        if (name.startsWith("item_"))
+          answers[name] = { type: "choice", choice: "none", confidence: 0.55, probabilities: { none: 0.55, task_267: 0.45 } };
+        if (name.startsWith("done_"))
+          answers[name] = { type: "choice", choice: "yes", confidence: yesProbability, probabilities: { yes: yesProbability, no: 1 - yesProbability } };
+      }
+      return { answers };
+    },
+  };
+  return { client: client as unknown as TypeSafeClient, requests, tasksFolder };
+}
+
+async function completedDropsItemWhenYesNoCheckSaysYes() {
+  const { client, requests, tasksFolder } = buildCodeMirrorFixture(0.9);
+  const kept = await removeCompletedItems(client, buildItems("Pin the 5 CodeMirror sub-packages to exact versions?"), tasksFolder, "not_done", []);
+  assert.deepEqual(kept, []);
+  assert.equal(requests.length, 2);
+  assert.deepEqual(Object.keys(requests[1].questions), ["done_0"]);
+  assert.deepEqual(requests[1].state.tasks, { task_267: { subject: "Decide: pin the 5 CodeMirror sub-packages to exact versions", description: "Pin all five." } });
+}
+
+async function completedKeepsItemWhenYesNoCheckSaysNo() {
+  const { client, tasksFolder } = buildCodeMirrorFixture(0.2);
+  const kept = await removeCompletedItems(client, buildItems("Pin the 5 CodeMirror sub-packages to exact versions?"), tasksFolder, "not_done", []);
+  assert.equal(kept.length, 1);
 }
 
 async function completedStepBatchesAtThreeQuestions() {
@@ -114,6 +153,8 @@ async function completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria() {
   const { client, requests } = buildFakeClient((name) => {
     if (name === "item_0_from_254")
       return { choice: "task_99", probability: 0.9 };
+    if (name === "done_0")
+      return { choice: "yes", probability: 0.9 };
     return { choice: "none", probability: 0.99 };
   });
   const kept = await removeCompletedItems(client, buildItems("a", "b"), tasksFolder, "not_done", []);
@@ -124,6 +165,23 @@ async function completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria() {
       assert.ok(criteriaCount <= 255, `${name} has ${criteriaCount} criteria`);
     }
   }
+}
+
+async function completedStepSortsTaskFilesByNumber() {
+  const tasksFolder = mkdtempSync(`${tmpdir()}/catch-up-tasks-`);
+  for (let id = 1; id <= 255; id++)
+    writeFileSync(`${tasksFolder}/${id}.json`, JSON.stringify({ id: String(id), subject: `Task ${id}`, status: "completed" }));
+  writeFileSync(`${tasksFolder}/.lock`, "");
+  writeFileSync(`${tasksFolder}/.highwatermark`, "255");
+  const { client, requests } = buildFakeClient(() => ({ choice: "none", probability: 0.99 }));
+  await removeCompletedItems(client, buildItems("a"), tasksFolder, "not_done", []);
+  let secondGroupCriteria: string[] = [];
+  for (const request of requests) {
+    const question = request.questions.item_0_from_254;
+    if (question)
+      secondGroupCriteria = Object.keys(question.criteria);
+  }
+  assert.deepEqual(secondGroupCriteria, ["task_255", "none"]);
 }
 
 async function logHoldsItemTextAndAnswers() {
@@ -147,6 +205,9 @@ test("merge sends at most 100 questions per request", mergeBatchesAtOneHundredQu
 test("merge skips pairs that differ only by a Task prefix", mergeSkipsPairsThatDifferOnlyByTaskPrefix);
 test("merge sends nothing for one item", mergeSendsNothingForOneItem);
 test("completed tasks drop an item only above the threshold", completedTasksDropAboveThresholdOnly);
+test("completed step drops an item when the yes/no check says yes", completedDropsItemWhenYesNoCheckSaysYes);
+test("completed step keeps an item when the yes/no check says no", completedKeepsItemWhenYesNoCheckSaysNo);
 test("completed step sends at most 3 questions per request", completedStepBatchesAtThreeQuestions);
 test("completed step keeps each question at 255 criteria or fewer", completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria);
+test("completed step sorts task files by number", completedStepSortsTaskFilesByNumber);
 test("the log file holds item text and answers", logHoldsItemTextAndAnswers);

@@ -23,20 +23,16 @@ Usage limits and context size change while you work, and you do not see them unl
 }
 ```
 
-2. Set these two values in `.env`:
+2. The two values have defaults in `dispatcher/dispatch.json`, under `turn-counter`. To change one, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT=/path/to/scratch-root
-CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS=...
+```json
+{ "values": { "turn-counter": { "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS": "14" } } }
 ```
 
-3. Set `enabled: true` on these four entries in `dispatcher/hooks-list.ts`. They run the `turn-counter` hook, which counts the turns that the status line shows.
+3. Set these four entries to `true` in `dispatcher/user-dispatch.json`. They run the `turn-counter` hook, which counts the turns that the status line shows.
 
-```ts
-{ event: "SessionStart", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: true },
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: true },
-{ event: "StopFailure", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: true },
-{ event: "SessionEnd", command: ["node", `${import.meta.dirname}/../status-line/turn-counter.ts`], enabled: true },
+```json
+{ "enablements": { "turn-counter": { "SessionStart": true, "Stop": true, "StopFailure": true, "SessionEnd": true } } }
 ```
 
 ## How it works
@@ -66,9 +62,11 @@ A forced break at the limit costs a lot of time. The status line lets you plan b
 5. `subagentStatusLine.ts` prints one line for each subagent: model, effort, name, task, run time, and tokens.
 6. The other `status*.ts` files hold the colors, the format code, the file reading code, and the model names.
 
-The session state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `.env`.
+The session state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR` in `dispatcher/dispatch.json`.
 
-### .env values
+### Settings values
+
+The `turn-counter` hook reads these values from `input.settings`.
 
 | Name | What it sets |
 | --- | --- |
@@ -77,7 +75,7 @@ The session state file is in the folder named by `CLAUDE_HOOKS_SESSION_STATE_DIR
 
 The color thresholds are constants in `status_line_config.ts`.
 
-Every name needs a value in `.env`. A missing name makes the hook stop with an error.
+Every name needs a value in `dispatch.json` or `user-dispatch.json`. A missing name makes the hook stop with an error.
 
 ### Turn it on alone
 

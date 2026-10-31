@@ -6,10 +6,10 @@ A task list keeps a long job in order, and the hook reminds Claude to make one a
 
 ## Install
 
-Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+Set this entry to `true` in `dispatcher/user-dispatch.json`. The default is in `dispatcher/dispatch.json`.
 
-```ts
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../nudge-task-list/nudge-task-list.ts`], enabled: true },
+```json
+{ "enablements": { "nudge-task-list": { "Stop": true } } }
 ```
 
 ## How it works
@@ -34,9 +34,9 @@ Subagents in their own worktrees keep parallel work apart. The nudge tells Claud
 4. If it finds a phrase, the hook prints a JSON object with `decision: "block"` and a `reason`. The reason is the nudge text.
 5. If `CLAUDE_CODE_TASK_LIST_ID` is not set, the hook calls `checkTaskListId` from `shared/task-list-id.ts`. It adds the setup help to the reason.
 
-### The .env value
+### The settings values
 
-The hook needs no `.env` value.
+The hook needs no value from `input.settings`.
 
 ### Turn it on alone
 

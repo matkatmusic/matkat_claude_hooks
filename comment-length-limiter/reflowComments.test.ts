@@ -213,6 +213,40 @@ test("the show command lists every over-cap line in order", () => {
   assert.equal(file.show, "nl -ba '/a b/c.ts' | sed -n '12p;40p;7p'");
 });
 
+test("commented-out declarations with no trailing semicolon stay on separate lines", () => {
+  const source = [
+    "function f() {",
+    '  // const collectedPath = `${dir}/${word.split("--")[0]}.json`',
+    '  // const collectedPath = await findEntryPath(word.split("--")[0])',
+    "}",
+  ].join("\n");
+  assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
+});
+
+test("commented-out await, return, import and export lines with no semicolon stay split", () => {
+  const codeLines = [
+    "// await fetchEntries(word)",
+    "// return collectedPath",
+    '// import { readFileSync } from "node:fs"',
+    "// export const MAX_LINES = 150",
+  ];
+  for (const codeLine of codeLines) {
+    const source = [codeLine, "// next line"].join("\n");
+    assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });
+  }
+});
+
+test("prose that starts with return or import still joins", () => {
+  const returnProse = applyReflowToSource(
+    ["// return early when the list is empty, so the caller", "// sees no change."].join("\n"),
+  );
+  assert.equal(returnProse.text, "// return early when the list is empty, so the caller sees no change.");
+  const importProse = applyReflowToSource(
+    ["// import the settings first and then", "// read the file."].join("\n"),
+  );
+  assert.equal(importProse.text, "// import the settings first and then read the file.");
+});
+
 test("a /** block is left exactly as written", () => {
   const source = ["/**", " * first line of a long doc comment that wraps", " * second line", " */"].join("\n");
   assert.deepEqual(applyReflowToSource(source), { text: source, runs: [] });

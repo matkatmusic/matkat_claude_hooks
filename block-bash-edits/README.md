@@ -6,10 +6,10 @@ Your style and debt checks must see every file change, and they watch only the E
 
 ## Install
 
-Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+Set this entry to `true` in `dispatcher/user-dispatch.json`. The default is in `dispatcher/dispatch.json`.
 
-```ts
-{ event: "PreToolUse", matcher: "Bash", command: ["node", `${import.meta.dirname}/../block-bash-edits/block-bash-edits.ts`], enabled: true },
+```json
+{ "enablements": { "block-bash-edits": { "PreToolUse": true } } }
 ```
 
 ## How it works
@@ -31,9 +31,9 @@ Claude sometimes writes files with `cat >`, heredocs, `sed -i`, `tee`, or `pytho
 
 Commands like `rm`, `mv`, `mkdir`, `ls 2>&1`, and `cmd > /dev/null` are allowed.
 
-### The .env values
+### The settings values
 
-The hook needs no `.env` values.
+The hook needs no value from `input.settings`.
 
 ### Turn it on alone
 

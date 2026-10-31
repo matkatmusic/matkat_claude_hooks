@@ -48,7 +48,13 @@ export function isBodyCode(body: string): number {
   const isKeywordStatement = startsWithKeyword && (startsWithCall || endsWithPunctuation);
   const isAssignment = /^[\w.$]+\s*[:=].*[,;:{]$/.test(body);
   const isCall = /^[\w.$]+\(.*[;,){]$/.test(body);
-  const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall;
+  const isDeclaration = /^(const|let|var)\s+[\w$]+\s*=/.test(body);
+  const isAwaitCall = /^await\s+[\w.$]+\(/.test(body);
+  const isReturnValue = /^return\s+([\w.$]+(\(.*\))?|"[^"]*"|'[^']*'|`[^`]*`)$/.test(body);
+  const isImport = /^import\s+(.+\s+from\s+)?["'][^"']+["']$/.test(body);
+  const isExportDeclaration = /^export\s+(const|let|var|function|class|default|\{)/.test(body);
+  // const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall || isDeclaration;
+  const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall || isDeclaration || isAwaitCall || isReturnValue || isImport || isExportDeclaration;
   return isCode ? BODY_LOOKS_LIKE_CODE : BODY_LOOKS_LIKE_PROSE;
 }
 

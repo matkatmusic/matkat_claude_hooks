@@ -8,22 +8,16 @@ It makes the style debt go down and not up, because a style rule that only warns
 
 1. Run `npm install` in the `claude_hooks` folder. The hook needs the eslint packages there.
 
-2. Set these five values in `.env`:
+2. The six values have defaults in `dispatcher/dispatch.json`. To change one, set it in `dispatcher/user-dispatch.json`:
 
-```sh
-CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR=/path/to/debt-ledgers
-CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS=...
-CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES=...
-CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET=...
-CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE=...
-CLAUDE_HOOKS_DEBT_RATCHET_MIN_FILE_DEBT=...
+```json
+{ "values": { "debt-ratchet": { "CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET": "0" } } }
 ```
 
-3. Set `enabled: true` on these two entries in `dispatcher/hooks-list.ts`:
+3. Set these two entries to `true` in `dispatcher/user-dispatch.json`:
 
-```ts
-{ event: "Stop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: true },
-{ event: "SubagentStop", command: ["node", `${import.meta.dirname}/../debt-ratchet/debt-ratchet.ts`], timeout: 300, enabled: true },
+```json
+{ "enablements": { "debt-ratchet": { "Stop": true, "SubagentStop": true } } }
 ```
 
 ## How it works
@@ -58,7 +52,9 @@ The hook saves the debt total of each session in a ledger file. Each new stop mu
 
 `eslint.config.js` has the rules and the `FUNCTION_VERBS` list. A function name must start with one of those verbs. The hook runs eslint from `claude_hooks/node_modules`. Run `npm install` in the `claude_hooks` folder first.
 
-### .env values
+### Settings values
+
+The hook reads these values from `input.settings`. The defaults are in `dispatch.json`.
 
 | Name | What it sets |
 | --- | --- |

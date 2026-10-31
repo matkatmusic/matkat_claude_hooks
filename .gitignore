@@ -7,3 +7,4 @@ __pycache__/
 typesafe_paths/
 .claude_hooks/
 ask-dont-dump/auditor/marks/
+undefined/

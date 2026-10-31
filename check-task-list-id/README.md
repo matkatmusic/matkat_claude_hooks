@@ -6,10 +6,10 @@ A project can start without this variable and nobody notices, so the hook makes 
 
 ## Install
 
-Set `enabled: true` on this entry in `dispatcher/hooks-list.ts`:
+Set this entry to `true` in `dispatcher/user-dispatch.json`. The default is in `dispatcher/dispatch.json`.
 
-```ts
-{ event: "SessionStart", command: ["node", `${import.meta.dirname}/../check-task-list-id/check-task-list-id.ts`], enabled: true },
+```json
+{ "enablements": { "check-task-list-id": { "SessionStart": true } } }
 ```
 
 ## How it works
@@ -29,7 +29,7 @@ Claude keeps a task list for each project. The task list needs a name. The name 
 3. If the value is empty or missing, the hook prints a JSON object with a `systemMessage`. The message tells you to add `"env":{"CLAUDE_CODE_TASK_LIST_ID":"<project name>"}` to the project `.claude/settings.json`.
 4. If the value is set, the hook prints nothing.
 
-The hook has no paths and no tunable numbers. It needs no `.env` value.
+The hook has no paths and no tunable numbers. It needs no value from `input.settings`.
 
 ### Turn it on alone
 
