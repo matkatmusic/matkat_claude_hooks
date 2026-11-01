@@ -34,9 +34,10 @@ function findLineKind(line: string, isMermaid: boolean): LineKind {
     return "other";
   const body = line.replace(/^\s*(\/\/|%%)/, "").trim();
   const isBlank = body === "";
+  if (isBlank)
+    return "prose";
   const isNeverCode = NEVER_CODE.test(body);
-  const isSplitter = isBlank || isNeverCode;
-  if (isSplitter)
+  if (isNeverCode)
     return "splitter";
   if (isMermaid) {
     const isCode = isMermaidCode(body);
@@ -74,6 +75,40 @@ export function clearDeadCode(source: string, isMermaid: boolean): { text: strin
     firstCode = -1;
     lastCode = -1;
   }
+  for (let blockStart = 0; blockStart < lines.length && !isMermaid; blockStart++) {
+    const isBlockStart = lines[blockStart].trim() === "/*";
+    if (!isBlockStart)
+      continue;
+    let blockEnd = blockStart + 1;
+    while (blockEnd < lines.length && lines[blockEnd].trim() !== "*/")
+      blockEnd++;
+    const hasBlockEnd = blockEnd < lines.length;
+    if (!hasBlockEnd)
+      continue;
+    let bodyCount = 0;
+    let codeCount = 0;
+    for (let bodyIndex = blockStart + 1; bodyIndex < blockEnd; bodyIndex++) {
+      const body = lines[bodyIndex].trim().replace(/^\/\//, "").trim();
+      const isEmptyBody = body === "";
+      if (isEmptyBody)
+        continue;
+      bodyCount++;
+      const isCode = isBodyCode(body) === BODY_LOOKS_LIKE_CODE;
+      if (isCode)
+        codeCount++;
+    }
+    const isMostlyCode = codeCount * 2 > bodyCount;
+    if (isMostlyCode) {
+      for (let removeIndex = blockStart; removeIndex <= blockEnd; removeIndex++) {
+        const isAlreadyRemoved = isRemoved[removeIndex];
+        if (isAlreadyRemoved)
+          continue;
+        isRemoved[removeIndex] = true;
+        removed++;
+      }
+    }
+    blockStart = blockEnd;
+  }
   const kept: string[] = [];
   for (let index = 0; index < lines.length; index++) {
     if (!isRemoved[index])
@@ -86,7 +121,7 @@ export function clearDeadCodeInPath(path: string): void {
   const isFolder = statSync(path).isDirectory();
   const files: string[] = [];
   if (isFolder) {
-    const listing = execFileSync("git", ["ls-files", "--", "."], { cwd: path, encoding: "utf8" });
+    const listing = execFileSync("git", ["ls-files", "--recurse-submodules", "--", "."], { cwd: path, encoding: "utf8" });
     const names = listing.split("\n");
     for (let index = 0; index < names.length; index++) {
       const hasName = names[index] !== "";
