@@ -53,6 +53,7 @@
     "context-exit": {
       "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80"
     },
+    "ask-dont-dump": { "useTypesafe": false },
     "plan-file-reminder": {
       "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md"
     },

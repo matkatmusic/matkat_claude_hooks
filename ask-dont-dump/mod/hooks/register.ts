@@ -69,11 +69,11 @@ export const REPLY_CHECKS: ReplyCheck[] = [
   },
 ];
 
-async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
 
-async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> } | undefined> {
   const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
   const hasUserFile = await $.fs.exists(userPath);
   if (!hasUserFile)
@@ -105,6 +105,24 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   if (userValue !== undefined)
     return userValue;
   return await readDefault($, pluginName, event);
+}
+
+function getValue(file: { values?: Record<string, Record<string, string | boolean>> }, section: string, key: string): string | boolean | undefined {
+  return file.values?.[section]?.[key];
+}
+
+async function readValue($: EngineInterface, section: string, key: string): Promise<string | boolean> {
+  const user = await parseUserFile($);
+  if (user !== undefined) {
+    const userValue = getValue(user, section, key);
+    if (userValue !== undefined)
+      return userValue;
+  }
+  const defaults = await parseDefaultFile($);
+  const defaultValue = getValue(defaults, section, key);
+  if (defaultValue === undefined)
+    throw new Error(`dispatch.json has no value for ${section} ${key}`);
+  return defaultValue;
 }
 
 function buildQuestionLinePreamble(check: ReplyCheck): string {
@@ -211,6 +229,10 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
   //   return next(e);
   // void $.prompt.submit({ text: nudges.join('\n\n') });
   // return next(e);
+  const useTypesafe = await readValue($, PLUGIN_NAME, 'useTypesafe');
+  const isTypesafeOn = useTypesafe === true;
+  if (isTypesafeOn)
+    throw new Error('ask-dont-dump: useTypesafe is true, but TypeSafe checks are not built yet');
   const flagged = await collectFlaggedChecks($, e.answer);
   const isAnyFlagged = flagged.length > 0;
   if (!isAnyFlagged)

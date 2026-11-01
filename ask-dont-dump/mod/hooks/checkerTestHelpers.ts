@@ -4,8 +4,8 @@ export const NUDGE_REPLY = { text: 'nudge', wait: false, origin: { kind: 'plugin
 // export const KEYWORDS = ['question or choice', 'incomplete or unstarted', 'a bug report', 'a claim about the repo state'];
 export const KEYWORDS = ['question or choice', 'work is not finished/started', 'a bug report', 'statement of fact about the git repository', 'a named task (e.g. #12)', 'functionality that is missing from the codebase'];
 
-export const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true } } }';
-export const DISPATCH_OFF_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false, "session.end": false } } }';
+export const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true } }, "values": { "ask-dont-dump": { "useTypesafe": false } } }';
+export const DISPATCH_OFF_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false, "session.end": false } }, "values": { "ask-dont-dump": { "useTypesafe": false } } }';
 export const SETTINGS_TEXT = '{ "env": { "CLAUDE_CODE_TASK_LIST_ID": "proj" } }';
 export const OPEN_SUBJECT = 'Commit the prompt-intent change';
 export const IN_PROGRESS_SUBJECT = 'Write the retry helper';
