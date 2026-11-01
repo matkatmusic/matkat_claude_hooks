@@ -1,5 +1,4 @@
 import { noul, type JsonValue, type NoulResponse, type Questions, TypeSafeClient } from "@typesafe-ai/sdk";
-// import { loadTaskList } from "./typesafe-checker";
 
 const client = new TypeSafeClient();
 
@@ -71,7 +70,6 @@ export async function isNodeAnswerYes(replyState: ReplyState, nodeId: keyof type
   const nodeRequest = buildNodeRequest(replyState, LABELS[nodeId], focusName, focus, extraState);
   console.log(`asking typesafe ${nodeId}`);
   console.log(JSON.stringify(nodeRequest, null, 2));
-  // await Bun.sleep(5000);
   const response = await client.systemOne(nodeRequest);
   const answer = response.answers.answer as NoulResponse;
   const isYes = answer.noul > SCORE_THRESHOLD;
@@ -105,7 +103,6 @@ export async function spawnHaikuFields(job: string, replyText: string, item: unk
   }
   console.log(`MAX_THINKING_TOKENS=0 ${printedArgs.join(" ")}`);
   console.log(prompt);
-  // await Bun.sleep(5000);
   const proc = Bun.spawn(
     spawnArgs,
     { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: import.meta.dir, env: { ...process.env, MAX_THINKING_TOKENS: "0" } },
@@ -143,7 +140,6 @@ export async function loadReplyState(replyId: string) {
     const lineTexts: string[] = [];
     for (const line of reply.text)
       lineTexts.push(line.text);
-    // const taskList = await loadTaskList();
     const taskList = reply.taskList;
     const replyState: ReplyState = { reply: { text: lineTexts.join("\n") }, userPrompt: reply.userPrompt, taskList };
     return replyState;

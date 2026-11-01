@@ -61,16 +61,6 @@ function executePonytail(context: DirectContext, name: string, event: string, ex
 }
 
 // Moved to live row 62 in run_stranger.ts.
-// export function validatePonytailTypedPrompt(context: DirectContext): DirectResult {
-//   const fullName = executePonytail(context, "pt-full", "UserPromptSubmit", { prompt: "/ponytail:ponytail ultra" });
-//   const shortName = executePonytail(context, "pt-short", "UserPromptSubmit", { prompt: "/ponytail ultra" });
-//   const notUltra = executePonytail(context, "pt-not", "UserPromptSubmit", { prompt: "/ponytail:ponytail not ultra" });
-//   const fullFlips = !fullName.stdout.includes(NUDGE_TEXT) && readUltraFlag(context, "pt-full");
-//   const shortFlips = !shortName.stdout.includes(NUDGE_TEXT) && readUltraFlag(context, "pt-short");
-//   const notUltraNudges = notUltra.stdout.includes(NUDGE_TEXT) && !readUltraFlag(context, "pt-not");
-//   const ok = fullFlips && shortFlips && notUltraNudges;
-//   return buildResult(27, "ponytail-ultra-nudge (typed)", ok, `/ponytail:ponytail ultra counts on the same prompt: ${formatFlag(fullFlips)}; /ponytail ultra counts: ${formatFlag(shortFlips)}; "not ultra" still nudges: ${formatFlag(notUltraNudges)}`);
-// }
 //
 // Kept direct: hooks.json wires ponytail-ultra-nudge only to UserPromptSubmit, so a real session never sends the PostToolUse(Skill) call.
 export function validatePonytailSkillCall(context: DirectContext): DirectResult {

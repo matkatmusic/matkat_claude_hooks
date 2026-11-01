@@ -11,7 +11,6 @@ const ASK_SIGNS = [
   'answerNotConfirmed',
 ];
 const TASK_SIGNS = ['problemFoundInCode', 'aboutABug'];
-// const BLOCK_SIGNS = ['workAlreadyOnTaskList', 'helperAlreadyDoing', 'waitsForResult', 'tasksAddedToTaskList'];
 const BLOCK_SIGNS = ['workAlreadyOnTaskList', 'helperAlreadyDoing', 'waitsForResult'];
 const ASK_BLOCK_SIGNS = ['tasksAddedToTaskList'];
 const MIN_YES_PROBABILITY = 0.6;
@@ -46,17 +45,6 @@ function countFiringSigns(answers: Record<string, ChoiceResponse>, signs: string
 }
 
 function computeResult(answers: Record<string, ChoiceResponse>, replyId: string, runIndex: number) {
-  // const isAsk = countFiringSigns(answers, ASK_SIGNS, replyId, runIndex) > 0;
-  // const hasTaskSign = countFiringSigns(answers, TASK_SIGNS, replyId, runIndex) > 0;
-  // const hasBlockSign = countFiringSigns(answers, BLOCK_SIGNS, replyId, runIndex) > 0;
-  // const isTask = hasTaskSign && !hasBlockSign;
-  // if (isAsk && isTask)
-  //   return 'both';
-  // if (isAsk)
-  //   return 'ask';
-  // if (isTask)
-  //   return 'task';
-  // return 'none';
   const hasAskSign = countFiringSigns(answers, ASK_SIGNS, replyId, runIndex) > 0;
   const hasTaskSign = countFiringSigns(answers, TASK_SIGNS, replyId, runIndex) > 0;
   const hasBlockSign = countFiringSigns(answers, BLOCK_SIGNS, replyId, runIndex) > 0;

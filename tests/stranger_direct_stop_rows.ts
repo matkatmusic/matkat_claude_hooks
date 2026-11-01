@@ -38,20 +38,6 @@ export function validateTypecheckOtherFiles(context: DirectContext): DirectResul
 }
 
 // Moved to live row 65 in run_stranger.ts.
-// export function validateTypecheckRepeatStops(context: DirectContext): DirectResult {
-//   const dir = createTypeScriptProject(context, "ts-repeat", { "bad.ts": BAD_LINE });
-//   const transcript = writeEditTranscript(context, "tc-repeat", path.join(dir, "bad.ts"));
-//   let blockedCount = 0;
-//   for (let stop = 0; stop < 3; stop++) {
-//     const run = executeTypecheck(context, dir, transcript, stop > 0);
-//     const isBlocked = isHookBlocked(run);
-//     if (isBlocked)
-//       blockedCount += 1;
-//   }
-//   const fourth = executeTypecheck(context, dir, transcript, true);
-//   const letsPass = !isHookBlocked(fourth) && fourth.stdout.includes("already blocked 3 times");
-//   return buildResult(34, "typecheck-on-stop (repeat)", blockedCount === 3 && letsPass, `blocked on stops 1 to 3 (even with stop_hook_active): ${blockedCount} of 3; stop 4 passes with a note: ${formatFlag(letsPass)}`);
-// }
 
 export function validateTypecheckStartFailure(context: DirectContext): DirectResult {
   const dir = createTypeScriptProject(context, "ts-nostart", { "fresh.ts": OK_LINE });

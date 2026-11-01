@@ -1,6 +1,5 @@
 import type { EngineInterface } from 'claude-code';
 
-// export type FlaggedChecks = { did: string[]; do: string[]; phrases: string[] };
 export type FlaggedCheck = { did: string; do: string; proof: string };
 
 const NUDGE_FOLDER = '.claude_hooks/ask-dont-dump';
@@ -12,16 +11,6 @@ export function buildNudgePath(root: string, sessionId: string): string {
   return `${root}/${NUDGE_FOLDER}/${sessionId}.json`;
 }
 
-// export function parseYesPhrase(replyText: string): string {
-//   const trimmedText = replyText.trim();
-//   const isYes = YES_PATTERN.test(trimmedText);
-//   if (!isYes)
-//     return '';
-//   const afterYes = trimmedText.slice('yes'.length);
-//   const withoutFiller = afterYes.replace(LEADING_FILLER_PATTERN, '');
-//   const unquoted = withoutFiller.replace(SURROUNDING_QUOTES_PATTERN, '');
-//   return unquoted.trim();
-// }
 export function parseYesPhrase(replyText: string, answer: string): string {
   const trimmedText = replyText.trim();
   const isYes = YES_PATTERN.test(trimmedText);

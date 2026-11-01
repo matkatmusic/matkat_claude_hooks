@@ -2,7 +2,6 @@
 import { readFileSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { getSetting } from "../shared/settings.ts";
-// import { readEnvValue } from "../shared/env.ts";
 import { isBashCommandBlocked } from "./bash-block-pattern.ts";
 // PreToolUse: blocks file edits from the parent (claude-fable-* or claude-opus-5 and later) session. Subagents may edit.
 
@@ -25,7 +24,6 @@ export function isBlockedParentModel(transcriptPath: string): boolean {
   }
   if (!model)
     return true;
-    // throw new Error(`block-parent-edits: no model found in transcript ${transcriptPath}: the transcript has no assistant message and no model attachment`);
   const isFable = model.startsWith("claude-fable");
   const opusMatch = model.match(OPUS_MAJOR_VERSION);
   const isOpusFiveOrLater = opusMatch !== null && Number(opusMatch[1]) >= 5;

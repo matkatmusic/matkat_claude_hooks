@@ -1,7 +1,6 @@
 export const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const;
 export const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
 export const NUDGE_REPLY = { text: 'nudge', wait: false, origin: { kind: 'plugin', name: 'ask-dont-dump' } } as const;
-// export const KEYWORDS = ['question or choice', 'incomplete or unstarted', 'a bug report', 'a claim about the repo state'];
 export const KEYWORDS = ['question or choice', 'work is not finished/started', 'a bug report', 'statement of fact about the git repository', 'a named task (e.g. #12)', 'functionality that is missing from the codebase'];
 
 export const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true } }, "values": { "ask-dont-dump": { "useTypesafe": false } } }';

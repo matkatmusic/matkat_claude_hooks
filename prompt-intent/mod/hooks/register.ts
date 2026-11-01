@@ -47,22 +47,6 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
-// async function isTypedPromptAnswerYes($: EngineInterface, e: PromptSubmitInput, pluginName: string, question: string): Promise<boolean> {
-//   const enabled = await isEventEnabled($, pluginName, 'prompt.submit');
-//   if (!enabled)
-//     return false;
-//   if (e.command !== undefined)
-//     return false;
-//   const isTypedByPerson = e.origin.kind === 'composer';
-//   if (!isTypedByPerson)
-//     return false;
-//   const prompt = `${question}\n\nAnswer with the single word yes or no.\n\nThe user's prompt:\n${e.text}`;
-//   const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
-//   if (!reply.isAnswered)
-//     throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason}`);
-//   const answer = reply.text.trim().toLowerCase();
-//   return answer.startsWith('yes');
-// }
 
 async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginName: string, question: string): Promise<string[]> {
   const enabled = await isEventEnabled($, pluginName, 'prompt.submit');

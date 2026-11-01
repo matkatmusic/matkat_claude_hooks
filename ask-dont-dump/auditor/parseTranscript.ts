@@ -1,6 +1,5 @@
 import { REPLY_CHECKS } from '../mod/hooks/register';
 import type { FlaggedCheck } from '../mod/hooks/nudgeFile';
-// import { assertOldNudgeDidsHaveChecks, containsOldNudge } from './oldNudgeTexts';
 import { addReadCalls, addReadResults, containsToolResult, findNudgeDetails, isNewFormatNudge, readTextBlocks, type Content, type ReadCall } from './nudgeDetails';
 
 const PLUGIN_NAME = 'ask-dont-dump';
@@ -94,8 +93,6 @@ function buildChecks(turn: Turn): CheckRow[] {
   const hasTaskNumber = TASK_NUMBER_PATTERN.test(turn.replyText);
   const checks: CheckRow[] = [];
   for (const check of REPLY_CHECKS) {
-    // const flaggedIndex = turn.flagged === undefined ? -1 : turn.flagged.did.indexOf(check.did);
-    // const isFiredByDetails = flaggedIndex >= 0;
     let flaggedProof = '';
     let isFiredByDetails = false;
     for (const item of turn.flagged ?? []) {
@@ -104,8 +101,6 @@ function buildChecks(turn: Turn): CheckRow[] {
         flaggedProof = item.proof;
       }
     }
-    // const isFiredByOldText = containsOldNudge(turn.nudgeText, check.did);
-    // const isFired = isFiredByOldText || isFiredByDetails;
     const isFired = isFiredByDetails;
     const isMaybeSkipped = check.skipsListedTasks === true && hasTaskNumber;
     let state: CheckState = 'quiet';
@@ -126,7 +121,6 @@ function buildChecks(turn: Turn): CheckRow[] {
 }
 
 export function parseTranscript(rawText: string): ParsedTranscript {
-  // assertOldNudgeDidsHaveChecks();
   const turns: Turn[] = [];
   const reads: ReadCall[] = [];
   let sessionId = '';
@@ -139,8 +133,6 @@ export function parseTranscript(rawText: string): ParsedTranscript {
     const isSkippedLine = !isConversationLine || isSidechain;
     if (isSkippedLine)
       continue;
-    // if (sessionId === '')
-    //   sessionId = line.sessionId;
     const isFirstConversationLine = sessionId === '';
     if (isFirstConversationLine) {
       const isTimestampMissing = line.timestamp === undefined;

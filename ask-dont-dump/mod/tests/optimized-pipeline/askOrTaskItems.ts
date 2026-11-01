@@ -2,7 +2,6 @@ import type { AskQuestion, Decision, NormalizedItem, ReplyState, Scores, TaskIte
 
 import { SCORE_THRESHOLD } from '../checker5Calls';
 
-// export const DEFAULT_THRESHOLD = 0.65; // Must be tuned on labeled data, not assumed calibrated.
 
 /** Deterministic interpretation of cached Noul probabilities. One item has one
  * terminal action; splitting question/work in extraction allows both overall. */
@@ -22,7 +21,6 @@ export function decideAskOrTask(
     const score = scores[item.id]?.[predicate];
     if (score === undefined || !Number.isFinite(score)) throw new Error(`Missing Noul score ${item.id}.${predicate}`);
     const isYes = score > threshold;
-    // trace.push({ node: predicate, focusId: item.id, score, isYes, source: 'typesafe' });
     trace.push({ node: predicate, focusId: item.id, score, isYes });
     return isYes;
   };
@@ -31,7 +29,6 @@ export function decideAskOrTask(
     // Classifier is batched, but the original Ask -> Task policy is evaluated in code.
     const isAsk = pass(item, 'Q_EXPLICIT') || pass(item, 'Q_BLOCKED') || pass(item, 'Q_PERMISSION');
     if (isAsk) {
-      // const question = item.question ?? { text: `What decision or information is needed regarding: ${item.text}?`, requestedAnswer: 'Clarification or approval' };
       const question = item.question;
       const key = (question ? question.text : item.id).trim().toLowerCase();
       if (!seenQuestions.has(key)) {

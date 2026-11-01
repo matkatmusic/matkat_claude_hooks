@@ -50,9 +50,6 @@ export function buildTestRun(commands: string[][], index: number): TestRun {
     const rest: string[] = [];
     const argWords = wordsWithoutRedirects.slice(2);
     for (const word of argWords) {
-      // const isTestFile = /\.(test|spec)\./.test(word);
-      // if (!isTestFile)
-      //   rest.push(word);
       const isChosenFile = word === file;
       const isTestFileWord = /\.(test|spec)\./.test(word);
       const hasGlobStar = word.includes("*");

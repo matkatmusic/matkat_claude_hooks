@@ -136,22 +136,3 @@ test('test_model_with_no_answer_makes_the_hook_throw_and_submits_no_prompt', asy
   expect(submittedTexts).toHaveLength(0);
 });
 
-// test('test_reply_that_passes_submits_no_prompt', async ($, on) => {
-//   const { submittedTexts } = setUpCheckerStubs(on, '{"ok": true}')
-//   await $.turn.complete(ANSWER)
-//   expect(submittedTexts).toEqual([])
-// })
-//
-// test('test_reply_that_fails_submits_the_reason', async ($, on) => {
-//   const { submittedTexts } = setUpCheckerStubs(on, '{"ok": false, "reason": "R"}')
-//   await $.turn.complete(ANSWER)
-//   await new Promise(resolve => setTimeout(resolve, 0))
-//   expect(submittedTexts).toEqual(['R'])
-// })
-//
-// test('test_reply_wrapped_in_a_code_fence_still_submits_the_reason', async ($, on) => {
-//   const { submittedTexts } = setUpCheckerStubs(on, '```json\n{"ok": false, "reason": "R"}\n```')
-//   await $.turn.complete(ANSWER)
-//   await new Promise(resolve => setTimeout(resolve, 0))
-//   expect(submittedTexts).toEqual(['R'])
-// })

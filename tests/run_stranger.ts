@@ -235,16 +235,6 @@ export function addUnknownHook(clone: string, hook: string): void {
 }
 
 // Disabled: the idle minutes now come from user-dispatch.json values (see writeUserDispatch).
-// export function modifyIdleMinutes(clone: string): void {
-//   const registerPath = path.join(clone, "idle-state", "mod", "hooks", "register.ts");
-//   const source = readFileSync(registerPath, "utf8");
-//   const original = "const IDLE_MINUTES = 55;";
-//   const hasOriginal = source.includes(original);
-//   if (!hasOriginal) {
-//     throw new Error(`idle-state mod has no line: ${original}`);
-//   }
-//   writeFileSync(registerPath, source.replace(original, `const IDLE_MINUTES = ${IDLE_MS / 60000};`));
-// }
 
 function copyUncommittedChanges(clone: string): void {
   const patch = execFileSync("git", ["diff", "HEAD", "--binary"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 });
@@ -309,7 +299,6 @@ function buildBed(bed: string, config: string): void {
   executeCommand(["npm", "install"], clone);
   writeFileSync(path.join(bed, "planning.md"), "A plan has a goal, steps, and a test for each step.\n");
   writeUserDispatch(clone, bed, config);
-  // modifyIdleMinutes(clone);
   createProject(path.join(bed, "project"));
   writeSettings(config, clone);
   installPlugins(clone, config);
@@ -370,12 +359,6 @@ function findJsonl(session: Session): string | null {
     if (hasExpectedFile) {
       session.jsonlPath = expectedPath;
     }
-    // for (const jsonlFile of listFilesWithSuffix(session.projectsDir, ".jsonl")) {
-    //   const isKnown = session.knownJsonlFiles.has(jsonlFile);
-    //   if (!isKnown) {
-    //     session.jsonlPath = jsonlFile;
-    //   }
-    // }
   }
   return session.jsonlPath;
 }

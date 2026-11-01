@@ -58,29 +58,6 @@ export function isNewFormatNudge(nudgeText: string): boolean {
   return nudgeText.includes(NEW_NUDGE_MARKER);
 }
 
-// type OldFlaggedChecks = { did: string[]; do: string[]; phrases: string[] };
-//
-// function convertOldShapeToChecks(old: OldFlaggedChecks): FlaggedCheck[] {
-//   const checks: FlaggedCheck[] = [];
-//   for (const [i, did] of old.did.entries())
-//     checks.push({ did, do: old.do[i] as string, proof: old.phrases[i] as string });
-//   return checks;
-// }
-//
-// function parseReadJson(readText: string): FlaggedCheck[] {
-//   const withoutNumbers = readText.replace(LINE_NUMBER_PATTERN, '');
-//   const arrayStart = withoutNumbers.indexOf('[');
-//   const objectStart = withoutNumbers.indexOf('{');
-//   const isArrayMissing = arrayStart === -1;
-//   const isObjectBeforeArray = objectStart !== -1 && objectStart < arrayStart;
-//   const isObjectFirst = isArrayMissing || isObjectBeforeArray;
-//   const start = isObjectFirst ? objectStart : arrayStart;
-//   const end = Math.max(withoutNumbers.lastIndexOf(']'), withoutNumbers.lastIndexOf('}'));
-//   const parsed = JSON.parse(withoutNumbers.slice(start, end + 1));
-//   if (Array.isArray(parsed))
-//     return parsed;
-//   return convertOldShapeToChecks(parsed);
-// }
 
 function parseReadJson(readText: string): FlaggedCheck[] {
   const withoutNumbers = readText.replace(LINE_NUMBER_PATTERN, '');

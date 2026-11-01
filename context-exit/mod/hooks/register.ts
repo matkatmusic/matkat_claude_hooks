@@ -3,7 +3,6 @@ import { logAndRethrowHookFailure } from './logHookFailure';
 
 const PLUGIN_NAME = 'context-exit';
 const WARNING_PERCENTS_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS';
-// const WARNING_PERCENTS = [30, 50, 80];
 const TOAST_MS = 60000;
 const DISPATCHER_DIR = '../../dispatcher';
 

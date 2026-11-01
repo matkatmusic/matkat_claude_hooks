@@ -12,7 +12,6 @@ const DISPATCHER_DIR = '../../dispatcher';
  * Add more question/result pairs to the REPLY_CHECKS array as needed.
  * skipsListedTasks: the check is skipped when every task number in the reply is an open task, and Haiku sees the open tasks.
  */
-// export type ReplyCheck = { question: string; result: string; skipsListedTasks?: boolean; name?: string; footnote?: string };
 export type ReplyCheck = { question: string; correction: string; did: string; do: string; skipsListedTasks?: boolean; name?: string; footnote?: string };
 export const REPLY_CHECKS: ReplyCheck[] = [
   {
@@ -37,8 +36,6 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     did: 'Declared unfinished work',
     do: 'Use TaskCreate to track the work.',
     skipsListedTasks: true,
-    // footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work.',
-    // footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work. A sentence that only reports that a helper, subagent or another chat is working on something, or has made no change yet, does not count as Declaring Unfinished Work.',
     footnote: 'a question asking permission to start work does not count as Declaring Unfinished Work. A description of missing functionality does not count as Declaring Unfinished Work. A sentence that only reports that a helper, subagent or another chat is working on something, or has made no change yet, does not count as Declaring Unfinished Work. A sentence that only says code or changes wait for a commit does not count as Declaring Unfinished Work.',
   },
   {
@@ -56,7 +53,6 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     correction: 'Your last message named an incomplete task.',
     did: 'Declared an open task',
     do: 'Confirm against the codebase if the task is actually incomplete.  If the task is completed, mark the task as Completed.  Otherwise, use AskUserQuestion to ask the user if they want to tackle that incomplete task now.',
-    // footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task',
     footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task. A sentence that only says a helper or subagent is running or working on a task does not count as a Declaring Open Task, because someone already works on it.',
   },
   {
@@ -151,7 +147,6 @@ function buildQuestionLine(check: ReplyCheck): string {
 
 function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[]): string {
   const questionLine = buildQuestionLine(check);
-  // let prompt = `${questionLine}\n\n${ANSWER_FORMAT_LINE}`;
   let prompt = `${questionLine}\n\n${ANSWER_FORMAT_LINE}\n\n`;
 
   if (check.skipsListedTasks)
@@ -190,9 +185,6 @@ async function collectFlaggedChecks($: EngineInterface, answer: string): Promise
     const isFlagged = phrase !== undefined && phrase !== '';
     if (!isFlagged)
       continue;
-    // flagged.did.push(check.did);
-    // flagged.do.push(check.do);
-    // flagged.phrases.push(phrase);
     flagged.push({ did: check.did, do: check.do, proof: phrase });
   }
   return flagged;
@@ -224,11 +216,6 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
   if (isAnsweringCheckerReason)
     return next(e);
 
-  // const nudges = await getNudgeTexts($, e.answer);
-  // if (nudges.length === 0)
-  //   return next(e);
-  // void $.prompt.submit({ text: nudges.join('\n\n') });
-  // return next(e);
   const useTypesafe = await readValue($, PLUGIN_NAME, 'useTypesafe');
   const isTypesafeOn = useTypesafe === true;
   if (isTypesafeOn)

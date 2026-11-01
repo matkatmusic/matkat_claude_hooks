@@ -53,8 +53,8 @@ export function isBodyCode(body: string): number {
   const isReturnValue = /^return\s+([\w.$]+(\(.*\))?|"[^"]*"|'[^']*'|`[^`]*`)$/.test(body);
   const isImport = /^import\s+(.+\s+from\s+)?["'][^"']+["']$/.test(body);
   const isExportDeclaration = /^export\s+(const|let|var|function|class|default|\{)/.test(body);
-  // const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall || isDeclaration;
-  const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall || isDeclaration || isAwaitCall || isReturnValue || isImport || isExportDeclaration;
+  const isNameList = /^[\w.$]+(\s*,\s*[\w.$]+)+,$/.test(body);
+  const isCode = endsWithBraceOrArrow || startsWithCloser || startsWithMarkup || isKeywordStatement || isAssignment || isCall || isDeclaration || isAwaitCall || isReturnValue || isImport || isExportDeclaration || isNameList;
   return isCode ? BODY_LOOKS_LIKE_CODE : BODY_LOOKS_LIKE_PROSE;
 }
 

@@ -7,7 +7,6 @@ flowchart TD
     B_NO_GATE["No gate opens from this answer"]
     B_ASK_NO_GATE["Question 1 opens no gate"]
     B_AGENT_REPLY --> B_ASK_WALK
-%%     B_AGENT_REPLY --> B_TASK_WALK
 
 %% %% Question 1, layer 1 query
     Q_ASK_OPEN{"Does the reply leave something for the user to answer or decide?"}
@@ -111,9 +110,6 @@ flowchart TD
     Q_WHO_USER{"'the user, after this turn'"}
     Q_CHOICE_WHO_USER_PASS["> threshold"]
     Q_CHOICE_WHO_USER_FAIL["≤ threshold"]
-    %% Q_WHO_NOBODY_DONE{"'nobody: the work is done'"}
-    %% Q_CHOICE_WHO_NOBODY_DONE_PASS["> threshold"]
-    %% Q_CHOICE_WHO_NOBODY_DONE_FAIL["≤ threshold"]
     Q_WHO_NOBODY_OPEN{"'nobody yet: the work is still open'"}
     Q_CHOICE_WHO_NOBODY_OPEN_PASS["> threshold"]
     Q_CHOICE_WHO_NOBODY_OPEN_FAIL["≤ threshold"]
@@ -123,7 +119,6 @@ flowchart TD
     Q_WHO --> Q_WHO_CLAUDE_LATER
     Q_WHO --> Q_WHO_HELPER
     Q_WHO --> Q_WHO_USER
-    %% Q_WHO --> Q_WHO_NOBODY_DONE
     Q_WHO --> Q_WHO_NOBODY_OPEN
     Q_WHO_CLAUDE_NOW --> Q_CHOICE_WHO_CLAUDE_NOW_PASS --> Q_LISTED
     Q_WHO_CLAUDE_LATER --> Q_CHOICE_WHO_CLAUDE_LATER_PASS --> Q_LISTED
@@ -131,12 +126,10 @@ flowchart TD
     %% %% a helper does it now, or the user owns it: no task
     Q_WHO_HELPER --> Q_CHOICE_WHO_HELPER_PASS --> B_NO_GATE
     Q_WHO_USER --> Q_CHOICE_WHO_USER_PASS --> B_NO_GATE
-    %% Q_WHO_NOBODY_DONE --> Q_CHOICE_WHO_NOBODY_DONE_PASS --> B_NO_GATE
     Q_WHO_CLAUDE_NOW --> Q_CHOICE_WHO_CLAUDE_NOW_FAIL --> B_NO_GATE
     Q_WHO_CLAUDE_LATER --> Q_CHOICE_WHO_CLAUDE_LATER_FAIL --> B_NO_GATE
     Q_WHO_HELPER --> Q_CHOICE_WHO_HELPER_FAIL --> B_NO_GATE
     Q_WHO_USER --> Q_CHOICE_WHO_USER_FAIL --> B_NO_GATE
-    %% Q_WHO_NOBODY_DONE --> Q_CHOICE_WHO_NOBODY_DONE_FAIL --> B_NO_GATE
     Q_WHO_NOBODY_OPEN --> Q_CHOICE_WHO_NOBODY_OPEN_FAIL --> B_NO_GATE
 %% %% Question 2, layer 3 query
     Q_LISTED{"Is all the work Claude owes already on the task list? Match plain words, not exact text."}
@@ -165,7 +158,6 @@ flowchart TD
     B_BLOCK_ASK["Block with plugin message: Your reply leaves something for the user to answer or decide. Use AskUserQuestion to resolve it now."]
     B_BLOCK_TASK["Block with plugin message: Your reply names work that is not done and is not on the task list. Use TaskCreate to add it now."]
     B_BLOCK_BOTH["Block with plugin message: Your reply leaves something for the user to answer or decide, and names work that is not on the task list. Use AskUserQuestion and TaskCreate now."]
-%%     B_ASK_GATE --> Q_GATES
     B_TASK_GATE --> Q_GATES
     B_NO_GATE --> Q_GATES
     Q_GATES --> Q_CHOICE_GATES_NONE --> B_DO_NOT_BLOCK

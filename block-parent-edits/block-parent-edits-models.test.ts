@@ -59,17 +59,6 @@ test("main session on a dated claude-opus-4 name, Edit tool: allowed", () => {
   assert.equal(output, "");
 });
 
-// test("main session with no model in the transcript: the hook fails loudly and does not allow", () => {
-//   const dir = mkdtempSync(`${tmpdir()}/block-parent-edits-`);
-//   const transcript_path = `${dir}/transcript.jsonl`;
-//   writeFileSync(transcript_path, `${JSON.stringify({ type: "user", message: { content: "hi" } })}\n`);
-//   const run = spawnSync("node", [`${import.meta.dirname}/block-parent-edits.ts`], {
-//     input: JSON.stringify({ session_id: "test-session", transcript_path, tool_name: "Edit", tool_input: {} }),
-//     encoding: "utf8",
-//   });
-//   assert.notEqual(run.status, 0);
-//   assert.notEqual(run.stderr, "");
-// });
 
 test("main session with no model in the transcript, Edit tool: denied", () => {
   const dir = mkdtempSync(`${tmpdir()}/block-parent-edits-`);

@@ -43,7 +43,6 @@ export async function extractCandidates(replyState: ReplyState, trace: TraceEntr
 
     const isDuplicate = await isNodeAnswerYes(replyState, "Q_DUPLICATE", "candidate", candidate, { candidates }, trace);
     if (isDuplicate) {
-      // const merged = await spawnHaikuFields(LABELS.B_MERGE, replyText, candidate, { candidates }, '{"mergedIntoId": "id of the existing candidate", "text": "the merged text"}');
       const merged = await spawnHaikuFields(LABELS.B_MERGE, replyText, candidate, { candidates }, '{"mergedIntoId": "id of one candidate in candidates, never the current candidate\'s id; null if no candidate in candidates states the same claim or obligation", "text": "the merged text, or null"}');
       const isNoMatch = merged.mergedIntoId === null;
       if (isNoMatch) {

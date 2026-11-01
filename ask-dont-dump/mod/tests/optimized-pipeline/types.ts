@@ -24,7 +24,6 @@ export type NormalizedItem = {
   uncertainties: string[];
 };
 export type Extraction = { items: NormalizedItem[] };
-// export type TraceEntry = { node: string; focusId: string; score: number; isYes: boolean; source: 'typesafe' | 'code' };
 export type TraceEntry = { node: string; focusId: string; score: number; isYes: boolean };
 export type AskQuestion = { itemId: string; sourceText: string; question: NormalizedItem['question'] };
 export type TaskItem = { itemId: string; sourceText: string; work: Work };
@@ -33,7 +32,6 @@ export type Decision = {
   taskItems: TaskItem[];
   result: 'none' | 'ask' | 'task' | 'both';
 };
-// export type Scores = Record<string, Partial<Record<'explicit' | 'blocked' | 'permission' | 'actionable' | 'problem' | 'committed', number>>>;
 export type Scores = Record<string, Partial<Record<'Q_EXPLICIT' | 'Q_BLOCKED' | 'Q_PERMISSION' | 'Q_ACTION' | 'Q_BUG' | 'Q_COMMITMENT', number>>>;
 
 export function assert(condition: unknown, message: string): asserts condition {

@@ -27,20 +27,6 @@ export async function callHaiku(prompt: string): Promise<unknown> {
   return JSON.parse(rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim());
 }
 
-// export async function runOptimized(replyState: ReplyState, options: { maxItemsPerCall?: number } = {}) {
-//   const started = performance.now();
-//   const extracted = await extractItems(replyState, callHaiku);
-//   const normalizedItems = normalizeItems(replyState, extracted);
-//   const scores = await evaluateBatch(replyState, normalizedItems, options);
-//   const decisions = decideAskOrTask(replyState, normalizedItems, scores);
-//   return {
-//     extractedItems: extracted.items,
-//     normalizedItems,
-//     scores,
-//     ...decisions,
-//     elapsedSeconds: (performance.now() - started) / 1000,
-//   };
-// }
 export async function runOptimized(id: string, replyState: ReplyState, options: { maxItemsPerCall?: number } = {}) {
   const started = performance.now();
   const extracted = await extractItems(replyState, callHaiku);
@@ -59,19 +45,6 @@ export async function runOptimized(id: string, replyState: ReplyState, options: 
 }
 
 // bun runOptimized.ts --from state.json --out result.json
-// if (import.meta.main) {
-//   const flag = (key: string) => {
-//     const index = process.argv.indexOf(key);
-//     return index < 0 ? undefined : process.argv[index + 1];
-//   };
-//   const path = flag('--from');
-//   if (!path) throw new Error('Usage: bun runOptimized.ts --from state.json [--out result.json]');
-//   const state = await Bun.file(path).json() as ReplyState;
-//   const result = await runOptimized(state);
-//   const out = flag('--out');
-//   if (out) { await Bun.write(out, JSON.stringify(result, null, 2)); console.log(out); }
-//   else console.log(JSON.stringify(result, null, 2));
-// }
 
 // bun mod/tests/optimized-pipeline/runOptimized.ts [--id <replyId>]
 if (import.meta.main) {

@@ -1,6 +1,5 @@
 export const PLUGIN_NAME = 'idle-state';
 export const MS_PER_MINUTE = 60 * 1000;
-// const IDLE_MINUTES = 55;
 export const IDLE_MINUTES_KEY = 'CLAUDE_HOOKS_IDLE_MINUTES';
 export const LATE_LIMIT_MINUTES = 58;
 export const EXIT_KEY_DELAY_MINUTES = 1 / 60;

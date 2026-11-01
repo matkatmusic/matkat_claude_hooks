@@ -21,7 +21,6 @@ type CustomQuestion = { ask: string };
 type ExpectedItem = { kind: string; sourceText: string; text: string };
 type ExpectedReply = { id: string; expectedResult: string; text: { text: string }[]; expectedItems?: ExpectedItem[] };
 type LabelsFile = { replies: ExpectedReply[] };
-// type ViewerReply = { id: string; expected: string; text: string; user: Answer; task: Answer; items: ExpectedItem[]; canMark: boolean };
 type ViewerReply = { id: string; expected: string; text: string; userPrompt: string; user: Answer; task: Answer; items: ExpectedItem[]; canMark: boolean };
 
 const PAGE_TEMPLATE = `<!doctype html>
@@ -277,7 +276,6 @@ function makeSvg(name, attrs, text) {
 function drawChart(box, answer, cutoffs) {
   const keys = Object.keys(answer.probabilities);
   keys.sort(function (a, b) { return answer.probabilities[b] - answer.probabilities[a]; });
-  // const slot = 44, left = 120, top = 14, plotH = 220, bottom = 180, right = 140;
   const slot = 44, left = 120, top = 14, plotH = 220, bottom = 24, right = 140;
   const width = left + keys.length * slot + right;
   const plotBottom = top + plotH;
@@ -298,17 +296,11 @@ function drawChart(box, answer, cutoffs) {
     const sentence = key === 'no_reason' ? 'no_reason' : sentences[key];
     const scoreFill = isWinner && fired ? 'var(--fires)' : 'var(--score)';
     const scoreBar = makeSvg('rect', { x: x, y: yOf(value), width: 15, height: plotH * value, rx: 2, fill: scoreFill });
-    // scoreBar.appendChild(makeSvg('title', {}, sentence + ' | score ' + value));
     svg.appendChild(scoreBar);
     if (isWinner) {
       const confBar = makeSvg('rect', { x: x + 17, y: yOf(answer.confidence), width: 15, height: plotH * answer.confidence, rx: 2, fill: 'var(--confidence)' });
-      // confBar.appendChild(makeSvg('title', {}, sentence + ' | confidence ' + answer.confidence));
       svg.appendChild(confBar);
     }
-    // const labelX = x + 16;
-    // const label = makeSvg('text', { x: labelX, y: plotBottom + 12, 'text-anchor': 'end', transform: 'rotate(-45 ' + labelX + ' ' + (plotBottom + 12) + ')' }, key);
-    // label.appendChild(makeSvg('title', {}, sentence));
-    // svg.appendChild(label);
   }
   const scoreY = yOf(cutoffs.score), confY = yOf(cutoffs.conf);
   const confLabelY = Math.abs(scoreY - confY) < 13 ? confY + 13 : confY;
@@ -463,7 +455,6 @@ function drawItemList(reply) {
 
 function drawMarkBox() {
   const isMarkable = pendingSpan !== '' && replies[index].canMark;
-  // el('markBox').hidden = !isMarkable;
   el('markAsk').disabled = !isMarkable;
   el('markTask').disabled = !isMarkable;
   el('markQuote').textContent = pendingSpan;
@@ -474,7 +465,6 @@ async function rateSpan(reply, item, button) {
   button.disabled = true;
   button.textContent = 'rating\\u2026';
   try {
-    // const rated = await postJson('/rate', { text: item.sourceText });
     const rated = await postJson('/rate', { userPrompt: reply.userPrompt, originalReply: item.sourceText });
     spanCounts[reply.id] = (spanCounts[reply.id] || 0) + 1;
     const expected = item.kind === 'question' ? 'ask' : 'task';
@@ -507,7 +497,6 @@ async function submitReply() {
   el('submitBtn').disabled = true;
   el('submitBtn').textContent = 'rating\\u2026';
   try {
-    // const rated = await postJson('/rate', { text: text });
     const userPrompt = el('promptText').value;
     const rated = await postJson('/rate', { userPrompt: userPrompt, originalReply: text });
     pastedCount++;
@@ -533,10 +522,8 @@ document.addEventListener('selectionchange', function () {
   pendingSpan = selected;
   drawMarkBox();
 });
-// el('copyState').addEventListener('click', function () { copyJson({ message: replies[index].text }); });
 el('copyState').addEventListener('click', function () { copyJson({ userPrompt: replies[index].userPrompt, originalReply: replies[index].text }); });
 el('copyQuestions').addEventListener('click', function () { copyJson(data.questions); });
-// el('copyPasteState').addEventListener('click', function () { copyJson({ message: el('pasteText').value }); });
 el('copyPasteState').addEventListener('click', function () { copyJson({ userPrompt: el('promptText').value, originalReply: el('pasteText').value }); });
 el('copyPasteQuestions').addEventListener('click', function () { copyJson(data.questions); });
 el('tabUser').addEventListener('click', function () { activeTab = 'user'; render(); });
@@ -596,7 +583,6 @@ async function buildPage(resultsPath: string, questions: Questions) {
       canMark: true,
     });
   }
-  // const viewerData = { replies: viewerReplies, sentences: collectSentences(customFile.questions.groups) };
   const viewerData = { replies: viewerReplies, sentences: collectSentences(customFile.questions.groups), questions };
   const safeJson = JSON.stringify(viewerData).replaceAll('<', '\\u003c');
   return PAGE_TEMPLATE.replace(DATA_MARKER, () => safeJson);
@@ -656,17 +642,9 @@ if (import.meta.main) {
     needsTaskCreated: choice(TASK_QUESTION_TEXT, taskOptions),
   };
   const outputPath = inputPath.slice(0, -'.json'.length) + '.html';
-  // await Bun.write(outputPath, await buildPage(inputPath));
   await Bun.write(outputPath, await buildPage(inputPath, questions));
   console.log(outputPath);
 
-  // const groups = customFile.questions.groups as Record<string, QuestionGroup>;
-  // const userOptions = buildOptions(groups, USER_NO_REASON_TEXT, ['Ask', 'Both']);
-  // const taskOptions = buildOptions(groups, TASK_NO_REASON_TEXT, ['Task', 'Both']);
-  // const questions: Questions = {
-  //   needsUserResponse: choice(USER_QUESTION_TEXT, userOptions),
-  //   needsTaskCreated: choice(TASK_QUESTION_TEXT, taskOptions),
-  // };
   const server = Bun.serve({
     hostname: SERVER_HOSTNAME,
     port: SERVER_PORT,
@@ -674,8 +652,6 @@ if (import.meta.main) {
       const { pathname } = new URL(request.url);
       const isRatePost = request.method === 'POST' && pathname === '/rate';
       if (isRatePost) {
-        // const body = (await request.json()) as { text?: unknown };
-        // const text = body.text;
         const body = (await request.json()) as { userPrompt?: unknown; originalReply?: unknown };
         const { userPrompt, originalReply } = body;
         const isReplyString = typeof originalReply === 'string';
@@ -687,7 +663,6 @@ if (import.meta.main) {
         const isPromptString = typeof userPrompt === 'string';
         if (!isPromptString)
           return new Response('userPrompt must be a string', { status: 400 });
-        // const response = await new TypeSafeClient().systemOne({ state: { message: text }, questions });
         const response = await new TypeSafeClient().systemOne({ state: { userPrompt, originalReply }, questions });
         return Response.json(response);
       }

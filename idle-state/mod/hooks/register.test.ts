@@ -73,7 +73,6 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   expect(commands).toEqual(['exit']);
 
   const result = await $.prompt.submit({ text: 'hello again', wait: false, origin: { kind: 'composer' } });
-  // expect(result.drop).toContain(stateFile?.path);
   expect(result.drop).toBeDefined();
 }
 

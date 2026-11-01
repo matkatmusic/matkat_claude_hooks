@@ -4,7 +4,6 @@ import { spawnSync } from "node:child_process";
 
 const ESLINT_BIN = resolve(import.meta.dirname, "..", "node_modules", ".bin", "eslint");
 const ESLINT_CONFIG = resolve(import.meta.dirname, "eslint.config.js");
-// const MIN_BLOCKING_DEBT = 10;
 
 export type DebtLimits = { maxFileLines: number; debtTarget: number; fixBatchSize: number; minFileDebt: number };
 
@@ -68,7 +67,6 @@ export function blockReason(
     const isOversized = debts[i].lineCount > maxFileLines;
     const isFileDebtHigh = debts[i].current >= minFileDebt;
     const shouldFlagOversized = isOversized && isFileDebtHigh;
-    // if (isOversized)
     if (shouldFlagOversized)
       oversizedFiles.push(`${debts[i].file} (${debts[i].lineCount} lines)`);
   }

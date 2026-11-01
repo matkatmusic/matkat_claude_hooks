@@ -84,10 +84,7 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
       jsonNames.push(name);
   }
   jsonNames.sort(compareTaskFileNumbers);
-  // for (const name of readdirSync(tasksFolder).sort()) {
   for (const name of jsonNames) {
-    // const isJson = name.endsWith(".json");
-    // if (!isJson)
     //   continue;
     const task = JSON.parse(readFileSync(join(tasksFolder, name), "utf8"));
     const isCompleted = task.status === "completed";
@@ -139,14 +136,6 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
       kept.push(items[index]);
   }
   return kept;
-  // let isDone = false;
-  // for (let start = 0; start < taskNames.length; start += MAX_TASKS_PER_CRITERIA) {
-  //   const answer = answers[`item_${index}_from_${start}`];
-  //   const isMatch = answer.choice !== "none";
-  //   const isConfident = answer.probabilities[answer.choice] > DROP_THRESHOLD;
-  //   if (isMatch && isConfident)
-  //     isDone = true;
-  // }
 }
 
 export function writeTypesafeLog(root: string, log: TypesafeLog, now: Date): void {

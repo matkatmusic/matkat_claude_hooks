@@ -20,10 +20,6 @@ export async function loadOpenTasks($: EngineInterface): Promise<OpenTask[]> {
       throw new Error('ask-dont-dump: HOME is not set');
     taskDir = `${home}/.claude/tasks/${taskListId}`;
   }
-  // const home = await $.env.get('HOME');
-  // if (home === undefined)
-  //   throw new Error('ask-dont-dump: HOME is not set');
-  // const taskDir = `${home}/.claude/tasks/${taskListId}`;
   const entries = await $.fs.list(taskDir);
   const openTasks: OpenTask[] = [];
   for (const entry of entries) {
@@ -38,16 +34,6 @@ export async function loadOpenTasks($: EngineInterface): Promise<OpenTask[]> {
   return openTasks;
 }
 
-// export function isOpenTaskMentioned(reply: string, openTasks: OpenTask[]): boolean {
-//   for (const match of reply.matchAll(/#(\d+)/g)) {
-//     for (const task of openTasks) {
-//       const isSameTask = task.id === match[1];
-//       if (isSameTask)
-//         return true;
-//     }
-//   }
-//   return false;
-// }
 export function isEveryTaskNumberOpen(reply: string, openTasks: OpenTask[]): boolean {
   let numberCount = 0;
   for (const match of reply.matchAll(/#(\d+)/g)) {
