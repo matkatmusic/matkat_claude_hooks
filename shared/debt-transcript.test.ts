@@ -63,6 +63,22 @@ test("findSubagentEditedFilePaths leaves out edits whose tool result is an error
   assert.deepEqual(findSubagentEditedFilePaths(dir, "2026-01-01T00:00:00Z"), []);
 });
 
+function blobToolUse(name: string, filePath: string): string {
+  const block = { type: "tool_use", name, input: { file_path: filePath } };
+  return JSON.stringify({ type: "api-request-blob", hash: "h", sessionId: "s", message: { role: "assistant", content: [block] } });
+}
+
+test("findEditedFilePaths finds an Edit that only appears in an api-request-blob line", () => {
+  const transcript = [userPrompt("T1"), blobToolUse("Edit", "/blob.ts")].join("\n");
+  assert.deepEqual(findEditedFilePaths(transcript).files, ["/blob.ts"]);
+});
+
+test("findSubagentEditedFilePaths finds an Edit that only appears in an api-request-blob line", () => {
+  const dir = mkdtempSync(`${tmpdir()}/debt-transcript-`);
+  writeFileSync(join(dir, "agent-1.jsonl"), blobToolUse("Write", "/blob.ts"));
+  assert.deepEqual(findSubagentEditedFilePaths(dir, "2026-01-01T00:00:00Z"), ["/blob.ts"]);
+});
+
 test("findSubagentEditedFilePaths returns an empty list when the folder does not exist", () => {
   assert.deepEqual(findSubagentEditedFilePaths(join(tmpdir(), "no-such-subagents-dir"), "T1"), []);
 });
@@ -79,4 +95,25 @@ test("findSubagentEditedFilePaths reads only agent-*.jsonl files", () => {
   writeFileSync(join(dir, "agent-1.jsonl"), toolUse("Edit", "/yes.ts", "2026-01-02T00:00:00Z"));
   writeFileSync(join(dir, "notes.jsonl"), toolUse("Edit", "/no.ts", "2026-01-02T00:00:00Z"));
   assert.deepEqual(findSubagentEditedFilePaths(dir, "2026-01-01T00:00:00Z"), ["/yes.ts"]);
+});
+
+function buildBlobBashLine(command: string): string {
+  const block = { type: "tool_use", name: "Bash", input: { command } };
+  return JSON.stringify({ type: "api-request-blob", hash: "h", sessionId: "s", message: { role: "assistant", content: [block] } });
+}
+
+test("findEditedFilePaths resolves a Bash write in an api-request-blob line against the last seen cwd", () => {
+  const dir = mkdtempSync(`${tmpdir()}/debt-transcript-`);
+  writeFileSync(join(dir, "a.ts"), "");
+  const userLine = JSON.stringify({ type: "user", timestamp: "T1", cwd: dir, message: { content: "do it" } });
+  const transcript = [userLine, buildBlobBashLine("echo hi > a.ts")].join("\n");
+  assert.deepEqual(findEditedFilePaths(transcript).files, [join(dir, "a.ts")]);
+});
+
+test("findSubagentEditedFilePaths resolves a Bash write in an api-request-blob line against the last seen cwd", () => {
+  const dir = mkdtempSync(`${tmpdir()}/debt-transcript-`);
+  writeFileSync(join(dir, "a.ts"), "");
+  const userLine = JSON.stringify({ type: "user", timestamp: "2026-01-02T00:00:00Z", cwd: dir, message: { content: "do it" } });
+  writeFileSync(join(dir, "agent-1.jsonl"), [userLine, buildBlobBashLine("echo hi > a.ts")].join("\n"));
+  assert.deepEqual(findSubagentEditedFilePaths(dir, "2026-01-01T00:00:00Z"), [join(dir, "a.ts")]);
 });

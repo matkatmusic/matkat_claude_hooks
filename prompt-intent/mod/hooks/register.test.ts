@@ -20,7 +20,7 @@ function findKeywordIndex(prompt: string): number {
 }
 
 // answers are given in this order: bug-report, feature-request, change-request
-function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswered = true) {
+function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswered = true, unansweredReason = 'empty-reply') {
   const seen = { context: undefined as readonly string[] | undefined, modelCalls: 0 };
   function getNoUserFile() {
     return { value: false };
@@ -36,7 +36,7 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
     const text = answers[index] ?? NO;
     seen.modelCalls++;
     if (!isAnswered)
-      return { value: { isAnswered: false, reason: 'empty-reply' } };
+      return { value: { isAnswered: false, reason: unansweredReason } };
     return { value: { isAnswered: true, text, usage: USAGE } };
   }
   function collectPromptContext(_$: any, e: any) {
@@ -103,6 +103,18 @@ async function assertNoModelAnswerAddsNoContext($: any, on: any) {
   expect(seen.context).toBeUndefined();
 }
 
+async function assertAbortedModelReplyAddsNoContextAndLogsNoFailure($: any, on: any) {
+  const writes: { path: string; text: string }[] = [];
+  const seen = setUpStubs(on, [], ALL_ON, false, 'aborted');
+  on('fs.write', (_$: any, e: any) => { writes.push(e); return { value: undefined }; });
+  on('session.root', () => ({ value: '/work/p' }));
+  on('session.id', () => ({ value: 'sess-9' }));
+  await $.prompt.submit(TYPED);
+  expect(seen.modelCalls).toBeGreaterThan(0);
+  expect(seen.context).toBeUndefined();
+  expect(writes).toHaveLength(0);
+}
+
 async function assertTwoItemsAreListedInTheContext($: any, on: any) {
   const seen = setUpStubs(on, [TWO_ITEMS, NO, NO]);
   await $.prompt.submit(TYPED);
@@ -141,6 +153,7 @@ async function assertThrowingHookIsLoggedAndAddsNoContext($: any, on: any) {
 }
 
 test('test_a_throwing_hook_is_logged_and_adds_no_context', assertThrowingHookIsLoggedAndAddsNoContext);
+test('test_aborted_model_reply_adds_no_context_and_logs_no_failure', assertAbortedModelReplyAddsNoContextAndLogsNoFailure);
 test('test_two_items_are_listed_in_the_context', assertTwoItemsAreListedInTheContext);
 test('test_no_items_add_no_context', assertNoItemsAddsNoContext);
 test('test_bad_json_makes_the_hook_throw_and_adds_no_context', assertBadJsonMakesTheHookThrowAndAddsNoContext);

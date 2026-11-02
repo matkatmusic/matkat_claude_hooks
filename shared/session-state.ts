@@ -20,6 +20,9 @@ export type SessionState = {
 };
 
 export function getSessionStatePath(transcriptPathOrSessionId: string, stateDir: string): string {
+  const hasNoStateDir = stateDir === undefined;
+  if (hasNoStateDir)
+    throw new Error(`getSessionStatePath needs a state folder for ${transcriptPathOrSessionId}`);
   const sessionId = basename(transcriptPathOrSessionId).replace(/\.jsonl$/, "");
   return `${stateDir}/${sessionId}.json`;
 }

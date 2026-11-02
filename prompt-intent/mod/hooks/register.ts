@@ -61,8 +61,12 @@ async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginN
   const startedAt = await $.clock.now();
   const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
   const elapsedMs = (await $.clock.now()) - startedAt;
-  if (!reply.isAnswered)
+  if (!reply.isAnswered) {
+    const isAborted = reply.reason === 'aborted';
+    if (isAborted)
+      return [];
     throw new Error(`${pluginName}: the classifier gave no answer: ${reply.reason} after ${elapsedMs} ms`);
+  }
   const replyJson = reply.text.slice(reply.text.indexOf('{'), reply.text.lastIndexOf('}') + 1);
   const parsed: { yes?: string[]; no?: string[] } = JSON.parse(replyJson);
   if (parsed.no !== undefined)

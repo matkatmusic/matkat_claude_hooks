@@ -4,7 +4,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { addUnknownHook, copyUntrackedFiles, readDispatchTexts, removeEnablement, writeDispatchTexts, setEnablement, setValue } from "./run_stranger.ts";
+import { copyUntrackedFiles } from "./stranger_bed.ts";
+import { addUnknownHook, readDispatchTexts, removeEnablement, writeDispatchTexts, setEnablement, setValue } from "./stranger_dispatch.ts";
 
 function makeDispatchClone(): string {
   const clone = mkdtempSync(path.join(tmpdir(), "run-stranger-dispatch-"));

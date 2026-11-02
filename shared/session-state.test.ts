@@ -16,6 +16,11 @@ test("getSessionStatePath accepts a bare session id", () => {
   assert.equal(getSessionStatePath("abc-123", STATE_DIR), `${STATE_DIR}/abc-123.json`);
 });
 
+test("getSessionStatePath throws when the state folder is undefined", () => {
+  const missingStateDir = undefined as unknown as string;
+  assert.throws(() => getSessionStatePath("abc-123", missingStateDir), /state folder/);
+});
+
 test("readSessionState returns an empty object when no file exists yet", () => {
   const home = mkdtempSync(`${tmpdir()}/session-state-`);
   assert.deepEqual(readSessionState(`${home}/state/no-such-session.json`), {});

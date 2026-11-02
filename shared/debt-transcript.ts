@@ -50,6 +50,17 @@ export function findEditedFilePaths(transcript: string): EditedTurn {
   const files: string[] = [];
   let reachedPromptBoundary = false;
   let turnStartTimestamp: string | undefined;
+  const cwdAtLine: (string | undefined)[] = [];
+  let cwd: string | undefined;
+  for (let c = 0; c < lines.length; c++) {
+    if (lines[c]) {
+      const cwdEntry = JSON.parse(lines[c]);
+      const hasCwd = typeof cwdEntry.cwd === "string";
+      if (hasCwd)
+        cwd = cwdEntry.cwd;
+    }
+    cwdAtLine[c] = cwd;
+  }
   let i = lines.length - 1;
   while (true) {
     const hasMoreLines = i >= 0;
@@ -69,7 +80,9 @@ export function findEditedFilePaths(transcript: string): EditedTurn {
       turnStartTimestamp = entry.timestamp;
       continue;
     }
-    const isAssistant = entry.type === "assistant";
+    const isAssistantType = entry.type === "assistant";
+    const isAssistantBlob = entry.type === "api-request-blob" && entry.message?.role === "assistant";
+    const isAssistant = isAssistantType || isAssistantBlob;
     if (!isAssistant)
       continue;
     const content = entry.message?.content;
@@ -87,7 +100,7 @@ export function findEditedFilePaths(transcript: string): EditedTurn {
         continue;
       const isBashName = block.name === "Bash";
       if (isBashName) {
-        const bashPaths = findBashWrittenTsPaths(block.input?.command as string, entry.cwd);
+        const bashPaths = findBashWrittenTsPaths(block.input?.command as string, cwdAtLine[i + 1] as string);
         for (let p = 0; p < bashPaths.length; p++)
           files.push(bashPaths[p]);
         continue;
@@ -121,15 +134,21 @@ export function findSubagentEditedFilePaths(subagentsDir: string, turnStartTimes
     const content = readFileSync(join(subagentsDir, name), "utf8");
     const lines = content.split("\n");
     const erroredIds = findErroredToolUseIds(lines);
+    let lastSeenCwd: string | undefined;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line)
         continue;
       const entry = JSON.parse(line);
-      const isAssistant = entry.type === "assistant";
+      const hasCwd = typeof entry.cwd === "string";
+      if (hasCwd)
+        lastSeenCwd = entry.cwd;
+      const isAssistantType = entry.type === "assistant";
+      const isAssistantBlob = entry.type === "api-request-blob" && entry.message?.role === "assistant";
+      const isAssistant = isAssistantType || isAssistantBlob;
       if (!isAssistant)
         continue;
-      const isAtOrAfterTurnStart = entry.timestamp >= turnStartTimestamp;
+      const isAtOrAfterTurnStart = isAssistantBlob || entry.timestamp >= turnStartTimestamp;
       if (!isAtOrAfterTurnStart)
         continue;
       const messageContent = entry.message?.content;
@@ -147,7 +166,7 @@ export function findSubagentEditedFilePaths(subagentsDir: string, turnStartTimes
           continue;
         const isBashName = block.name === "Bash";
         if (isBashName) {
-          const bashPaths = findBashWrittenTsPaths(block.input?.command as string, entry.cwd);
+          const bashPaths = findBashWrittenTsPaths(block.input?.command as string, lastSeenCwd as string);
           for (let p = 0; p < bashPaths.length; p++)
             files.push(bashPaths[p]);
           continue;
