@@ -3,7 +3,7 @@ import { logAndRethrowHookFailure } from './logHookFailure';
 
 const PLUGIN_NAME = 'anything-for-me';
 const DISPATCHER_DIR = '../../dispatcher';
-const PROMPT_TEXT = 'Is there anything for me to look at right now that would resolve or close some items on the task list, or provide the information needed for a pending task?';
+const PROMPT_TEXT = "I want to know if there is anything for me to look at right now that would resolve or close some items on the task list, or provide the information needed for a pending task.  If there are items that only I can complete, use AskUserQuestion to check if I've completed them.";
 
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
