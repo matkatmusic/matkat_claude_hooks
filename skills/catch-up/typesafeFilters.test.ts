@@ -184,6 +184,59 @@ async function completedStepSortsTaskFilesByNumber() {
   assert.deepEqual(secondGroupCriteria, ["task_255", "none"]);
 }
 
+async function completedStepDropsItemsWhenModelMisreadsArrayIndexes() {
+  const tasksFolder = mkdtempSync(`${tmpdir()}/catch-up-tasks-`);
+  const subjects: Record<string, string> = {
+    "179": "Run the full test suite after the lookUp rename",
+    "192": "Stage getValue and the second copy test after the other chat stages readValue",
+    "196": "Stage the catch-up sessionId change with the other chat's catch-up work",
+    "374": "User pushes tmux_lib, then claude_hooks, then dotfiles",
+  };
+  for (const id of Object.keys(subjects))
+    writeFileSync(`${tasksFolder}/${id}.json`, JSON.stringify({ id, subject: subjects[id], status: "completed" }));
+  const texts = [
+    "Wait for the user to say the labels are done",
+    "Run the full test suite after the rename",
+    "User pushes tmux_lib, claude_hooks, dotfiles in that order",
+    "Stage the catch-up files with the other chat's work when the user says (task #196)",
+  ];
+  const taskForText: Record<string, string> = { [texts[1]]: "task_179", [texts[2]]: "task_374", [texts[3]]: "task_196" };
+  // a model that reads items[N] as the next item but reads quoted item text correctly
+  function resolveItemText(instructions: string): string {
+    for (const text of texts) {
+      const isQuoted = instructions.includes(JSON.stringify(text));
+      if (isQuoted)
+        return text;
+    }
+    const indexMatch = instructions.match(/items\[(\d+)\]/);
+    return texts[Number(indexMatch![1]) + 1];
+  }
+  const modelClient = {
+    async systemOne(request: any) {
+      const answers: any = {};
+      for (const name of Object.keys(request.questions)) {
+        const instructions: string = request.questions[name].instructions;
+        const text = resolveItemText(instructions);
+        const rightTask = taskForText[text];
+        const isDoneQuestion = name.startsWith("done_");
+        if (isDoneQuestion) {
+          const namedTask = instructions.match(/tasks\.(task_\d+)/)![1];
+          const yes = namedTask === rightTask ? 0.9 : 0.2;
+          answers[name] = { type: "choice", choice: "yes", confidence: yes, probabilities: { yes, no: 1 - yes } };
+          continue;
+        }
+        const probabilities: Record<string, number> = { none: 0.2 };
+        if (rightTask !== undefined)
+          probabilities[rightTask] = 0.8;
+        answers[name] = { type: "choice", choice: "none", confidence: 0.2, probabilities };
+      }
+      return { answers };
+    },
+  };
+  const kept = await removeCompletedItems(modelClient as unknown as TypeSafeClient, buildItems(...texts), tasksFolder, "actions", []);
+  assert.deepEqual(kept.map((item) => item.text), [texts[0]]);
+}
+
 async function logHoldsItemTextAndAnswers() {
   const root = mkdtempSync(`${tmpdir()}/catch-up-log-`);
   mkdirSync(`${root}/.idleState`);
@@ -210,4 +263,5 @@ test("completed step keeps an item when the yes/no check says no", completedKeep
 test("completed step sends at most 3 questions per request", completedStepBatchesAtThreeQuestions);
 test("completed step keeps each question at 255 criteria or fewer", completedStepSplitsTasksAtTwoHundredFiftyFiveCriteria);
 test("completed step sorts task files by number", completedStepSortsTaskFilesByNumber);
+test("completed step drops covered items even when the model misreads array indexes", completedStepDropsItemsWhenModelMisreadsArrayIndexes);
 test("the log file holds item text and answers", logHoldsItemTextAndAnswers);

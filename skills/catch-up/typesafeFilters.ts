@@ -99,7 +99,7 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
       criteria[taskName] = completedTasks[taskName].subject;
     criteria.none = "No completed task matches this item.";
     for (let index = 0; index < items.length; index++)
-      questions[`item_${index}_from_${start}`] = choice(`Which completed task-list entry does \`items[${index}].text\` most closely match?`, criteria);
+      questions[`item_${index}_from_${start}`] = choice(`Which completed task-list entry does the item ${JSON.stringify(items[index].text)} most closely match?`, criteria);
   }
   const itemTexts: string[] = [];
   for (const item of items)
@@ -124,7 +124,7 @@ export async function removeCompletedItems(client: TypeSafeClient, items: Item[]
     const hasBestTask = bestTaskName !== "";
     if (hasBestTask) {
       bestTasks[bestTaskName] = completedTasks[bestTaskName];
-      doneQuestions[`done_${index}`] = choice(`Does the completed task \`tasks.${bestTaskName}\` cover \`items[${index}].text\`, so the item needs no more work?`, { yes: null, no: null });
+      doneQuestions[`done_${index}`] = choice(`Does the completed task \`tasks.${bestTaskName}\` cover the item ${JSON.stringify(items[index].text)}, so the item needs no more work?`, { yes: null, no: null });
     }
   }
   const doneAnswers = await sendQuestions(client, `completed-check:${listName}`, { items, tasks: bestTasks }, doneQuestions, itemTexts, MAX_QUESTIONS_PER_REQUEST, log);
