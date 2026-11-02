@@ -56,7 +56,7 @@ export function readNudgeFile(fileWrites: { path: string; text: string }[]) {
 }
 
 // answers ('yes', 'yes-sentence-not-in-reply', 'no') in order: question or choice, unfinished work, bug, repo state, task, missing feature
-export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true, settingsText = SETTINGS_TEXT, existingFiles: string[] = []) {
+export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true, settingsText = SETTINGS_TEXT, existingFiles: string[] = [], messages: unknown[] = []) {
   const submittedTexts: string[] = [];
   const modelPrompts: string[] = [];
   const fileWrites: { path: string; text: string }[] = [];
@@ -64,6 +64,9 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
   const modelCalls = { count: 0 };
   function getWorkRoot() {
     return { value: '/work/p' };
+  }
+  function getMessages() {
+    return { value: messages };
   }
   function getSessionId() {
     return { value: 'sess-9' };
@@ -121,6 +124,7 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
   }
   on('session.root', getWorkRoot);
   on('session.id', getSessionId);
+  on('session.messages', getMessages);
   on('fs.write', appendFileWrite);
   on('process.run', appendProcessCall);
   on('env.get', getEnvValue);

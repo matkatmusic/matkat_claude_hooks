@@ -28,6 +28,7 @@ test('test_config_dir_set_reads_tasks_from_config_dir_tasks_folder', async ($, o
   const modelPrompts: string[] = [];
   const listedPaths: string[] = [];
   on('session.root', () => ({ value: '/work/p' }));
+  on('session.messages', () => ({ value: [] }));
   on('fs.exists', () => ({ value: false }));
   on('model.complete', (_$: any, e: any) => {
     modelPrompts.push(e.prompt);

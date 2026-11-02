@@ -1,5 +1,6 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 import { loadOpenTasks, isEveryTaskNumberOpen, formatOpenTasks, type OpenTask } from './taskList';
+import { loadEarlierAnswers, formatEarlierAnswers, type EarlierAnswer } from './earlierAnswers';
 import { logAndRethrowHookFailure } from './logHookFailure';
 import { parseYesPhrase, removeNudgeFile, writeNudgeFile, type FlaggedCheck } from './nudgeFile';
 const ANSWER_FORMAT_LINE = 'Answer no, or answer yes followed by the exact sentence from the message that made you say yes.';
@@ -52,7 +53,7 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     question: 'a named task (e.g. #12) claimed to be still open or incomplete',
     correction: 'Your last message named an incomplete task.',
     did: 'Declared an open task',
-    do: 'Confirm against the codebase if the task is actually incomplete.  If the task is completed, mark the task as Completed.  Otherwise, use AskUserQuestion to ask the user if they want to tackle that incomplete task now.',
+    do: 'Confirm against the codebase if the task is actually incomplete. If the task is completed, mark the task as Completed. Otherwise, decide if the task stops progress toward the current goal. If yes, use AskUserQuestion to ask the user if they want to tackle that task now. If no, leave it on the task list.',
     footnote: 'a question about starting tasks or specific work does not count as a Declaring Open Task. A sentence that only says a helper or subagent is running or working on a task does not count as a Declaring Open Task, because someone already works on it.',
   },
   {
@@ -60,7 +61,7 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     question: 'a description of functionality that is missing from the codebase',
     correction: 'Your last message describes functionality that is missing.',
     did: 'Described missing functionality',
-    do: 'Use AskUserQuestion to ask the user if they want the missing functionality built now, logged as a task, or ignored.',
+    do: 'Decide if the missing functionality stops progress toward the current goal. If yes, use AskUserQuestion to ask the user if they want it built now. If no, record it as a task with TaskCreate, a source code comment, or a note in a markdown file.',
     footnote: "a description that answers the user's earlier question of if the code can do something counts as Describing Missing Functionality.",
   },
 ];
@@ -145,7 +146,7 @@ function buildQuestionLine(check: ReplyCheck): string {
   return questionLine;
 }
 
-function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[]): string {
+function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[], earlierAnswers: EarlierAnswer[]): string {
   const questionLine = buildQuestionLine(check);
   let prompt = `${questionLine}\n\n${ANSWER_FORMAT_LINE}\n\n`;
 
@@ -153,12 +154,16 @@ function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[]): 
     // prompt += `\n\nThe task list:\n${formatOpenTasks(openTasks)}\n\n`;
     prompt += `The task list:\n${formatOpenTasks(openTasks)}\n\n`;
 
+  const hasEarlierAnswers = earlierAnswers.length > 0;
+  if (hasEarlierAnswers)
+    prompt += `The user already answered these questions in this chat. Do not flag an item that one of these answers already settled:\n${formatEarlierAnswers(earlierAnswers)}\n\n`;
+
   prompt += `The message:\n${answer}`;
   return prompt;
 }
 
-async function getReplyPhrase($: EngineInterface, answer: string, check: ReplyCheck, openTasks: OpenTask[]): Promise<string> {
-  const prompt = buildPrompt(check, answer, openTasks);
+async function getReplyPhrase($: EngineInterface, answer: string, check: ReplyCheck, openTasks: OpenTask[], earlierAnswers: EarlierAnswer[]): Promise<string> {
+  const prompt = buildPrompt(check, answer, openTasks, earlierAnswers);
   const reply = await $.model.complete({ model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
   if (!reply.isAnswered)
     throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
@@ -168,6 +173,7 @@ async function getReplyPhrase($: EngineInterface, answer: string, check: ReplyCh
 
 async function collectFlaggedChecks($: EngineInterface, answer: string): Promise<FlaggedCheck[]> {
   const openTasks = await loadOpenTasks($);
+  const earlierAnswers = await loadEarlierAnswers($);
   const isTaskMentioned = isEveryTaskNumberOpen(answer, openTasks);
   const askedChecks: ReplyCheck[] = [];
   const pending: Promise<string>[] = [];
@@ -176,7 +182,7 @@ async function collectFlaggedChecks($: EngineInterface, answer: string): Promise
     if (isSkipped)
       continue;
     askedChecks.push(check);
-    pending.push(getReplyPhrase($, answer, check, openTasks));
+    pending.push(getReplyPhrase($, answer, check, openTasks, earlierAnswers));
   }
   const phrases = await Promise.all(pending);
   const flagged: FlaggedCheck[] = [];
