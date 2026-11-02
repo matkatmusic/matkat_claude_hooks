@@ -21,10 +21,16 @@ export function executeHooks(input: any, hooks: HookEntry[], settings: { default
   const contexts: string[] = [];
   const systemMessages: string[] = [];
 
+  const isStopEvent = event === "Stop" || event === "SubagentStop";
+  const hasStopHooksOffMarker = existsSync(`${settings.dispatcherDir}/stop-hooks-off/${input.session_id}`);
+  const skipStopHooks = isStopEvent && hasStopHooksOffMarker;
+
   for (let i = 0; i < hooks.length; i++) {
     const hook = hooks[i];
     const isSameEvent = hook.event === event;
     if (!isSameEvent)
+      continue;
+    if (skipStopHooks)
       continue;
     const scriptPath = hook.command[hook.command.length - 1];
     const name = basename(scriptPath, extname(scriptPath));

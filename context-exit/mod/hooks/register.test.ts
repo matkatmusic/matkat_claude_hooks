@@ -24,6 +24,52 @@ function watchContext($: any, on: any, startPercent: number, dispatchText = DISP
   return { toasts, context }
 }
 
+function watchStopHooksOffMarker(on: any) {
+  const markerWrites: string[] = []
+  const removeCommands: string[][] = []
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('prompt.submit', (_$: any, e: any) => ({ text: e.text }))
+  on('fs.write', (_$: any, e: any) => { markerWrites.push(e.path); return { value: undefined } })
+  on('process.run', (_$: any, e: any) => {
+    removeCommands.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  return { markerWrites, removeCommands }
+}
+
+async function submitPrompt($: any, text: string) {
+  await $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
+}
+
+test('a /handoff-state prompt writes the stop-hooks-off marker and turn.complete removes it', async ($, on) => {
+  watchContext($, on, 10)
+  const { markerWrites, removeCommands } = watchStopHooksOffMarker(on)
+  await submitPrompt($, '/handoff-state')
+  expect(markerWrites).toHaveLength(1)
+  expect(markerWrites[0]!.endsWith('/dispatcher/stop-hooks-off/sess-9')).toBe(true)
+  expect(removeCommands).toEqual([])
+  await $.turn.complete(ANSWER)
+  expect(removeCommands).toHaveLength(1)
+  expect(removeCommands[0]!.slice(0, 2)).toEqual(['rm', '-f'])
+  expect(removeCommands[0]![2]!.endsWith('/dispatcher/stop-hooks-off/sess-9')).toBe(true)
+})
+
+test('a /matkat-hooks:handoff-state prompt writes the stop-hooks-off marker', async ($, on) => {
+  watchContext($, on, 10)
+  const { markerWrites } = watchStopHooksOffMarker(on)
+  await submitPrompt($, '/matkat-hooks:handoff-state')
+  expect(markerWrites).toHaveLength(1)
+})
+
+test('a normal prompt writes no marker and its turn.complete removes none', async ($, on) => {
+  watchContext($, on, 10)
+  const { markerWrites, removeCommands } = watchStopHooksOffMarker(on)
+  await submitPrompt($, 'fix the bug')
+  await $.turn.complete(ANSWER)
+  expect(markerWrites).toEqual([])
+  expect(removeCommands).toEqual([])
+})
+
 test('a hook that throws is logged under .claude_hooks/logs and the failure still stands', async ($, on) => {
   const writes: { path: string; text: string }[] = []
   on('fs.exists', () => ({ value: false }))

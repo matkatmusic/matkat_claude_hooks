@@ -1,5 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState } from './idleStateShared';
+import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState, removeStopHooksOffMarker } from './idleStateShared';
 import { sendStatePrompt, scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
 import { logAndRethrowHookFailure } from './logHookFailure';
 const DISPATCHER_DIR = '../../dispatcher';
@@ -63,6 +63,8 @@ const clearStateOnSessionStart: Hook<'session.start'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'session.start');
   if (!enabled)
     return next(e);
+  if (idleState.isWritingState)
+    await removeStopHooksOffMarker($);
   return clearState($, e, next);
 };
 
@@ -70,6 +72,8 @@ const clearStateOnSessionEnd: Hook<'session.end'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'session.end');
   if (!enabled)
     return next(e);
+  if (idleState.isWritingState)
+    await removeStopHooksOffMarker($);
   return clearState($, e, next);
 };
 
@@ -80,8 +84,10 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = async ($, e, next) => 
   idleState.idleTimer?.cancel();
   if (idleState.stateFilePath === undefined) {
     const isUserPromptDuringStateWrite = idleState.isWritingState && !e.text.includes(idleState.statePrompt);
-    if (isUserPromptDuringStateWrite)
+    if (isUserPromptDuringStateWrite) {
       idleState.isWritingState = false;
+      await removeStopHooksOffMarker($);
+    }
     return next(e);
   }
   return { drop: `The chat cache has expired. You should exit this chat. Start a new chat and run /catch-up.` };
@@ -96,17 +102,17 @@ const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) =
   return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
 };
 
-const blockStopHooksWhileStatePromptPending: Hook<'classic.Stop'> = async ($, e, next) => {
-  if (!idleState.isWritingState)
-    return next(e);
-  return {};
-};
+// const blockStopHooksWhileStatePromptPending: Hook<'classic.Stop'> = async ($, e, next) => {
+//   if (!idleState.isWritingState)
+//     return next(e);
+//   return {};
+// };
 
-const blockSubagentStopHooksWhileStatePromptPending: Hook<'classic.SubagentStop'> = async ($, e, next) => {
-  if (!idleState.isWritingState)
-    return next(e);
-  return {};
-};
+// const blockSubagentStopHooksWhileStatePromptPending: Hook<'classic.SubagentStop'> = async ($, e, next) => {
+//   if (!idleState.isWritingState)
+//     return next(e);
+//   return {};
+// };
 
 const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'turn.complete');
@@ -144,7 +150,7 @@ export const register: Register = on => {
   on('prompt.submit', blockPromptAfterStateSaved).catch(logAndRethrowHookFailure);
   on('turn.complete', updateIdleStateOnTurnComplete).catch(logAndRethrowHookFailure);
   on('tool.call', denyToolsWhileStatePromptPending).catch(logAndRethrowHookFailure);
-  on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
-  on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  // on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  // on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   on('command.run', { command: 'exit' }, writeIdleStateBeforeExit).catch(logAndRethrowHookFailure);
 };

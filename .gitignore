@@ -1,5 +1,6 @@
 .env
 dispatcher/user-dispatch.json
+dispatcher/stop-hooks-off/
 node_modules
 
 .plate/

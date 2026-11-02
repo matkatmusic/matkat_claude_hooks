@@ -64,7 +64,30 @@ async function readValue($: EngineInterface, section: string, key: string): Prom
   return defaultValue;
 }
 
+const handoffTurn = { isActive: false };
+
+async function getStopHooksOffMarkerPath($: EngineInterface): Promise<string> {
+  const sessionId = await $.session.id();
+  return `${$.plugin.root}/${DISPATCHER_DIR}/stop-hooks-off/${sessionId}`;
+}
+
+const turnOffStopHooksOnHandoffPrompt: Hook<'prompt.submit'> = async ($, e, next) => {
+  const isShortHandoffPrompt = e.text.startsWith('/handoff-state');
+  const isLongHandoffPrompt = e.text.startsWith('/matkat-hooks:handoff-state');
+  const isHandoffPrompt = isShortHandoffPrompt || isLongHandoffPrompt;
+  if (!isHandoffPrompt)
+    return next(e);
+  await $.fs.write(await getStopHooksOffMarkerPath($), '');
+  handoffTurn.isActive = true;
+  return next(e);
+};
+
 const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) => {
+  const isMainTurn = e.agentId === undefined;
+  if (isMainTurn && handoffTurn.isActive) {
+    handoffTurn.isActive = false;
+    await $.process.run(['rm', '-f', await getStopHooksOffMarkerPath($)]);
+  }
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'turn.complete');
   if (!enabled)
     return next(e);
@@ -91,5 +114,6 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
 };
 
 export const register: Register = on => {
+  on('prompt.submit', turnOffStopHooksOnHandoffPrompt).catch(logAndRethrowHookFailure);
   on('turn.complete', reportContextUsageOnTurnComplete).catch(logAndRethrowHookFailure);
 };

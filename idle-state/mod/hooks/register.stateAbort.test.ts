@@ -2,6 +2,7 @@ import { test, expect } from 'claude-code/testing';
 import {
   ANSWER,
   IDLE_MS,
+  MARKER_PATH_END,
   STATE_OBJECT,
   createRecordedCalls,
   getAssistantMessage,
@@ -22,7 +23,8 @@ async function assertAbortedStateTurnWritesNoFile($: any, on: any) {
   await clock.advance(IDLE_MS);
   await $.turn.complete({ ...ANSWER, isAborted: true });
   await clock.settle();
-  expect(recorded.written).toEqual([]);
+  expect(recorded.written).toHaveLength(1);
+  expect(recorded.written[0]!.path.endsWith(MARKER_PATH_END)).toBe(true);
   expect(recorded.commands).toEqual([]);
 
   const result = await $.prompt.submit({ text: 'hello again', wait: false, origin: { kind: 'composer' } });
@@ -47,7 +49,8 @@ async function assertUserTypingAfterStatePromptWritesNoFile($: any, on: any) {
   await clock.advance(IDLE_MS);
   await $.turn.complete(ANSWER);
   await clock.settle();
-  expect(recorded.written).toEqual([]);
+  expect(recorded.written).toHaveLength(1);
+  expect(recorded.written[0]!.path.endsWith(MARKER_PATH_END)).toBe(true);
 }
 
 async function assertWrappedReplyWritesNoStateFile($: any, on: any) {
@@ -66,7 +69,8 @@ async function assertWrappedReplyWritesNoStateFile($: any, on: any) {
   const writtenPaths: string[] = [];
   for (const file of recorded.written)
     writtenPaths.push(file.path);
-  expect(writtenPaths).toEqual(['/work/my-project/.idleState/.gitignore', '/work/my-project/.claude_hooks/logs/2026-10-15/idle-state.log']);
+  expect(writtenPaths[0]!.endsWith(MARKER_PATH_END)).toBe(true);
+  expect(writtenPaths.slice(1)).toEqual(['/work/my-project/.idleState/.gitignore', '/work/my-project/.claude_hooks/logs/2026-10-15/idle-state.log']);
   expect(recorded.commands).toEqual([]);
 }
 

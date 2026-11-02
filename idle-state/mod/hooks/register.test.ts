@@ -2,6 +2,7 @@ import { test, expect } from 'claude-code/testing';
 import {
   ANSWER,
   IDLE_MS,
+  MARKER_PATH_END,
   NO_PROCESS_FOUND,
   STATE_OBJECT,
   TEMPLATE_TEXT,
@@ -55,9 +56,10 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   expect(submitted[0]).toContain(TEMPLATE_TEXT);
 
   await $.turn.complete({ ...ANSWER, answer: 'I ran the turn-done script.' });
-  expect(written).toHaveLength(2);
-  expect(written[0]).toEqual({ path: '/work/my-project/.idleState/.gitignore', text: '*\n' });
-  const stateFile = written[1];
+  expect(written).toHaveLength(3);
+  expect(written[0]!.path.endsWith(MARKER_PATH_END)).toBe(true);
+  expect(written[1]).toEqual({ path: '/work/my-project/.idleState/.gitignore', text: '*\n' });
+  const stateFile = written[2];
   expect(stateFile?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/);
   expect(JSON.parse(stateFile?.text ?? '')).toEqual({
     ...STATE_OBJECT,
@@ -98,8 +100,8 @@ async function assertTypingExitWritesStateFileThenExits($: any, on: any) {
 
   await $.turn.complete(ANSWER);
   await clock.settle();
-  expect(written).toHaveLength(2);
-  expect(written[1]?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/);
+  expect(written).toHaveLength(3);
+  expect(written[2]?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/);
   expect(commands).toEqual(['exit']);
 }
 

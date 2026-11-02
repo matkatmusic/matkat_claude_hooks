@@ -3,6 +3,7 @@ import {
   ANSWER,
   DISPATCH_ALL_OFF,
   IDLE_MS,
+  MARKER_PATH_END,
   NO_PROCESS_FOUND,
   STATE_OBJECT,
   createRecordedCalls,
@@ -13,6 +14,10 @@ import {
   setUpClockAndEnv,
 } from './idleStateTestHelpers';
 
+function getNoMessages() {
+  return { value: [] };
+}
+
 async function assertToolsAreDeniedWhilePromptPending($: any, on: any) {
   const clock = setUpClockAndEnv(on);
   let toolsRun = 0;
@@ -20,8 +25,7 @@ async function assertToolsAreDeniedWhilePromptPending($: any, on: any) {
     toolsRun++;
     return { result: {}, text: 'ran' };
   }
-  setFsStubs(on);
-  setTurnStubs(on, createRecordedCalls());
+  setSessionStubs(on, createRecordedCalls(), getNoMessages);
   on('tool.call', countToolRun);
 
   await $.turn.complete(ANSWER);
@@ -37,27 +41,47 @@ async function assertToolsAreDeniedWhilePromptPending($: any, on: any) {
   expect(toolsRun).toBe(2);
 }
 
-async function assertStopHooksAreSkippedWhilePromptPending($: any, on: any) {
+async function assertStopHooksOffMarkerIsWrittenThenRemoved($: any, on: any) {
   const clock = setUpClockAndEnv(on);
-  let stopHooksRun = 0;
-  function countStopHookRun() {
-    stopHooksRun++;
-    return { block: 'run the stop checks' };
+  const recorded = createRecordedCalls();
+  const removedCommands: string[][] = [];
+  function recordRemovedCommand(_$: any, e: any) {
+    removedCommands.push(e.argv);
+    return { value: NO_PROCESS_FOUND };
   }
-  setFsStubs(on);
-  setTurnStubs(on, createRecordedCalls());
-  on('classic.Stop', countStopHookRun);
+  setSessionStubs(on, recorded, getNoMessages, recordRemovedCommand);
+
+  await $.turn.complete(ANSWER);
+  expect(recorded.written).toEqual([]);
+
+  await clock.advance(IDLE_MS);
+  expect(recorded.written).toHaveLength(1);
+  expect(recorded.written[0]!.path.endsWith(MARKER_PATH_END)).toBe(true);
+  expect(removedCommands).toEqual([]);
+
+  await $.turn.complete({ ...ANSWER, isAborted: true });
+  expect(removedCommands).toHaveLength(1);
+  expect(removedCommands[0]!.slice(0, 2)).toEqual(['rm', '-f']);
+  expect(removedCommands[0]![2]!.endsWith(MARKER_PATH_END)).toBe(true);
+}
+
+async function assertStopHooksOffMarkerIsRemovedWhenUserTakesOver($: any, on: any) {
+  const clock = setUpClockAndEnv(on);
+  const recorded = createRecordedCalls();
+  const removedCommands: string[][] = [];
+  function recordRemovedCommand(_$: any, e: any) {
+    removedCommands.push(e.argv);
+    return { value: NO_PROCESS_FOUND };
+  }
+  setSessionStubs(on, recorded, getNoMessages, recordRemovedCommand);
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
-  const pendingResult = await $.classic.Stop({ stop_hook_active: false });
-  expect(pendingResult.block).toBeUndefined();
-  expect(stopHooksRun).toBe(0);
 
-  await $.turn.complete({ ...ANSWER, isAborted: true });
-  const afterResult = await $.classic.Stop({ stop_hook_active: false });
-  expect(afterResult.block).toBe('run the stop checks');
-  expect(stopHooksRun).toBe(1);
+  await $.prompt.submit({ text: 'never mind, do this instead', wait: false, origin: { kind: 'composer' } });
+  expect(removedCommands).toHaveLength(1);
+  expect(removedCommands[0]!.slice(0, 2)).toEqual(['rm', '-f']);
+  expect(removedCommands[0]![2]!.endsWith(MARKER_PATH_END)).toBe(true);
 }
 
 async function assertUserPromptLetsToolsRunAgain($: any, on: any) {
@@ -67,8 +91,7 @@ async function assertUserPromptLetsToolsRunAgain($: any, on: any) {
     toolsRun++;
     return { result: {}, text: 'ran' };
   }
-  setFsStubs(on);
-  setTurnStubs(on, createRecordedCalls());
+  setSessionStubs(on, createRecordedCalls(), getNoMessages);
   on('tool.call', countToolRun);
 
   await $.turn.complete(ANSWER);
@@ -89,7 +112,9 @@ async function assertPgrepGetsEscapedProgramCommand($: any, on: any) {
     return { value: [getAssistantMessage(JSON.stringify(state))] };
   }
   function appendPattern(_$: any, e: any) {
-    patterns.push(e.argv[2] ?? '');
+    const isPgrep = e.argv[0] === 'pgrep';
+    if (isPgrep)
+      patterns.push(e.argv[2] ?? '');
     return { value: NO_PROCESS_FOUND };
   }
   setSessionStubs(on, createRecordedCalls(), getMessages, appendPattern);
@@ -121,7 +146,8 @@ async function assertDisabledEventsNeverStartIdleTimer($: any, on: any) {
 }
 
 test('tools are denied while the state prompt is pending, then allowed again', assertToolsAreDeniedWhilePromptPending);
-test('Stop hooks are skipped while the state prompt is pending, then run again', assertStopHooksAreSkippedWhilePromptPending);
+test('the stop-hooks-off marker is written when the state prompt starts and removed when its turn ends', assertStopHooksOffMarkerIsWrittenThenRemoved);
+test('the stop-hooks-off marker is removed when the user takes over', assertStopHooksOffMarkerIsRemovedWhenUserTakesOver);
 test('a user prompt during the state turn lets tools run again', assertUserPromptLetsToolsRunAgain);
 test('pgrep gets the program command with regex characters escaped', assertPgrepGetsEscapedProgramCommand);
 test('all events disabled in dispatch.json: the idle timer never starts and tools run', assertDisabledEventsNeverStartIdleTimer);

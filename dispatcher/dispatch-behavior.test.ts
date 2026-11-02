@@ -115,6 +115,46 @@ test(".gitignore gets .claude_hooks/ once across two failures", () => {
   assert.equal(readFileSync(`${dir}/.gitignore`, "utf8"), ".claude_hooks/\n");
 });
 
+test("Stop and SubagentStop hooks are skipped while the session has a stop-hooks-off marker", () => {
+  const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
+  mkdirSync(`${dir}/stop-hooks-off`);
+  writeFileSync(`${dir}/stop-hooks-off/sess-1`, "");
+  const ranPath = `${dir}/ran.txt`;
+  writeFileSync(`${dir}/mark.mjs`, `import { appendFileSync } from "node:fs"; appendFileSync("${ranPath}", "ran");`);
+  const hooks: HookEntry[] = [
+    { event: "Stop", command: ["node", `${dir}/mark.mjs`] },
+    { event: "SubagentStop", command: ["node", `${dir}/mark.mjs`] },
+  ];
+  const settings = { defaults: { enablements: { mark: { Stop: true, SubagentStop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  executeHooks({ hook_event_name: "Stop", session_id: "sess-1", cwd: dir }, hooks, settings);
+  executeHooks({ hook_event_name: "SubagentStop", session_id: "sess-1", cwd: dir }, hooks, settings);
+  assert.equal(existsSync(ranPath), false);
+});
+
+test("Stop hooks run when the stop-hooks-off marker belongs to another session", () => {
+  const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
+  mkdirSync(`${dir}/stop-hooks-off`);
+  writeFileSync(`${dir}/stop-hooks-off/sess-2`, "");
+  const ranPath = `${dir}/ran.txt`;
+  writeFileSync(`${dir}/mark.mjs`, `import { appendFileSync } from "node:fs"; appendFileSync("${ranPath}", "ran");`);
+  const hooks: HookEntry[] = [{ event: "Stop", command: ["node", `${dir}/mark.mjs`] }];
+  const settings = { defaults: { enablements: { mark: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  executeHooks({ hook_event_name: "Stop", session_id: "sess-1", cwd: dir }, hooks, settings);
+  assert.equal(existsSync(ranPath), true);
+});
+
+test("a non-Stop hook still runs while the stop-hooks-off marker exists", () => {
+  const dir = mkdtempSync(`${tmpdir()}/dispatch-`);
+  mkdirSync(`${dir}/stop-hooks-off`);
+  writeFileSync(`${dir}/stop-hooks-off/sess-1`, "");
+  const ranPath = `${dir}/ran.txt`;
+  writeFileSync(`${dir}/mark.mjs`, `import { appendFileSync } from "node:fs"; appendFileSync("${ranPath}", "ran");`);
+  const hooks: HookEntry[] = [{ event: "PreToolUse", command: ["node", `${dir}/mark.mjs`] }];
+  const settings = { defaults: { enablements: { mark: { PreToolUse: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  executeHooks({ hook_event_name: "PreToolUse", tool_name: "Bash", session_id: "sess-1", cwd: dir }, hooks, settings);
+  assert.equal(existsSync(ranPath), true);
+});
+
 test("every hook points at a script that exists", () => {
   const missingScripts: string[] = [];
   for (const entry of getHooks(readSettings(DISPATCHER_DIR))) {

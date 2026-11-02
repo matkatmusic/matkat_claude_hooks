@@ -17,6 +17,7 @@ export const TEMPLATE_TEXT = '{ "work": ["what this chat worked on"] }';
 export const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const;
 export const DISPATCH_ALL_ON = '{ "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
 export const DISPATCH_ALL_OFF = '{ "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
+export const MARKER_PATH_END = '/dispatcher/stop-hooks-off/abcdef1234567890';
 export const NO_PROCESS_FOUND = { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false };
 
 export type RecordedCalls = {

@@ -78,6 +78,24 @@ async function assertWriteStateFileAndExitSkipsWhenUserTookOver() {
   expect(idleState.stateFilePath).toBeUndefined();
 }
 
+async function assertWriteStateFileAndExitWritesFileAfterDeniedToolCall() {
+  resetIdleState();
+  idleState.isWritingState = true;
+  const toolResultMessage = {
+    ...getUserMessage(''),
+    toolResults: [{ tool_use_id: 'toolu_1', text: 'denied while the state prompt is pending', isError: true }],
+  };
+  const { fake, engine } = createFakeEngine([
+    getUserMessage(`sent: ${STATE_PROMPT}`),
+    getAssistantMessage(''),
+    toolResultMessage,
+    getAssistantMessage(JSON.stringify(STATE_OBJECT)),
+  ]);
+  await writeStateFileAndExit(engine, false);
+  expect(fake.written).toHaveLength(2);
+  expect(fake.commands).toEqual(['exit']);
+}
+
 async function assertWriteStateFileAndExitThrowsOnWrappedReply() {
   resetIdleState();
   const { fake, engine } = createFakeEngine(getStateMessages(`Sure: ${JSON.stringify(STATE_OBJECT)} done.`));
@@ -103,5 +121,6 @@ test('scheduleStatePrompt sends no prompt when the timer fires too late', assert
 test('writeStateFileAndExit writes no file after an aborted turn', assertWriteStateFileAndExitSkipsWhenAborted);
 test('writeStateFileAndExit writes the state file, then exits', assertWriteStateFileAndExitWritesFileThenExits);
 test('writeStateFileAndExit writes no file when the user took over', assertWriteStateFileAndExitSkipsWhenUserTookOver);
+test('writeStateFileAndExit writes the state file after a denied tool call', assertWriteStateFileAndExitWritesFileAfterDeniedToolCall);
 test('writeStateFileAndExit throws when the reply is not a bare JSON object', assertWriteStateFileAndExitThrowsOnWrappedReply);
 test('writeStateFileAndExit pushes the exit keys when a program runs', assertWriteStateFileAndExitPushesKeysWhenProgramRuns);

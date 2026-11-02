@@ -1,3 +1,4 @@
+import type { EngineInterface } from 'claude-code';
 export const PLUGIN_NAME = 'idle-state';
 export const MS_PER_MINUTE = 60 * 1000;
 export const IDLE_MINUTES_KEY = 'CLAUDE_HOOKS_IDLE_MINUTES';
@@ -20,6 +21,19 @@ export const idleState: {
   lastAnswerAt: 0,
   statePrompt: '',
 };
+
+async function getStopHooksOffMarkerPath($: EngineInterface): Promise<string> {
+  const sessionId = await $.session.id();
+  return `${$.plugin.root}/../../dispatcher/stop-hooks-off/${sessionId}`;
+}
+
+export async function writeStopHooksOffMarker($: EngineInterface) {
+  await $.fs.write(await getStopHooksOffMarkerPath($), '');
+}
+
+export async function removeStopHooksOffMarker($: EngineInterface) {
+  await $.process.run(['rm', '-f', await getStopHooksOffMarkerPath($)]);
+}
 
 export function clearState<E, R>(_$: unknown, e: E, next: (e: E) => R): R {
   idleState.stateFilePath = undefined;

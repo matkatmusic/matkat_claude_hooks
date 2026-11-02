@@ -8,6 +8,8 @@ import {
   encodeRegexCharacters,
   formatTwoDigits,
   idleState,
+  removeStopHooksOffMarker,
+  writeStopHooksOffMarker,
 } from './idleStateShared';
 
 export async function sendStatePrompt($: EngineInterface) {
@@ -26,6 +28,7 @@ Rules for populating the template:
 - Put only unfinished work in \`not_done\`. Put each completed item in \`done\`, never in \`not_done\`.
 - For \`runningPrograms\`, give the exact command line that started each program.
 - Keep each section under 150 words.`;
+  await writeStopHooksOffMarker($);
   idleState.isWritingState = true;
   void $.prompt.submit({ text: idleState.statePrompt });
 }
@@ -44,6 +47,7 @@ export async function scheduleStatePrompt($: EngineInterface, idleMinutes: numbe
 
 export async function writeStateFileAndExit($: EngineInterface, isAborted: boolean | undefined) {
   idleState.isWritingState = false;
+  await removeStopHooksOffMarker($);
   if (isAborted)
     return;
   const d = new Date(await $.clock.now());
@@ -62,6 +66,11 @@ export async function writeStateFileAndExit($: EngineInterface, isAborted: boole
       isStatePrompt = message.text.includes(idleState.statePrompt);
     if (isStatePrompt)
       break;
+    let hasToolResults = false;
+    if (message.role === 'user')
+      hasToolResults = message.toolResults !== undefined;
+    if (hasToolResults)
+      continue;
     if (message.role === 'user') {
       userTookOver = true;
       break;
