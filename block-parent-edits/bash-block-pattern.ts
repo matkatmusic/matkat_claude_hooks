@@ -41,14 +41,20 @@ const fileMutatingCommandNames = matchAnyOf("cp", "mv", "rm", "mkdir", "touch", 
 const fileCommand = commandBoundaryOperators + whitespaceStar + fileMutatingCommandNames + wordBoundary;
 
 // A CLI `-o <path>` output flag that writes a file, excused right after `rg`/`grep` (their `-o` means something else).
-const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep", "ps");
+// const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep", "ps");
+const toolsWhoseOutputFlagIsNotAFile = matchAnyOf("rg", "grep", "ps", "ssh", "find", "git" + whitespacePlus + "ls-files");
 const sameCommandChars = matchNoneOf("|;&") + zeroOrMore;
-const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
+// `-o /dev/null` and `-o -` (stdout) write no file.
+const outputTargetIsNotAFile = assertNoLookahead(matchAnyOf("/dev/null", "-") + matchAnyOf(whitespace, "$"));
+// const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + nonWhitespace + oneOrMore;
+const outputFlag = assertNoLookbehind(wordBoundary + toolsWhoseOutputFlagIsNotAFile + wordBoundary + sameCommandChars) + whitespace + "-o" + whitespacePlus + outputTargetIsNotAFile + nonWhitespace + oneOrMore;
 
-// Blocks `sd` and `sed -i`; `sd` right after a single pipe (e.g. "ls | sd a b") is excused.
-const singlePipeBoundary = assertNoLookbehind("\\|") + "\\|" + whitespaceStar;
-const sdNotRightAfterSinglePipe = assertNoLookbehind(singlePipeBoundary);
-const sdOrSedInPlace = matchAnyOf(sdNotRightAfterSinglePipe + wordBoundary + "sd" + wordBoundary, wordBoundary + "sed" + whitespacePlus + "-i");
+// Blocks `sd` as a command and `sed -i`; `sd` right after a single pipe (e.g. "ls | sd a b") is excused.
+// const singlePipeBoundary = assertNoLookbehind("\\|") + "\\|" + whitespaceStar;
+// const sdNotRightAfterSinglePipe = assertNoLookbehind(singlePipeBoundary);
+// const sdOrSedInPlace = matchAnyOf(sdNotRightAfterSinglePipe + wordBoundary + "sd" + wordBoundary, wordBoundary + "sed" + whitespacePlus + "-i");
+const sdCommandPosition = matchAnyOf(startAnchor, "&&", "\\|\\|", ";", "\\n", "\\(");
+const sdOrSedInPlace = matchAnyOf(sdCommandPosition + whitespaceStar + "sd" + wordBoundary, wordBoundary + "sed" + whitespacePlus + "-i");
 
 // `tee` writes its stdin to a file while piping it through. e.g. "echo hi | tee f.txt".
 const teeCommand = wordBoundary + "tee" + wordBoundary;
