@@ -5,7 +5,8 @@ export type Content = string | Block[];
 export type ReadCall = { id: string; path: string; turnIndex: number; text: string | undefined };
 
 const NEW_NUDGE_MARKER = 'ask-dont-dump flagged your last reply.';
-const NUDGE_PATH_PATTERN = /Read (\S+) and do each item/;
+// const NUDGE_PATH_PATTERN = /Read (\S+) and do each item/;
+const NUDGE_PATH_PATTERN = /Read (.+?) and do each item/;
 const LINE_NUMBER_PATTERN = /^\s*\d+[→\t]/gm;
 
 export function readTextBlocks(content: Content): string {

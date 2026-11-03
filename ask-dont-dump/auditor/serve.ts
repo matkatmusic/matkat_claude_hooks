@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { parseTranscript, type ParsedTranscript } from './parseTranscript';
 
@@ -7,18 +8,20 @@ const DATA_MARKER = '__DATA_JSON__';
 const PAGE_PATH = `${import.meta.dir}/page.html`;
 const MARKS_DIR = `${import.meta.dir}/marks`;
 const VERDICTS = ['correct', 'wrong', 'missed'];
+const EXPECTED_ACTIONS = ['ask', 'task', 'askAndTask', 'none'];
 
 type CheckMark = { state: string; phrase: string; verdict: string | null; reason: string; note: string };
 type ReplyMark = { promptText: string; replyText: string; checks: Record<string, CheckMark> };
-type MarksFile = { transcriptPath: string; replies: Record<string, ReplyMark> };
+type MarksFile = { transcriptPath: string; replies: Record<string, ReplyMark>; expectedActions: Record<string, string> };
 type MarkBody = { replyUuid?: unknown; question?: unknown; verdict?: unknown; reason?: unknown; note?: unknown };
+type ExpectedActionBody = { replyUuid?: unknown; expectedAction?: unknown };
 
 async function loadMarks(transcriptPath: string, sessionId: string): Promise<MarksFile> {
   const marksFile = Bun.file(`${MARKS_DIR}/${sessionId}.json`);
   const hasMarksFile = await marksFile.exists();
   if (!hasMarksFile) {
     const tildePath = transcriptPath.replace(homedir(), '~');
-    return { transcriptPath: tildePath, replies: {} };
+    return { transcriptPath: tildePath, replies: {}, expectedActions: {} };
   }
   return await marksFile.json();
 }
@@ -30,7 +33,7 @@ async function loadParsed(transcriptPath: string): Promise<ParsedTranscript> {
 export async function buildPage(transcriptPath: string) {
   const parsed = await loadParsed(transcriptPath);
   const marks = await loadMarks(transcriptPath, parsed.sessionId);
-  const pageData = { transcriptPath, rows: parsed.rows, marks: marks.replies };
+  const pageData = { transcriptPath, rows: parsed.rows, marks: marks.replies, expectedActions: marks.expectedActions };
   const safeJson = JSON.stringify(pageData).replaceAll('<', '\\u003c');
   const template = await Bun.file(PAGE_PATH).text();
   function getSafeJson() {
@@ -79,6 +82,61 @@ export async function applyMarkRequest(request: Request, transcriptPath: string)
   return Response.json(checkMark);
 }
 
+export async function applyExpectedActionRequest(request: Request, transcriptPath: string) {
+  const body = (await request.json()) as ExpectedActionBody;
+  const { replyUuid, expectedAction } = body;
+  const isActionValid = typeof expectedAction === 'string' && EXPECTED_ACTIONS.includes(expectedAction);
+  if (!isActionValid)
+    return denyMark('expectedAction must be ask, task, askAndTask or none');
+  const parsed = await loadParsed(transcriptPath);
+  let isReplyFound = false;
+  for (const row of parsed.rows) {
+    if (row.uuid === replyUuid)
+      isReplyFound = true;
+  }
+  if (!isReplyFound)
+    return denyMark('unknown replyUuid');
+  const marks = await loadMarks(transcriptPath, parsed.sessionId);
+  marks.expectedActions[replyUuid as string] = expectedAction;
+  await Bun.write(`${MARKS_DIR}/${parsed.sessionId}.json`, JSON.stringify(marks, null, 2) + '\n');
+  return Response.json({ expectedAction });
+}
+
+export async function buildBatchState(transcriptPath: string) {
+  const parsed = await loadParsed(transcriptPath);
+  const marks = await loadMarks(transcriptPath, parsed.sessionId);
+  const settings = await Bun.file(`${parsed.projectRoot}/.claude/settings.json`).json();
+  const taskListId = settings.env?.CLAUDE_CODE_TASK_LIST_ID;
+  if (taskListId === undefined)
+    throw new Error(`${parsed.projectRoot}/.claude/settings.json has no env.CLAUDE_CODE_TASK_LIST_ID`);
+  const configDir = process.env.CLAUDE_CONFIG_DIR ?? `${homedir()}/.claude`;
+  const taskDir = `${configDir}/tasks/${taskListId}`;
+  // Integer keys iterate in numeric order.
+  const openSubjects: Record<number, string> = {};
+  for (const fileName of await readdir(taskDir)) {
+    const isTaskFile = fileName.endsWith('.json');
+    if (!isTaskFile)
+      continue;
+    const task = await Bun.file(`${taskDir}/${fileName}`).json();
+    const isOpen = task.status === 'pending' || task.status === 'in_progress';
+    if (isOpen)
+      openSubjects[Number(task.id)] = task.subject;
+  }
+  const taskLines: string[] = [];
+  for (const id of Object.keys(openSubjects))
+    taskLines.push(`#${id} ${openSubjects[Number(id)]}`);
+  const openTasks = taskLines.join('\n');
+  const batchState = [];
+  for (const row of parsed.rows) {
+    const expectedAction = marks.expectedActions[row.uuid];
+    if (expectedAction === undefined)
+      throw new Error(`reply ${row.uuid} has no expectedAction`);
+    // batchState.push({ agentReply: row.replyText, userPrompt: row.promptText, openTasks, expectedAction });
+    batchState.push({ agentReply: row.replyText, userPrompt: row.promptText, openTasks });
+  }
+  return batchState;
+}
+
 // bun claude/claude_hooks/ask-dont-dump/auditor/serve.ts <transcript_path>
 if (import.meta.main) {
   const transcriptPath = process.argv[2];
@@ -93,7 +151,13 @@ if (import.meta.main) {
       const isMarkPost = request.method === 'POST' && pathname === '/mark';
       if (isMarkPost)
         return applyMarkRequest(request, transcriptPath);
-      const isPageGet = request.method === 'GET' && pathname === '/';
+      const isExpectedActionPost = request.method === 'POST' && pathname === '/expected-action';
+      if (isExpectedActionPost)
+        return applyExpectedActionRequest(request, transcriptPath);
+      const isBatchStateGet = request.method === 'GET' && pathname === '/batch-state';
+      if (isBatchStateGet)
+        return Response.json(await buildBatchState(transcriptPath));
+      const isPageGet =request.method === 'GET' && pathname === '/';
       if (isPageGet)
         return new Response(await buildPage(transcriptPath), { headers: { 'content-type': 'text/html; charset=utf-8' } });
       return new Response('not found', { status: 404 });

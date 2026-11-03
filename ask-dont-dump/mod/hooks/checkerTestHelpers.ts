@@ -3,8 +3,9 @@ export const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_token
 export const NUDGE_REPLY = { text: 'nudge', wait: false, origin: { kind: 'plugin', name: 'ask-dont-dump' } } as const;
 export const KEYWORDS = ['question or choice', 'work is not finished/started', 'a bug report', 'statement of fact about the git repository', 'a named task (e.g. #12)', 'functionality that is missing from the codebase'];
 
-export const DISPATCH_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true } }, "values": { "ask-dont-dump": { "useTypesafe": false } } }';
-export const DISPATCH_OFF_TEXT = '{ "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false, "session.end": false } }, "values": { "ask-dont-dump": { "useTypesafe": false } } }';
+export const DISPATCH_TEXT = '{ "debugLoggingEnabled": false, "enablements": { "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true } }, "values": { "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" } } }';
+export const DISPATCH_OFF_TEXT = '{ "debugLoggingEnabled": false, "enablements": { "ask-dont-dump": { "prompt.submit": false, "turn.complete": false, "session.end": false } }, "values": { "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" } } }';
+export type TypesafeStubs = { questionsText?: string; apiKey?: string; fetchStatus?: number; fetchText?: string };
 export const SETTINGS_TEXT = '{ "env": { "CLAUDE_CODE_TASK_LIST_ID": "proj" } }';
 export const OPEN_SUBJECT = 'Commit the prompt-intent change';
 export const IN_PROGRESS_SUBJECT = 'Write the retry helper';
@@ -56,7 +57,9 @@ export function readNudgeFile(fileWrites: { path: string; text: string }[]) {
 }
 
 // answers ('yes', 'yes-sentence-not-in-reply', 'no') in order: question or choice, unfinished work, bug, repo state, task, missing feature
-export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true, settingsText = SETTINGS_TEXT, existingFiles: string[] = [], messages: unknown[] = []) {
+export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DISPATCH_TEXT, userDispatchText?: string, isAnswered = true, settingsText = SETTINGS_TEXT, existingFiles: string[] = [], messages: unknown[] = [], typesafe: TypesafeStubs = {}) {
+  const { questionsText, apiKey = 'test-key', fetchStatus = 200, fetchText = '{}' } = typesafe;
+  const fetchCalls: { url: string; init: any }[] = [];
   const submittedTexts: string[] = [];
   const modelPrompts: string[] = [];
   const fileWrites: { path: string; text: string }[] = [];
@@ -83,7 +86,14 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
     const isConfigDirName = e.name === 'CLAUDE_CONFIG_DIR';
     if (isConfigDirName)
       return { value: undefined };
+    const isApiKeyName = e.name === 'TYPESAFE_API_KEY';
+    if (isApiKeyName)
+      return { value: apiKey };
     return { value: '/home/u' };
+  }
+  function appendFetchCall(_$: any, e: any) {
+    fetchCalls.push({ url: e.url, init: e.init });
+    return { value: { status: fetchStatus, ok: fetchStatus >= 200 && fetchStatus < 300, headers: {}, text: fetchText } };
   }
   function listTaskDirectory() {
     return { value: listTaskDirEntries() };
@@ -101,6 +111,9 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
     const isSettingsFile = e.path.endsWith('/.claude/settings.json');
     if (isSettingsFile)
       return { value: settingsText };
+    const isQuestionsFile = e.path.endsWith('typesafeQuestions.json');
+    if (isQuestionsFile)
+      return { value: questionsText };
     const isTaskFile = e.path.startsWith('/home/u/.claude/tasks/proj/');
     if (isTaskFile)
       return { value: TASK_FILES[e.path.split('/').pop()] };
@@ -132,9 +145,10 @@ export function setUpCheckerStubs(on: any, answers: string[], dispatchText = DIS
   on('fs.exists', getFileExists);
   on('fs.read', readFileText);
   on('model.complete', getModelReply);
+  on('http.fetch', appendFetchCall);
   on('prompt.submit', appendSubmittedText);
   on('turn.complete', getTurnText);
-  return { submittedTexts, modelCalls, modelPrompts, fileWrites, processCalls };
+  return { submittedTexts, modelCalls, modelPrompts, fileWrites, processCalls, fetchCalls };
 }
 
 export async function executeTurnAndWait($: any, answer: string = ANSWER.answer) {

@@ -9,7 +9,7 @@ const TASK_NUMBER_PATTERN = /#\d+/;
 export type CheckState = 'fired' | 'fired (details not read)' | 'quiet' | 'quiet (maybe task-list skip)' | 'not checked';
 export type CheckRow = { question: string; state: CheckState; phrase: string };
 export type ReplyRow = { uuid: string; promptText: string; replyText: string; checks: CheckRow[] };
-export type ParsedTranscript = { sessionId: string; rows: ReplyRow[] };
+export type ParsedTranscript = { sessionId: string; projectRoot: string; rows: ReplyRow[] };
 
 type Line = {
   type: string;
@@ -17,6 +17,7 @@ type Line = {
   isMeta?: boolean;
   uuid: string;
   sessionId: string;
+  cwd: string;
   timestamp: string;
   origin?: { kind: string; name?: string };
   message: { id?: string; content: Content };
@@ -124,6 +125,7 @@ export function parseTranscript(rawText: string): ParsedTranscript {
   const turns: Turn[] = [];
   const reads: ReadCall[] = [];
   let sessionId = '';
+  let projectRoot = '';
   for (const rawLine of rawText.split('\n')) {
     if (rawLine === '')
       continue;
@@ -142,6 +144,7 @@ export function parseTranscript(rawText: string): ParsedTranscript {
       if (isBeforeAuditStart)
         throw new Error(`chat log starts at ${line.timestamp}, before the audit start ${AUDIT_START_TIME}`);
       sessionId = line.sessionId;
+      projectRoot = line.cwd;
     }
     if (line.type === 'user') {
       addReadResults(reads, line.message.content);
@@ -159,5 +162,5 @@ export function parseTranscript(rawText: string): ParsedTranscript {
       continue;
     rows.push({ uuid: turn.replyUuid, promptText: turn.promptText, replyText: turn.replyText, checks: buildChecks(turn) });
   }
-  return { sessionId, rows };
+  return { sessionId, projectRoot, rows };
 }

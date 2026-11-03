@@ -1,7 +1,8 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 import { loadOpenTasks, isEveryTaskNumberOpen, formatOpenTasks, type OpenTask } from './taskList';
 import { loadEarlierAnswers, formatEarlierAnswers, type EarlierAnswer } from './earlierAnswers';
-import { logAndRethrowHookFailure } from './logHookFailure';
+import { logAndRethrowHookFailure, wrapNextForDebugLog, getModelReplyWithDebugLog } from './logHookFailure';
+import { collectTypesafeFlaggedChecks } from './typesafeChecks';
 import { parseYesPhrase, removeNudgeFile, writeNudgeFile, type FlaggedCheck } from './nudgeFile';
 const ANSWER_FORMAT_LINE = 'Answer no, or answer yes followed by the exact sentence from the message that made you say yes.';
 const CHECKER_MODEL = 'claude-haiku-5-5';
@@ -164,7 +165,7 @@ function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[], e
 
 async function getReplyPhrase($: EngineInterface, answer: string, check: ReplyCheck, openTasks: OpenTask[], earlierAnswers: EarlierAnswer[]): Promise<string> {
   const prompt = buildPrompt(check, answer, openTasks, earlierAnswers);
-  const reply = await $.model.complete({ model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
+  const reply = await getModelReplyWithDebugLog($, { model: CHECKER_MODEL, prompt, timeoutMs: CHECKER_TIMEOUT_MS });
   if (!reply.isAnswered)
     throw new Error(`ask-dont-dump: the checker gave no answer: ${reply.reason}`);
 
@@ -224,9 +225,18 @@ const validateReplyBeforeStop: Hook<'turn.complete'> = async ($, e, next) => {
 
   const useTypesafe = await readValue($, PLUGIN_NAME, 'useTypesafe');
   const isTypesafeOn = useTypesafe === true;
-  if (isTypesafeOn)
-    throw new Error('ask-dont-dump: useTypesafe is true, but TypeSafe checks are not built yet');
-  const flagged = await collectFlaggedChecks($, e.answer);
+  // if (isTypesafeOn)
+  //   throw new Error('ask-dont-dump: useTypesafe is true, but TypeSafe checks are not built yet');
+  let flagged: FlaggedCheck[] = [];
+  if (isTypesafeOn) {
+    const typesafeQuestionsPath = await readValue($, PLUGIN_NAME, 'typesafeQuestions');
+    if (typeof typesafeQuestionsPath !== 'string')
+      throw new Error('ask-dont-dump: typesafeQuestions must be a path string');
+    flagged = await collectTypesafeFlaggedChecks($, e.answer, typesafeQuestionsPath);
+  }
+  else {
+    flagged = await collectFlaggedChecks($, e.answer);
+  }
   const isAnyFlagged = flagged.length > 0;
   if (!isAnyFlagged)
     return next(e);
@@ -244,8 +254,29 @@ const removeNudgeFileOnSessionEnd: Hook<'session.end'> = async ($, e, next) => {
   return next(e);
 };
 
+const setCheckerReasonFlagOnPromptWithDebugLog: Hook<'prompt.submit'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'setCheckerReasonFlagOnPrompt', 'prompt.submit', e, next);
+  const returned = await setCheckerReasonFlagOnPrompt($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const validateReplyBeforeStopWithDebugLog: Hook<'turn.complete'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'validateReplyBeforeStop', 'turn.complete', e, next);
+  const returned = await validateReplyBeforeStop($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const removeNudgeFileOnSessionEndWithDebugLog: Hook<'session.end'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'removeNudgeFileOnSessionEnd', 'session.end', e, next);
+  const returned = await removeNudgeFileOnSessionEnd($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 export const register: Register = on => {
-  on('prompt.submit', setCheckerReasonFlagOnPrompt).catch(logAndRethrowHookFailure);
-  on('turn.complete', validateReplyBeforeStop).catch(logAndRethrowHookFailure);
-  on('session.end', removeNudgeFileOnSessionEnd).catch(logAndRethrowHookFailure);
+  on('prompt.submit', setCheckerReasonFlagOnPromptWithDebugLog).catch(logAndRethrowHookFailure);
+  on('turn.complete', validateReplyBeforeStopWithDebugLog).catch(logAndRethrowHookFailure);
+  on('session.end', removeNudgeFileOnSessionEndWithDebugLog).catch(logAndRethrowHookFailure);
 };

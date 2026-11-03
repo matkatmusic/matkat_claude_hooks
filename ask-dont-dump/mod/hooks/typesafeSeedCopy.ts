@@ -1,0 +1,162 @@
+export const SEED_QUESTIONS = {
+  "bugReportV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Reported a bug",
+      "do": "Create a task with TaskCreate to track the bug's fix, and write a regression test.",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "question": "Does the `agentReply` report a bug that `openTasks` does not list, or does it not report a new bug?"
+      },
+      "criteria": {
+        "true": "the `agentReply` reports a bug in code or behavior, and `openTasks` does not list that bug.",
+        "false": "the `agentReply` does not report a bug, or `openTasks` already lists that bug."
+      }
+    }
+  },
+  "questionOrChoiceV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Asked the user a question or gave a choice",
+      "do": "Use AskUserQuestion for each question or choice.",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "question": "Does the `agentReply` leave a question or decision for the user, or does it leave nothing for the user to decide?"
+      },
+      "criteria": {
+        "true": "the `agentReply` asks the user a question, gives the user a choice, or states something the user must decide, even when no question is written. A question that a helper or another chat asks the user counts.",
+        "false": "the `agentReply` leaves nothing for the user to decide. A question from an earlier turn, a question sent to a helper, or a decision the user already made does not count."
+      }
+    }
+  },
+  "unfinishedWorkV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Declared unfinished work",
+      "do": "Use TaskCreate to track the work.",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "question": "Does the `agentReply` state that work is unfinished and not in `openTasks`, or does it not state that?"
+      },
+      "criteria": {
+        "true": "the `agentReply` states that requested work is not finished or not started, and `openTasks` does not list that work.",
+        "false": "the `agentReply` states no unfinished work, or `openTasks` lists that work, or a helper or another chat is doing that work."
+      }
+    }
+  },
+  "repoStateClaimV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Made a repo-state claim",
+      "do": "Confirm your claim before telling the user about the repository state",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false },
+        { "name": "exclusions", "used": true }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "goal": "You are checking for Repo-state Claim.",
+        "exclusions": [
+          "a question about the repo does not count as a Repo-state Claim",
+          "a statement about what the code does or lacks does not count as a Repo-State Claim."
+        ],
+        "question": "Accounting for what's listed in `exclusions`, Does the `agentReply` state facts about the git repository?"
+      },
+      "criteria": {
+        "true": "the `agentReply` states facts (such as commits, branches, file states, or changes) about the git repo.",
+        "false": "the `agentReply` does not state facts about the git repo."
+      }
+    }
+  },
+  "openTaskV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Declared an open task",
+      "do": "Confirm against the codebase if the task is actually incomplete. If the task is completed, mark the task as Completed. Otherwise, decide if the task stops progress toward the current goal. If yes, use AskUserQuestion to ask the user if they want to tackle that task now. If no, leave it on the task list.",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false },
+        { "name": "exclusions", "used": true }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "goal": "You are checking for Declaring Open Task.",
+        "exclusions": [
+          "A sentence that only says a helper or subagent is running or working on a task does not count as a Declaring Open Task, because someone already works on it."
+        ],
+        "question": "Accounting for the choices in `exclusions`, Does the `agentReply` raise a named task that still needs attention, or does it not?"
+      },
+      "criteria": {
+        "true": "the `agentReply` names a task, such as #12, and says that the task is still open or incomplete and needs attention.",
+        "false": "the `agentReply` names no such task, or it only reports a task that was just added to the task list, or a helper is working on that task."
+      }
+    }
+  },
+  "missingFunctionalityV2": {
+    "config": {
+      "enabled": true,
+      "activationThreshold": 0.7,
+      "did": "Described missing functionality",
+      "do": "Decide if the missing functionality stops progress toward the current goal. If yes, use AskUserQuestion to ask the user if they want it built now. If no, record it as a task with TaskCreate, a source code comment, or a note in a markdown file.",
+      "expectedInputs": [
+        { "name": "agentReply", "used": true },
+        { "name": "openTasks", "used": true },
+        { "name": "userPrompt", "used": false },
+        { "name": "inclusions", "used": true }
+      ]
+    },
+    "question": {
+      "type": "noul",
+      "instructions": {
+        "background": "`agentReply` is a message a coding assistant sent to the user. `openTasks` lists the open tasks in the session task list.",
+        "goal": "You are checking for Describing Missing Functionality.",
+        "inclusions": [
+          "a description that answers the user's earlier question of if the code can do something counts as Describing Missing Functionality"
+        ],
+        "question": "based on `inclusions`, Does the `agentReply` describe functionality that the codebase lacks, or does it not?"
+      },
+      "criteria": {
+        "true": "the `agentReply` describes something the codebase cannot do yet, including an answer to the user's question of whether the code can do something.",
+        "false": "the `agentReply` only explains how the code works now, reports work that was done, or lists tasks."
+      }
+    }
+  }
+};

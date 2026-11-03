@@ -62,6 +62,7 @@ header label { cursor: pointer; }
   <header>
     <div id="count"></div>
     <label><input type="checkbox" id="onlyFires"> show only replies with a fire</label>
+    <button type="button" id="copyBatch">Copy batch state</button>
   </header>
   <div id="error" class="error"></div>
   <div id="replies"></div>
@@ -111,7 +112,7 @@ function drawCount() {
   let totalCount = 0;
   for (const row of data.rows) {
     for (const check of row.checks) {
-      if (check.state === 'not checked') continue;
+      // if (check.state === 'not checked') continue;
       totalCount++;
       const mark = readMark(row.uuid, check.question);
       if (mark.verdict !== null) markedCount++;
@@ -137,6 +138,43 @@ async function saveMark(row, question, verdict, reason, note) {
   drawCount();
 }
 
+async function saveExpectedAction(row, expectedAction) {
+  const body = { replyUuid: row.uuid, expectedAction: expectedAction };
+  const response = await fetch('/expected-action', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) {
+    el('error').textContent = 'Save failed: HTTP ' + response.status + ' ' + (await response.text());
+    return;
+  }
+  el('error').textContent = '';
+  data.expectedActions[row.uuid] = (await response.json()).expectedAction;
+}
+
+function makeExpectedActionLabel(row) {
+  const label = make('label', 'expected-action', 'expected action: ');
+  const select = make('select');
+  for (const value of ['', 'ask', 'task', 'askAndTask', 'none']) {
+    const option = make('option', '', value);
+    option.value = value;
+    option.selected = value === (data.expectedActions[row.uuid] ?? '');
+    select.appendChild(option);
+  }
+  select.addEventListener('change', function () { saveExpectedAction(row, select.value); });
+  label.appendChild(select);
+  return label;
+}
+
+async function copyBatchState() {
+  const response = await fetch('/batch-state');
+  if (!response.ok) {
+    el('error').textContent = 'Batch state failed: HTTP ' + response.status + ' ' + (await response.text());
+    return;
+  }
+  el('error').textContent = '';
+  const states = await response.json();
+  await navigator.clipboard.writeText(JSON.stringify(states, null, 2));
+  el('copyBatch').textContent = 'Copied ' + states.length + ' states';
+}
+
 function makeSelect(reasons, selected) {
   const select = make('select');
   for (const reason of reasons) {
@@ -153,7 +191,8 @@ function makeControls(row, check, rowIndex, checkIndex) {
   const controls = make('div', 'controls');
   const radioName = 'r' + rowIndex + '-' + checkIndex;
   const verdicts = [['correct', 'Correct'], ['wrong', 'Fired wrong'], ['missed', 'Missed']];
-  const current = mark.verdict === null ? 'correct' : mark.verdict;
+  // const current = mark.verdict === null ? 'correct' : mark.verdict;
+  const current = mark.verdict;
   const detail = make('span', 'controls');
   const select = makeSelect(current === 'missed' ? MISSED_REASONS : FIRED_WRONG_REASONS, mark.reason);
   const note = make('input');
@@ -161,7 +200,8 @@ function makeControls(row, check, rowIndex, checkIndex) {
   note.placeholder = 'other / note';
   note.value = mark.note;
   detail.append(select, note);
-  detail.hidden = current === 'correct';
+  // detail.hidden = current === 'correct';
+  detail.hidden = current === null || current === 'correct';
   function sendCurrent(verdict) {
     saveMark(row, check.question, verdict, verdict === 'correct' ? '' : select.value, verdict === 'correct' ? '' : note.value);
   }
@@ -196,12 +236,14 @@ function readChecked(controls) {
 }
 
 function makeCheckRow(row, check, rowIndex, checkIndex) {
-  const isOff = check.state === 'not checked';
+  // const isOff = check.state === 'not checked';
   const isFired = check.state.startsWith('fired');
-  const box = make('div', 'check' + (isFired ? ' is-fired' : '') + (isOff ? ' is-off' : ''));
+  // const box = make('div', 'check' + (isFired ? ' is-fired' : '') + (isOff ? ' is-off' : ''));
+  const box = make('div', 'check' + (isFired ? ' is-fired' : ''));
   box.appendChild(make('div', 'question', check.question));
   box.appendChild(make('div', 'state ' + (isFired ? 'fired' : 'quiet'), check.state));
-  if (!isOff) box.appendChild(makeControls(row, check, rowIndex, checkIndex));
+  // if (!isOff) box.appendChild(makeControls(row, check, rowIndex, checkIndex));
+  box.appendChild(makeControls(row, check, rowIndex, checkIndex));
   if (check.phrase !== '') box.appendChild(make('div', 'phrase', 'sentence: ' + check.phrase));
   return box;
 }
@@ -228,6 +270,7 @@ function drawReplies() {
     if (onlyFires && !hasFire) continue;
     const section = make('section', 'reply');
     section.appendChild(make('div', 'reply-meta', 'reply ' + (rowIndex + 1) + ' of ' + data.rows.length));
+    section.appendChild(makeExpectedActionLabel(row));
     section.appendChild(makePrompt(row.promptText));
     section.appendChild(make('div', 'reply-text', row.replyText));
     for (let checkIndex = 0; checkIndex < row.checks.length; checkIndex++) {
@@ -238,6 +281,7 @@ function drawReplies() {
 }
 
 el('onlyFires').addEventListener('change', drawReplies);
+el('copyBatch').addEventListener('click', copyBatchState);
 drawCount();
 drawReplies();
 </script>

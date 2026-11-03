@@ -59,13 +59,14 @@ test('test_user_dispatch_json_true_overrides_default_false', async ($, on) => {
   expect(submittedTexts).toHaveLength(1);
 });
 
-test('test_use_typesafe_true_makes_the_hook_throw_before_any_model_call', async ($, on) => {
-  const { modelCalls, fileWrites } = setUpCheckerStubs(on, ['yes', 'yes', 'yes'], DISPATCH_TEXT, '{ "enablements": {}, "values": { "ask-dont-dump": { "useTypesafe": true } } }');
-  on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }));
-  await executeTurnAndWait($);
-  expect(modelCalls.count).toBe(0);
-  expect(fileWrites).toEqual([{ path: '/work/p/.claude_hooks/logs/2026-01-02/ask-dont-dump.log', text: '2026-01-02T03:04:05.000Z session=sess-9 event=turn.complete throw: ask-dont-dump: useTypesafe is true, but TypeSafe checks are not built yet\n' }]);
-});
+// test_use_typesafe_true_makes_the_hook_throw_before_any_model_call: obsolete, the TypeSafe path is built
+// test('test_use_typesafe_true_makes_the_hook_throw_before_any_model_call', async ($, on) => {
+//   const { modelCalls, fileWrites } = setUpCheckerStubs(on, ['yes', 'yes', 'yes'], DISPATCH_TEXT, '{ "enablements": {}, "values": { "ask-dont-dump": { "useTypesafe": true } } }');
+//   on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }));
+//   await executeTurnAndWait($);
+//   expect(modelCalls.count).toBe(0);
+//   expect(fileWrites).toEqual([{ path: '/work/p/.claude_hooks/logs/2026-01-02/ask-dont-dump.log', text: '2026-01-02T03:04:05.000Z session=sess-9 event=turn.complete throw: ask-dont-dump: useTypesafe is true, but TypeSafe checks are not built yet\n' }]);
+// });
 
 test('test_repo_state_claim_yes_writes_the_repo_state_item_to_the_nudge_file', async ($, on) => {
   const { submittedTexts, fileWrites } = setUpCheckerStubs(on, ['no', 'no', 'no', 'yes']);

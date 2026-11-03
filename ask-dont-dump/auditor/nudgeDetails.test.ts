@@ -18,6 +18,14 @@ test('a Read result with line numbers parses into the details', () => {
   expect(findNudgeDetails(makeReads(3, numbered), NUDGE_TEXT, 3, 5)).toEqual(DETAILS);
 });
 
+test('a nudge path with spaces still finds the details', () => {
+  const spacedPath = '/Users/x/Desktop/claude code src/RevEng/.claude_hooks/ask-dont-dump/a.json';
+  const spacedNudgeText = `ask-dont-dump flagged your last reply. Read ${spacedPath} and do each item in its "do" list.`;
+  const reads: ReadCall[] = [];
+  addReadCalls(reads, 3, [{ type: 'tool_use', id: 'r1', name: 'Read', input: { file_path: spacedPath } }]);
+  addReadResults(reads, [{ type: 'tool_result', tool_use_id: 'r1', content: JSON.stringify(DETAILS) }]);
+  expect(findNudgeDetails(reads, spacedNudgeText, 3, 5)).toEqual(DETAILS);
+});
 
 test('an old-shape Read result throws', () => {
   const oldShape = JSON.stringify({ did: [], do: [], phrases: [] }, null, 2);
