@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { DEBT_SETTINGS, executeHook } from "./debt-ratchet-test-helpers.ts";
@@ -19,7 +19,7 @@ function assertCleanTranscriptDoesNotBlock(): void {
 }
 test("a transcript with no edited ts files this turn does not block", assertCleanTranscriptDoesNotBlock);
 
-function assertMissingHelperLogGetsEmptyLog(): void {
+function assertMissingHelperLogMakesNoFile(): void {
   const ledgerDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-ledger-`);
   const rootDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-missing-log-`);
   const missingDir = `${rootDir}/subagents`;
@@ -29,12 +29,12 @@ function assertMissingHelperLogGetsEmptyLog(): void {
     encoding: "utf8",
   });
   assert.equal(run.status, 0);
-  assert.equal(existsSync(missingDir), true);
-  assert.equal(readFileSync(agent_transcript_path, "utf8"), "");
+  assert.equal(existsSync(agent_transcript_path), false);
+  assert.equal(existsSync(missingDir), false);
   rmSync(ledgerDir, { recursive: true, force: true });
   rmSync(rootDir, { recursive: true, force: true });
 }
-test("a subagent stop with no helper log makes an empty log and exits clean", assertMissingHelperLogGetsEmptyLog);
+test("a subagent stop with no helper log makes no file and exits clean", assertMissingHelperLogMakesNoFile);
 
 function assertDeletedEditedFilesAreSkipped(): void {
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-transcript-`);

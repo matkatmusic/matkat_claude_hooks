@@ -35,10 +35,12 @@ if (import.meta.main) {
   let files: string[];
   if (isSubagentTranscript) {
     const hasAgentTranscript = existsSync(input.agent_transcript_path);
-    if (!hasAgentTranscript) {
-      mkdirSync(dirname(input.agent_transcript_path), { recursive: true });
-      writeFileSync(input.agent_transcript_path, "");
-    }
+    if (!hasAgentTranscript)
+      process.exit(0);
+    // if (!hasAgentTranscript) {
+    //   mkdirSync(dirname(input.agent_transcript_path), { recursive: true });
+    //   writeFileSync(input.agent_transcript_path, "");
+    // }
     const agentTranscript = readFileSync(input.agent_transcript_path, "utf8");
     files = findEditedFilePaths(agentTranscript).files;
   }
