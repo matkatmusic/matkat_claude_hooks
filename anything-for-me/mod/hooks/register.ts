@@ -1,15 +1,15 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { logAndRethrowHookFailure } from './logHookFailure';
+import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
 
 const PLUGIN_NAME = 'anything-for-me';
 const DISPATCHER_DIR = '../../dispatcher';
-const PROMPT_TEXT = "I want to know if there is anything for me to look at right now that would resolve or close some items on the task list, or provide the information needed for a pending task.  If there are items that only I can complete, use AskUserQuestion to check if I've completed them.";
+const PROMPT_TEXT = "I want to know if there is anything for me to look at right now that would resolve or close some items on the task list, or provide the information needed for a pending task.  If there are items that only I can complete, describe them to me accurately so I'm not confused about what I need to do, and then use AskUserQuestion to check if I've completed them.";
 
-async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
 
-async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> } | undefined> {
   const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
   const hasUserFile = await $.fs.exists(userPath);
   if (!hasUserFile)
@@ -59,7 +59,21 @@ const sendPromptOnCommandRun: Hook<'command.run'> = async ($) => {
   return {};
 };
 
+const registerCommandOnSessionStartWithDebugLog: Hook<'session.start'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'registerCommandOnSessionStart', 'session.start', e, next);
+  const returned = await registerCommandOnSessionStart($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const sendPromptOnCommandRunWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'sendPromptOnCommandRun', 'command.run', e, next);
+  const returned = await sendPromptOnCommandRun($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 export const register: Register = on => {
-  on('session.start', registerCommandOnSessionStart).catch(logAndRethrowHookFailure);
-  on('command.run', { command: 'anything-for-me' }, sendPromptOnCommandRun).catch(logAndRethrowHookFailure);
+  on('session.start', registerCommandOnSessionStartWithDebugLog).catch(logAndRethrowHookFailure);
+  on('command.run', { command: 'anything-for-me' }, sendPromptOnCommandRunWithDebugLog).catch(logAndRethrowHookFailure);
 };
