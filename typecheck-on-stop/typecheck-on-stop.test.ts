@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { after, test } from "node:test";
 import { strict as assert } from "node:assert";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -152,7 +152,7 @@ function assertTscStartFailureBlocksWithStderr(): void {
 }
 test("blocks loudly with stderr when tsc fails to start", assertTscStartFailureBlocksWithStderr);
 
-function assertMissingHelperLogGetsEmptyLog(): void {
+function assertMissingHelperLogMakesNoFile(): void {
   const { cwd } = setUpProject("good.ts", "const x: number = 1;\n");
   const missingDir = `${cwd}/subagents`;
   const agent_transcript_path = `${missingDir}/agent-side-call.jsonl`;
@@ -161,10 +161,10 @@ function assertMissingHelperLogGetsEmptyLog(): void {
     encoding: "utf8",
   });
   assert.equal(run.status, 0);
-  assert.equal(existsSync(missingDir), true);
-  assert.equal(readFileSync(agent_transcript_path, "utf8"), "");
+  assert.equal(existsSync(agent_transcript_path), false);
+  assert.equal(existsSync(missingDir), false);
 }
-test("a subagent stop with no helper log makes an empty log and exits clean", assertMissingHelperLogGetsEmptyLog);
+test("a subagent stop with no helper log makes no file and exits clean", assertMissingHelperLogMakesNoFile);
 
 function assertActiveStopBlocksUntilLimit(): void {
   const { cwd, transcript_path } = setUpProject("bad.ts", 'const x: number = "a";\n');
