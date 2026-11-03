@@ -16,6 +16,7 @@ export type Settings = {
   enablements: Record<string, Record<string, boolean>>;
   values: Record<string, Record<string, string>>;
   hooks: HookEntry[];
+  debugLoggingEnabled?: boolean;
 };
 
 export function parseSettingsFiles(dispatcherDir: string): { defaults: Settings; user: Settings } {
@@ -73,6 +74,16 @@ export function isEnabled(settings: { defaults: Settings; user: Settings }, name
   if (defaultValue !== undefined)
     return defaultValue;
   throw new Error(`dispatch.json has no enablement for hook ${name} on event ${event}`);
+}
+
+export function isDebugLoggingEnabled(settings: { defaults: Settings; user: Settings }): boolean {
+  const userValue = settings.user.debugLoggingEnabled;
+  if (userValue !== undefined)
+    return userValue;
+  const defaultValue = settings.defaults.debugLoggingEnabled;
+  if (defaultValue !== undefined)
+    return defaultValue;
+  throw new Error("dispatch.json has no debugLoggingEnabled");
 }
 
 export function getSetting(input: { settings?: Record<string, string> }, key: string): string {

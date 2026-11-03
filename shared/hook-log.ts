@@ -40,6 +40,38 @@ function addIgnoreLineWhenGitExists(root: string): void {
   writeFileSync(ignorePath, `${ignoreText}${separator}${IGNORE_LINE}\n`);
 }
 
+export type DispatchedHookEntry = {
+  root: string;
+  hookName: string;
+  sessionId: string;
+  event: string;
+  input: unknown;
+  result: SpawnSyncReturns<string>;
+};
+
+function buildDispatchedHookLine(entry: DispatchedHookEntry): object {
+  return {
+    time: new Date().toISOString(),
+    source: entry.hookName,
+    event: entry.event,
+    kind: "dispatched-hook",
+    input: entry.input,
+    stdout: entry.result.stdout,
+    stderr: entry.result.stderr,
+    status: entry.result.status,
+    signal: entry.result.signal,
+    error: entry.result.error?.message,
+  };
+}
+
+export function logDispatchedHook(entry: DispatchedHookEntry): void {
+  const debugFolder = `${entry.root}/.claude_hooks/debug`;
+  mkdirSync(debugFolder, { recursive: true });
+  const line = buildDispatchedHookLine(entry);
+  appendFileSync(`${debugFolder}/${entry.sessionId}.jsonl`, `${JSON.stringify(line)}\n`);
+  addIgnoreLineWhenGitExists(entry.root);
+}
+
 export function logHookFailure(entry: HookFailureEntry): void {
   const failure = getFailureKindAndMessage(entry.result);
   if (failure === undefined)

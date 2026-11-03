@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { isEnabled, getValues, getSetting, getHooks, readSettings } from "./settings.ts";
+import { isEnabled, isDebugLoggingEnabled, getValues, getSetting, getHooks, readSettings } from "./settings.ts";
 
 const DEFAULTS = {
   enablements: { alpha: { Stop: true, PreToolUse: false }, beta: { Stop: false } },
@@ -100,6 +100,34 @@ test("a value that starts with ../ resolves from the dispatcher folder", () => {
   const settings = readSettings(makeDir({ enablements: {}, values: { alpha: { ALPHA_KEY: "../plan-file-reminder/planning.md" } } }));
   settings.dispatcherDir = dispatcherDir;
   assert.equal(getValues(settings, "alpha")["ALPHA_KEY"], resolve(`${import.meta.dirname}/..`, "plan-file-reminder/planning.md"));
+});
+
+test("debugLoggingEnabled comes from dispatch.json when the user file leaves it out", () => {
+  const dir = makeDir({ enablements: {}, values: {} });
+  writeFileSync(`${dir}/dispatch.json`, JSON.stringify({ ...DEFAULTS, debugLoggingEnabled: true }));
+  assert.equal(isDebugLoggingEnabled(readSettings(dir)), true);
+});
+
+test("a user debugLoggingEnabled of false wins over a default of true", () => {
+  const dir = makeDir({ enablements: {}, values: {}, debugLoggingEnabled: false });
+  writeFileSync(`${dir}/dispatch.json`, JSON.stringify({ ...DEFAULTS, debugLoggingEnabled: true }));
+  assert.equal(isDebugLoggingEnabled(readSettings(dir)), false);
+});
+
+test("a user debugLoggingEnabled of true wins over a default of false", () => {
+  const dir = makeDir({ enablements: {}, values: {}, debugLoggingEnabled: true });
+  writeFileSync(`${dir}/dispatch.json`, JSON.stringify({ ...DEFAULTS, debugLoggingEnabled: false }));
+  assert.equal(isDebugLoggingEnabled(readSettings(dir)), true);
+});
+
+test("a missing debugLoggingEnabled in both files throws and names the key", () => {
+  const settings = readSettings(makeDir({ enablements: {}, values: {} }));
+  assert.throws(() => isDebugLoggingEnabled(settings), /debugLoggingEnabled/);
+});
+
+test("dispatch.json has a boolean debugLoggingEnabled, set to false", () => {
+  const defaults = JSON.parse(readFileSync(`${import.meta.dirname}/../dispatcher/dispatch.json`, "utf8"));
+  assert.equal(defaults.debugLoggingEnabled, false);
 });
 
 test("a value that starts with ~/ gets the home folder", () => {

@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, extname } from "node:path";
 import { buildHookOutput } from "./output.ts";
-import { readSettings, isEnabled, getValues, getHooks, DISPATCHER_DIR, type HookEntry, type Settings } from "../shared/settings.ts";
-import { logHookFailure } from "../shared/hook-log.ts";
+import { readSettings, isEnabled, isDebugLoggingEnabled, getValues, getHooks, DISPATCHER_DIR, type HookEntry, type Settings } from "../shared/settings.ts";
+import { logHookFailure, logDispatchedHook } from "../shared/hook-log.ts";
 // Runs the hooks in the list for one event and merges their outputs.
 export { type HookEntry, buildHookOutput };
 
@@ -55,14 +55,18 @@ export function executeHooks(input: any, hooks: HookEntry[], settings: { default
       const deletedDirectoryMessage = `\nhook ${hookName} errored! \n\nThe hook ran from this folder instead:\n${HOME} \nThe following session directory was deleted:\n${input.cwd}`;
       systemMessages.push(deletedDirectoryMessage);
     }
+    const hookInput = { ...currentInput, settings: getValues(settings, name) };
     const result = spawnSync(hook.command[0], hook.command.slice(1), {
-      input: JSON.stringify({ ...currentInput, settings: getValues(settings, name) }),
+      input: JSON.stringify(hookInput),
       encoding: "utf8",
       timeout: timeoutSeconds * 1000,
       env: process.env,
       cwd,
     });
     logHookFailure({ root: cwd, hookName: name, sessionId: input.session_id, event, result });
+    const isDebugLogging = isDebugLoggingEnabled(settings);
+    if (isDebugLogging)
+      logDispatchedHook({ root: cwd, hookName: name, sessionId: input.session_id, event, input: hookInput, result });
     if (result.error) {
       console.error(`hook spawn failed, cwd: ${input.cwd}`);
       throw result.error;

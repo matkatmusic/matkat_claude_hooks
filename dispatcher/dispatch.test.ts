@@ -13,7 +13,7 @@ test("two Stop children both block: reasons join into one decision", () => {
     { event: "Stop", command: ["node", `${dir}/a.mjs`] },
     { event: "Stop", command: ["node", `${dir}/b.mjs`] },
   ];
-  const settings = { defaults: { enablements: { a: { Stop: true }, b: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  const settings = { defaults: { debugLoggingEnabled: false, enablements: { a: { Stop: true }, b: { Stop: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
   const result = executeHooks({ hook_event_name: "Stop", cwd: dir }, hooks, settings);
   assert.deepEqual(JSON.parse(result), { decision: "block", reason: "A blocks\n\nB blocks" });
 });
@@ -32,7 +32,7 @@ test("PreToolUse deny beats allow", () => {
     { event: "PreToolUse", command: ["node", `${dir}/allow.mjs`] },
     { event: "PreToolUse", command: ["node", `${dir}/deny.mjs`] },
   ];
-  const settings = { defaults: { enablements: { allow: { PreToolUse: true }, deny: { PreToolUse: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  const settings = { defaults: { debugLoggingEnabled: false, enablements: { allow: { PreToolUse: true }, deny: { PreToolUse: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
   const input = { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "ls" }, cwd: dir };
   const result = executeHooks(input, hooks, settings);
   assert.deepEqual(JSON.parse(result), {
@@ -57,7 +57,7 @@ test("PreToolUse updatedInput chains to the next child and reaches the final out
     { event: "PreToolUse", command: ["node", `${dir}/rewrite.mjs`] },
     { event: "PreToolUse", command: ["node", `${dir}/observe.mjs`] },
   ];
-  const settings = { defaults: { enablements: { rewrite: { PreToolUse: true }, observe: { PreToolUse: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  const settings = { defaults: { debugLoggingEnabled: false, enablements: { rewrite: { PreToolUse: true }, observe: { PreToolUse: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
   const input = { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "ls" }, cwd: dir };
   const result = executeHooks(input, hooks, settings);
   assert.deepEqual(JSON.parse(readFileSync(seenPath, "utf8")), { command: "ls -la" });
@@ -80,7 +80,7 @@ test("two additionalContext outputs merge", () => {
     { event: "SessionStart", command: ["node", `${dir}/a.mjs`] },
     { event: "SessionStart", command: ["node", `${dir}/b.mjs`] },
   ];
-  const settings = { defaults: { enablements: { a: { SessionStart: true }, b: { SessionStart: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
+  const settings = { defaults: { debugLoggingEnabled: false, enablements: { a: { SessionStart: true }, b: { SessionStart: true } }, values: {}, hooks: [] }, user: { enablements: {}, values: {}, hooks: [] }, dispatcherDir: dir };
   const result = executeHooks({ hook_event_name: "SessionStart", cwd: dir }, hooks, settings);
   assert.deepEqual(JSON.parse(result), {
     hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "context A\n\ncontext B" },

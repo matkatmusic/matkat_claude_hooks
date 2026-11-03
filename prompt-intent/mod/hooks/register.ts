@@ -1,5 +1,5 @@
 import type { Register, Hook, PromptSubmitInput, EngineInterface } from 'claude-code';
-import { logAndRethrowHookFailure } from './logHookFailure';
+import { logAndRethrowHookFailure, wrapNextForDebugLog, getModelReplyWithDebugLog } from './logHookFailure';
 
 const CLASSIFIER_MODEL = 'claude-haiku-5-5';
 const CLASSIFIER_TIMEOUT_MS = 30 * 1000;
@@ -8,12 +8,13 @@ const DISPATCHER_DIR = '../../dispatcher';
 const BUG_REPORT_TEXT = "The user is reporting a bug. Create a task in the session task list with TaskCreate to track the bug's resolution. Write a regression test for the behavior the user reports.";
 const FEATURE_REQUEST_TEXT = 'The user is stating a feature request. Create a task in the session task list with TaskCreate to track it. If the request is ambiguous, use AskUserQuestion first to clarify what the user wants and align on the exact want.';
 const CHANGE_REQUEST_TEXT = 'The user is describing a change in functionality. Create a task in the session task list with TaskCreate to track the change. If the description is ambiguous or vague, use AskUserQuestion first to clarify what the user wants and align on the exact want.';
+const ASK_IF_UNCLEAR_SENTENCE = "if anything I'm asking for is unclear, use AskUserQuestion to gain clarity and alignment before starting to build my request.";
 
-async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
 
-async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> } | undefined> {
   const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
   const hasUserFile = await $.fs.exists(userPath);
   if (!hasUserFile)
@@ -59,7 +60,7 @@ async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginN
     return [];
   const prompt = `${question}\n\nReply with only JSON. If yes, reply {"yes": [...]} with one string for each item you find, any number of items. Each string is the first 5 words of the line or sentence that holds that item. If no, reply {"no": []}.\n\nThe user's prompt:\n${e.text}`;
   const startedAt = await $.clock.now();
-  const reply = await $.model.complete({ model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
+  const reply = await getModelReplyWithDebugLog($, { model: CLASSIFIER_MODEL, prompt, timeoutMs: CLASSIFIER_TIMEOUT_MS });
   const elapsedMs = (await $.clock.now()) - startedAt;
   if (!reply.isAnswered) {
     const isAborted = reply.reason === 'aborted';
@@ -97,19 +98,37 @@ async function getChangeRequestContext($: EngineInterface, e: PromptSubmitInput)
   return `${CHANGE_REQUEST_TEXT} Flagged items (first 5 words): ${JSON.stringify(items)}. Create one task for each item.`;
 }
 
-// The engine allows one unmatched prompt.submit hook per plugin, so this one runs all three checks.
-const addIntentContext: Hook<'prompt.submit'> = async ($, e, next) => {
-  const found = await Promise.all([getBugReportContext($, e), getFeatureRequestContext($, e), getChangeRequestContext($, e)]);
-  const added: string[] = [];
-  for (const text of found) {
+function getDefinedTexts(texts: (string | undefined)[]): string[] {
+  const defined: string[] = [];
+  for (const text of texts) {
     if (text !== undefined)
-      added.push(text);
+      defined.push(text);
   }
-  if (added.length === 0)
+  return defined;
+}
+
+// The engine allows one unmatched prompt.submit hook per plugin, so this one runs all four checks.
+const addIntentContext: Hook<'prompt.submit'> = async ($, e, next) => {
+  const [bugText, featureText, changeText, askItems] = await Promise.all([getBugReportContext($, e), getFeatureRequestContext($, e), getChangeRequestContext($, e), getFlaggedItems($, e, 'ask-if-unclear', 'Is the user asking for code, a file, or a setting to be built or changed?')]);
+  const added = getDefinedTexts([bugText, featureText, changeText]);
+  const hasNoContext = added.length === 0;
+  const hasNoAskItems = askItems.length === 0;
+  const isUnchanged = hasNoContext && hasNoAskItems;
+  if (isUnchanged)
     return next(e);
-  return next({ ...e, context: [...(e.context ?? []), ...added] });
+  const text = hasNoAskItems ? e.text : `${e.text} ${ASK_IF_UNCLEAR_SENTENCE}`;
+  if (hasNoContext)
+    return next({ ...e, text });
+  return next({ ...e, text, context: [...(e.context ?? []), ...added] });
+};
+
+const addIntentContextWithDebugLog: Hook<'prompt.submit'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'addIntentContext', 'prompt.submit', e, next);
+  const returned = await addIntentContext($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
 };
 
 export const register: Register = on => {
-  on('prompt.submit', addIntentContext).catch(logAndRethrowHookFailure);
+  on('prompt.submit', addIntentContextWithDebugLog).catch(logAndRethrowHookFailure);
 };

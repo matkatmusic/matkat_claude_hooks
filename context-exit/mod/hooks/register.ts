@@ -1,5 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { logAndRethrowHookFailure } from './logHookFailure';
+import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
 
 const PLUGIN_NAME = 'context-exit';
 const WARNING_PERCENTS_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS';
@@ -8,11 +8,11 @@ const DISPATCHER_DIR = '../../dispatcher';
 
 const warnedPercentRef = { plugin: 'context-exit', key: 'warnedPercent' } as const;
 
-async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
 
-async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> } | undefined> {
   const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
   const hasUserFile = await $.fs.exists(userPath);
   if (!hasUserFile)
@@ -46,11 +46,11 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
-function getValue(file: { values?: Record<string, Record<string, string>> }, section: string, key: string): string | undefined {
+function getValue(file: { values?: Record<string, Record<string, string | boolean>> }, section: string, key: string): string | boolean | undefined {
   return file.values?.[section]?.[key];
 }
 
-async function readValue($: EngineInterface, section: string, key: string): Promise<string> {
+async function readValue($: EngineInterface, section: string, key: string): Promise<string | boolean> {
   const user = await parseUserFile($);
   if (user !== undefined) {
     const userValue = getValue(user, section, key);
@@ -98,7 +98,7 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
   const { value: warnedPercent = 0 } = await $.state.get(warnedPercentRef);
   const percentsText = await readValue($, PLUGIN_NAME, WARNING_PERCENTS_KEY);
   let crossedPercent = 0;
-  for (const warningPercentText of percentsText.split(',')) {
+  for (const warningPercentText of String(percentsText).split(',')) {
     const warningPercent = Number(warningPercentText);
     if (percent >= warningPercent)
       crossedPercent = warningPercent;
@@ -113,7 +113,21 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
   return next(e);
 };
 
+const logTurnOffStopHooksOnHandoffPrompt: Hook<'prompt.submit'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'turnOffStopHooksOnHandoffPrompt', 'prompt.submit', e, next);
+  const returned = await turnOffStopHooksOnHandoffPrompt($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const reportContextUsageOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'reportContextUsageOnTurnComplete', 'turn.complete', e, next);
+  const returned = await reportContextUsageOnTurnComplete($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 export const register: Register = on => {
-  on('prompt.submit', turnOffStopHooksOnHandoffPrompt).catch(logAndRethrowHookFailure);
-  on('turn.complete', reportContextUsageOnTurnComplete).catch(logAndRethrowHookFailure);
+  on('prompt.submit', logTurnOffStopHooksOnHandoffPrompt).catch(logAndRethrowHookFailure);
+  on('turn.complete', reportContextUsageOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
 };

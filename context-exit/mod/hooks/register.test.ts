@@ -3,7 +3,7 @@ import { test, expect } from 'claude-code/testing'
 const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
 const DEFAULT_TOAST_MS = 4000
 
-const DISPATCH_WITH_PERCENTS = '{ "enablements": { "context-exit": { "turn.complete": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80" } } }'
+const DISPATCH_WITH_PERCENTS = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80" } } }'
 
 function watchContext($: any, on: any, startPercent: number, dispatchText = DISPATCH_WITH_PERCENTS, userText?: string) {
   const toasts: { text: string; timeoutMs?: number }[] = []
@@ -125,7 +125,7 @@ test('the message stays on screen longer than the default', async ($, on) => {
 })
 
 test('turn.complete disabled in dispatch.json shows no message', async ($, on) => {
-  const { toasts } = watchContext($, on, 85, '{ "enablements": { "context-exit": { "turn.complete": false } } }')
+  const { toasts } = watchContext($, on, 85, '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": false } } }')
   await $.turn.complete(ANSWER)
   expect(toasts).toEqual([])
 })
@@ -139,7 +139,7 @@ test('percents in user-dispatch.json win over dispatch.json', async ($, on) => {
 })
 
 test('dispatch.json without the percents value shows no message', async ($, on) => {
-  const { toasts } = watchContext($, on, 31, '{ "enablements": { "context-exit": { "turn.complete": true } }, "values": {} }')
+  const { toasts } = watchContext($, on, 31, '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true } }, "values": {} }')
   await $.turn.complete(ANSWER)
   expect(toasts).toEqual([])
 })

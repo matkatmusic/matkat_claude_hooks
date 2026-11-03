@@ -1,13 +1,13 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
 import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState, removeStopHooksOffMarker } from './idleStateShared';
 import { sendStatePrompt, scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
-import { logAndRethrowHookFailure } from './logHookFailure';
+import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
 const DISPATCHER_DIR = '../../dispatcher';
-async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> }> {
+async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
 }
 
-async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string>> } | undefined> {
+async function parseUserFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> } | undefined> {
   const userPath = `${$.plugin.root}/${DISPATCHER_DIR}/user-dispatch.json`;
   const hasUserFile = await $.fs.exists(userPath);
   if (!hasUserFile)
@@ -41,11 +41,11 @@ async function isEventEnabled($: EngineInterface, pluginName: string, event: str
   return await readDefault($, pluginName, event);
 }
 
-function getValue(file: { values?: Record<string, Record<string, string>> }, section: string, key: string): string | undefined {
+function getValue(file: { values?: Record<string, Record<string, string | boolean>> }, section: string, key: string): string | boolean | undefined {
   return file.values?.[section]?.[key];
 }
 
-async function readValue($: EngineInterface, section: string, key: string): Promise<string> {
+async function readValue($: EngineInterface, section: string, key: string): Promise<string | boolean> {
   const user = await parseUserFile($);
   if (user !== undefined) {
     const userValue = getValue(user, section, key);
@@ -144,13 +144,55 @@ const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
   return { text: 'Writing the idle-state file before exit.' };
 };
 
+const clearStateOnSessionStartWithDebugLog: Hook<'session.start'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'clearStateOnSessionStart', 'session.start', e, next);
+  const returned = await clearStateOnSessionStart($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const clearStateOnSessionEndWithDebugLog: Hook<'session.end'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'clearStateOnSessionEnd', 'session.end', e, next);
+  const returned = await clearStateOnSessionEnd($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const blockPromptAfterStateSavedWithDebugLog: Hook<'prompt.submit'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'blockPromptAfterStateSaved', 'prompt.submit', e, next);
+  const returned = await blockPromptAfterStateSaved($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const denyToolsWhileStatePromptPendingWithDebugLog: Hook<'tool.call'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'denyToolsWhileStatePromptPending', 'tool.call', e, next);
+  const returned = await denyToolsWhileStatePromptPending($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const updateIdleStateOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'updateIdleStateOnTurnComplete', 'turn.complete', e, next);
+  const returned = await updateIdleStateOnTurnComplete($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
+const writeIdleStateBeforeExitWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'writeIdleStateBeforeExit', 'command.run', e, next);
+  const returned = await writeIdleStateBeforeExit($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 export const register: Register = on => {
-  on('session.start', clearStateOnSessionStart).catch(logAndRethrowHookFailure);
-  on('session.end', clearStateOnSessionEnd).catch(logAndRethrowHookFailure);
-  on('prompt.submit', blockPromptAfterStateSaved).catch(logAndRethrowHookFailure);
-  on('turn.complete', updateIdleStateOnTurnComplete).catch(logAndRethrowHookFailure);
-  on('tool.call', denyToolsWhileStatePromptPending).catch(logAndRethrowHookFailure);
+  on('session.start', clearStateOnSessionStartWithDebugLog).catch(logAndRethrowHookFailure);
+  on('session.end', clearStateOnSessionEndWithDebugLog).catch(logAndRethrowHookFailure);
+  on('prompt.submit', blockPromptAfterStateSavedWithDebugLog).catch(logAndRethrowHookFailure);
+  on('turn.complete', updateIdleStateOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
+  on('tool.call', denyToolsWhileStatePromptPendingWithDebugLog).catch(logAndRethrowHookFailure);
   // on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   // on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
-  on('command.run', { command: 'exit' }, writeIdleStateBeforeExit).catch(logAndRethrowHookFailure);
+  on('command.run', { command: 'exit' }, writeIdleStateBeforeExitWithDebugLog).catch(logAndRethrowHookFailure);
 };

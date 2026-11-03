@@ -1,4 +1,5 @@
 {
+  "debugLoggingEnabled": false,
   "enablements": {
     "block-npm-test": { "PreToolUse": false },
     "block-parent-edits": { "PreToolUse": false },
@@ -23,7 +24,8 @@
     "context-exit": { "turn.complete": true },
     "bug-report": { "prompt.submit": true },
     "feature-request": { "prompt.submit": true },
-    "change-request": { "prompt.submit": true }
+    "change-request": { "prompt.submit": true },
+    "ask-if-unclear": { "prompt.submit": true }
   },
   "values": {
     "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },
@@ -53,7 +55,7 @@
     "context-exit": {
       "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80"
     },
-    "ask-dont-dump": { "useTypesafe": false },
+    "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "plan-file-reminder": {
       "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md"
     },
