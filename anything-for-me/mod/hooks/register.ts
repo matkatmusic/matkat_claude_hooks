@@ -1,5 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
+import { logAndRethrowHookFailure, logHookFailure, wrapNextForDebugLog } from './logHookFailure';
 
 const PLUGIN_NAME = 'anything-for-me';
 const DISPATCHER_DIR = '../../dispatcher';
@@ -51,13 +51,13 @@ const registerCommandOnSessionStart: Hook<'session.start'> = async ($, e, next) 
   return next(e);
 };
 
-const sendPromptOnCommandRun: Hook<'command.run'> = async ($) => {
-  function sendPromptNow() {
-    void $.prompt.submit({ text: PROMPT_TEXT, asUser: true });
-  }
-  $.clock.after(0, sendPromptNow);
-  return {};
-};
+// const sendPromptOnCommandRun: Hook<'command.run'> = async ($) => {
+//   function sendPromptNow() {
+//     void $.prompt.submit({ text: PROMPT_TEXT, asUser: true });
+//   }
+//   $.clock.after(0, sendPromptNow);
+//   return {};
+// };
 
 const registerCommandOnSessionStartWithDebugLog: Hook<'session.start'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'registerCommandOnSessionStart', 'session.start', e, next);
@@ -66,10 +66,25 @@ const registerCommandOnSessionStartWithDebugLog: Hook<'session.start'> = async (
   return returned;
 };
 
+// const sendPromptOnCommandRunWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
+//   const debugLog = await wrapNextForDebugLog($, 'sendPromptOnCommandRun', 'command.run', e, next);
+//   const returned = await sendPromptOnCommandRun($, e, debugLog.next);
+//   await debugLog.finish(returned);
+//   return returned;
+// };
+
 const sendPromptOnCommandRunWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'sendPromptOnCommandRun', 'command.run', e, next);
-  const returned = await sendPromptOnCommandRun($, e, debugLog.next);
+  const returned = {};
   await debugLog.finish(returned);
+  async function logRejectedPrompt(failure: unknown) {
+    const message = failure instanceof Error ? failure.message : String(failure);
+    await logHookFailure($, PLUGIN_NAME, 'prompt.submit', { kind: 'throw', message, budget: 0 });
+  }
+  function sendPromptNow() {
+    void $.prompt.submit({ text: PROMPT_TEXT, asUser: true }).catch(logRejectedPrompt);
+  }
+  $.clock.after(0, sendPromptNow);
   return returned;
 };
 
