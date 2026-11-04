@@ -7,6 +7,8 @@ import type { Item } from "./collect.ts";
 import { DROP_THRESHOLD, sendQuestions, type TypesafeLog } from "./typesafeFilters.ts";
 
 const MAX_KNOWN_TRAP_QUESTIONS_PER_REQUEST = 3;
+// TypeSafe refuses more than 255 criteria; one is "none"
+const MAX_MEMORIES_PER_CRITERIA = 254;
 
 function readMemoryDescription(path: string): string {
   for (const line of readFileSync(path, "utf8").split("\n")) {
@@ -20,17 +22,20 @@ function readMemoryDescription(path: string): string {
 export async function removeKnownTraps(client: TypeSafeClient, rules: Item[], mistakes: Item[], memoryFolder: string, globalClaudeMdPath: string, projectClaudeMdPath: string, log: TypesafeLog) {
   const hasMemory = existsSync(memoryFolder);
   const hasProjectClaudeMd = existsSync(projectClaudeMdPath);
-  const memoryCriteria: Record<string, string> = {};
+  // const memoryCriteria: Record<string, string> = {};
+  const memoryDescriptions: Record<string, string> = {};
   if (hasMemory) {
     for (const name of readdirSync(memoryFolder).sort()) {
       const isIndex = name === "MEMORY.md";
       const isSubfolder = statSync(join(memoryFolder, name)).isDirectory();
       if (!isIndex && !isSubfolder)
-        memoryCriteria[name] = readMemoryDescription(join(memoryFolder, name));
+        // memoryCriteria[name] = readMemoryDescription(join(memoryFolder, name));
+        memoryDescriptions[name] = readMemoryDescription(join(memoryFolder, name));
     }
     // ponytail: about 450 memory files at 3 questions per request pass 64k tokens again; size batches by measured tokens (task #255)
-    memoryCriteria.none = "No memory matches this item.";
+    // memoryCriteria.none = "No memory matches this item.";
   }
+  const memoryNames = Object.keys(memoryDescriptions);
   const state: Record<string, unknown> = { rules, mistakes, globalClaudeMd: readFileSync(globalClaudeMdPath, "utf8") };
   if (hasProjectClaudeMd)
     state.projectClaudeMd = readFileSync(projectClaudeMdPath, "utf8");
@@ -44,8 +49,15 @@ export async function removeKnownTraps(client: TypeSafeClient, rules: Item[], mi
     for (let index = 0; index < group.items.length; index++) {
       const path = `${group.key}[${index}].text`;
       itemTexts.push(group.items[index].text);
-      if (hasMemory)
-        questions[`${group.key}_${index}_memory`] = choice(`Which memory most closely matches this ${group.noun}: \`${path}\`?`, memoryCriteria);
+      // if (hasMemory)
+      //   questions[`${group.key}_${index}_memory`] = choice(`Which memory most closely matches this ${group.noun}: \`${path}\`?`, memoryCriteria);
+      for (let start = 0; start < memoryNames.length; start += MAX_MEMORIES_PER_CRITERIA) {
+        const memoryCriteria: Record<string, string> = {};
+        for (const memoryName of memoryNames.slice(start, start + MAX_MEMORIES_PER_CRITERIA))
+          memoryCriteria[memoryName] = memoryDescriptions[memoryName];
+        memoryCriteria.none = "No memory matches this item.";
+        questions[`${group.key}_${index}_memory_from_${start}`] = choice(`Which memory most closely matches this ${group.noun}: \`${path}\`?`, memoryCriteria);
+      }
       questions[`${group.key}_${index}_global`] = choice(`Does \`globalClaudeMd\` contain or mention what \`${path}\` describes?`, { yes: null, no: null, unsure: null });
       if (hasProjectClaudeMd)
         questions[`${group.key}_${index}_project`] = choice(`Does \`projectClaudeMd\` contain or mention what \`${path}\` describes?`, { yes: null, no: null, unsure: null });
@@ -55,11 +67,19 @@ export async function removeKnownTraps(client: TypeSafeClient, rules: Item[], mi
   const keptByKey: Record<string, Item[]> = { rules: [], mistakes: [] };
   for (const group of groups) {
     for (let index = 0; index < group.items.length; index++) {
-      const memoryAnswer = answers[`${group.key}_${index}_memory`];
+      // const memoryAnswer = answers[`${group.key}_${index}_memory`];
       const globalAnswer = answers[`${group.key}_${index}_global`];
       const projectAnswer = answers[`${group.key}_${index}_project`];
       let isKnown = false;
-      if (memoryAnswer) {
+      // if (memoryAnswer) {
+      //   const isMemoryMatch = memoryAnswer.choice !== "none";
+      //   const isMemoryConfident = memoryAnswer.probabilities[memoryAnswer.choice] > DROP_THRESHOLD;
+      //   const isInMemory = isMemoryMatch && isMemoryConfident;
+      //   if (isInMemory)
+      //     isKnown = true;
+      // }
+      for (let start = 0; start < memoryNames.length; start += MAX_MEMORIES_PER_CRITERIA) {
+        const memoryAnswer = answers[`${group.key}_${index}_memory_from_${start}`];
         const isMemoryMatch = memoryAnswer.choice !== "none";
         const isMemoryConfident = memoryAnswer.probabilities[memoryAnswer.choice] > DROP_THRESHOLD;
         const isInMemory = isMemoryMatch && isMemoryConfident;
