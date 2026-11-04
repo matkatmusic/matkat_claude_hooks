@@ -31,7 +31,7 @@ async function assertScheduleStatePromptSendsPromptWhenTimerFires() {
   expect(idleState.lastAnswerAt).toBe(fake.nowMs);
   await fake.timers[0]?.run();
   expect(fake.submitted).toEqual([idleState.statePrompt]);
-  expect(idleState.isWritingState).toBe(true);
+  expect(idleState.isWritingState).toBe(false);
 }
 
 async function assertScheduleStatePromptSkipsPromptWhenTimerIsLate() {

@@ -18,7 +18,7 @@ const USER_ENABLEMENTS: Record<string, Record<string, boolean>> = {
   "idle-state-reader": { UserPromptSubmit: true },
   "idle-state-check": { Stop: true },
   "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true },
-  "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true },
+  "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "turn.start": true, "tool.call": true, "command.run": true },
   "context-exit": { "turn.complete": true },
 };
 

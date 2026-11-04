@@ -15,9 +15,9 @@ export const STATE_OBJECT = {
 };
 export const TEMPLATE_TEXT = '{ "work": ["what this chat worked on"] }';
 export const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const;
-export const DISPATCH_ALL_ON = '{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
+export const DISPATCH_ALL_ON = '{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "turn.start": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
 export const DISPATCH_ALL_ON_WITH_DEBUG = DISPATCH_ALL_ON.replace('"debugLoggingEnabled": false', '"debugLoggingEnabled": true');
-export const DISPATCH_ALL_OFF ='{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
+export const DISPATCH_ALL_OFF ='{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "turn.start": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
 export const MARKER_PATH_END = '/dispatcher/stop-hooks-off/abcdef1234567890';
 export const NO_PROCESS_FOUND = { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false };
 
@@ -59,12 +59,17 @@ export function setFsStubs(on: any, dispatchText = DISPATCH_ALL_ON) {
   on('fs.read', readFsFile);
 }
 
+export function getTurnStartResult(_$: any, e: any) {
+  return { turnId: e.turnId };
+}
+
 export function setTurnStubs(on: any, recorded: RecordedCalls) {
   function appendSubmitted(_$: any, e: any) {
     recorded.submitted.push(e.text);
     return { text: e.text };
   }
   on('turn.complete', getAnswerText);
+  on('turn.start', getTurnStartResult);
   on('prompt.submit', appendSubmitted);
 }
 

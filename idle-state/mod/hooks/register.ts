@@ -1,5 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState, removeStopHooksOffMarker } from './idleStateShared';
+import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState, removeStopHooksOffMarker, writeStopHooksOffMarker } from './idleStateShared';
 import { sendStatePrompt, scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
 import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
 const DISPATCHER_DIR = '../../dispatcher';
@@ -102,6 +102,22 @@ const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) =
   return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
 };
 
+const enableStateWriteOnStatePromptTurn: Hook<'turn.start'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'turn.start');
+  if (!enabled)
+    return next(e);
+  if (e.agentId !== undefined)
+    return next(e);
+  if (idleState.statePrompt !== '') {
+    const isStatePromptTurn = e.text.includes(idleState.statePrompt);
+    if (isStatePromptTurn) {
+      await writeStopHooksOffMarker($);
+      idleState.isWritingState = true;
+    }
+  }
+  return next(e);
+};
+
 // const blockStopHooksWhileStatePromptPending: Hook<'classic.Stop'> = async ($, e, next) => {
 //   if (!idleState.isWritingState)
 //     return next(e);
@@ -191,6 +207,13 @@ const updateIdleStateOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = async (
   return returned;
 };
 
+const enableStateWriteOnStatePromptTurnWithDebugLog: Hook<'turn.start'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'enableStateWriteOnStatePromptTurn', 'turn.start', e, next);
+  const returned = await enableStateWriteOnStatePromptTurn($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 // const writeIdleStateBeforeExitWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
 //   const debugLog = await wrapNextForDebugLog($, 'writeIdleStateBeforeExit', 'command.run', e, next);
 //   const returned = await writeIdleStateBeforeExit($, e, debugLog.next);
@@ -216,6 +239,7 @@ export const register: Register = on => {
   on('prompt.submit', blockPromptAfterStateSavedWithDebugLog).catch(logAndRethrowHookFailure);
   on('turn.complete', updateIdleStateOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
   on('tool.call', denyToolsWhileStatePromptPendingWithDebugLog).catch(logAndRethrowHookFailure);
+  on('turn.start', enableStateWriteOnStatePromptTurnWithDebugLog).catch(logAndRethrowHookFailure);
   // on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   // on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   on('command.run', { command: 'exit' }, writeIdleStateBeforeExitWithDebugLog).catch(logAndRethrowHookFailure);

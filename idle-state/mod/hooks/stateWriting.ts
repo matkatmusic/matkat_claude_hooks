@@ -10,7 +10,7 @@ import {
   formatTwoDigits,
   idleState,
   removeStopHooksOffMarker,
-  writeStopHooksOffMarker,
+  // writeStopHooksOffMarker,
 } from './idleStateShared';
 import { logHookFailure } from './logHookFailure';
 
@@ -30,8 +30,8 @@ Rules for populating the template:
 - Put only unfinished work in \`not_done\`. Put each completed item in \`done\`, never in \`not_done\`.
 - For \`runningPrograms\`, give the exact command line that started each program.
 - Keep each section under 150 words.`;
-  await writeStopHooksOffMarker($);
-  idleState.isWritingState = true;
+  // await writeStopHooksOffMarker($);
+  // idleState.isWritingState = true;
   // void $.prompt.submit({ text: idleState.statePrompt });
   async function clearStateAndLogRejectedStatePrompt(failure: unknown) {
     idleState.isWritingState = false;

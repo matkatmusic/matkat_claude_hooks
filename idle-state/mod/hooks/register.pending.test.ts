@@ -25,7 +25,8 @@ async function assertToolsAreDeniedWhilePromptPending($: any, on: any) {
     toolsRun++;
     return { result: {}, text: 'ran' };
   }
-  setSessionStubs(on, createRecordedCalls(), getNoMessages);
+  const recorded = createRecordedCalls();
+  setSessionStubs(on, recorded, getNoMessages);
   on('tool.call', countToolRun);
 
   await $.turn.complete(ANSWER);
@@ -33,6 +34,7 @@ async function assertToolsAreDeniedWhilePromptPending($: any, on: any) {
   expect(toolsRun).toBe(1);
 
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.tool.call({ tool: 'Read', file_path: '/a.md' });
   expect(toolsRun).toBe(1);
 
@@ -55,6 +57,7 @@ async function assertStopHooksOffMarkerIsWrittenThenRemoved($: any, on: any) {
   expect(recorded.written).toEqual([]);
 
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   expect(recorded.written).toHaveLength(1);
   expect(recorded.written[0]!.path.endsWith(MARKER_PATH_END)).toBe(true);
   expect(removedCommands).toEqual([]);
@@ -77,6 +80,7 @@ async function assertStopHooksOffMarkerIsRemovedWhenUserTakesOver($: any, on: an
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
 
   await $.prompt.submit({ text: 'never mind, do this instead', wait: false, origin: { kind: 'composer' } });
   expect(removedCommands).toHaveLength(1);
@@ -91,11 +95,13 @@ async function assertUserPromptLetsToolsRunAgain($: any, on: any) {
     toolsRun++;
     return { result: {}, text: 'ran' };
   }
-  setSessionStubs(on, createRecordedCalls(), getNoMessages);
+  const recorded = createRecordedCalls();
+  setSessionStubs(on, recorded, getNoMessages);
   on('tool.call', countToolRun);
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.tool.call({ tool: 'Read', file_path: '/a.md' });
   expect(toolsRun).toBe(0);
 
@@ -117,10 +123,12 @@ async function assertPgrepGetsEscapedProgramCommand($: any, on: any) {
       patterns.push(e.argv[2] ?? '');
     return { value: NO_PROCESS_FOUND };
   }
-  setSessionStubs(on, createRecordedCalls(), getMessages, appendPattern);
+  const recorded = createRecordedCalls();
+  setSessionStubs(on, recorded, getMessages, appendPattern);
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.turn.complete(ANSWER);
   await clock.settle();
   expect(patterns).toEqual(['node server\\.js --port=\\(80\\)']);

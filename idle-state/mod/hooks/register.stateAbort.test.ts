@@ -21,6 +21,7 @@ async function assertAbortedStateTurnWritesNoFile($: any, on: any) {
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.turn.complete({ ...ANSWER, isAborted: true });
   await clock.settle();
   expect(recorded.written).toHaveLength(1);
@@ -47,6 +48,7 @@ async function assertUserTypingAfterStatePromptWritesNoFile($: any, on: any) {
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.turn.complete(ANSWER);
   await clock.settle();
   expect(recorded.written).toHaveLength(1);
@@ -64,6 +66,7 @@ async function assertWrappedReplyWritesNoStateFile($: any, on: any) {
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.turn.complete(ANSWER);
   await clock.settle();
   const writtenPaths: string[] = [];
@@ -88,6 +91,7 @@ async function assertSessionEndStopsDroppingPrompts($: any, on: any) {
 
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
   await $.turn.complete(ANSWER);
   await clock.settle();
   const dropped = await $.prompt.submit({ text: 'before end', wait: false, origin: { kind: 'composer' } });

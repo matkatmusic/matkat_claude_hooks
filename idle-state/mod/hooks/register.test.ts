@@ -54,6 +54,7 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   await clock.advance(IDLE_MS);
   expect(submitted).toHaveLength(1);
   expect(submitted[0]).toContain(TEMPLATE_TEXT);
+  await $.turn.start({ text: submitted[0]!, turnId: 't2' });
 
   await $.turn.complete({ ...ANSWER, answer: 'I ran the turn-done script.' });
   expect(written).toHaveLength(3);
@@ -97,6 +98,7 @@ async function assertTypingExitWritesStateFileThenExits($: any, on: any) {
   expect(submitted).toHaveLength(1);
   expect(submitted[0]).toContain(TEMPLATE_TEXT);
   expect(commands).toEqual([]);
+  await $.turn.start({ text: submitted[0]!, turnId: 't2' });
 
   await $.turn.complete(ANSWER);
   await clock.settle();
