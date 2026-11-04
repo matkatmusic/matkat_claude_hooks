@@ -16,7 +16,8 @@ export const STATE_OBJECT = {
 export const TEMPLATE_TEXT = '{ "work": ["what this chat worked on"] }';
 export const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const;
 export const DISPATCH_ALL_ON = '{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
-export const DISPATCH_ALL_OFF = '{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
+export const DISPATCH_ALL_ON_WITH_DEBUG = DISPATCH_ALL_ON.replace('"debugLoggingEnabled": false', '"debugLoggingEnabled": true');
+export const DISPATCH_ALL_OFF ='{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
 export const MARKER_PATH_END = '/dispatcher/stop-hooks-off/abcdef1234567890';
 export const NO_PROCESS_FOUND = { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false };
 
@@ -67,7 +68,7 @@ export function setTurnStubs(on: any, recorded: RecordedCalls) {
   on('prompt.submit', appendSubmitted);
 }
 
-export function setSessionStubs(on: any, recorded: RecordedCalls, getMessages: () => unknown, getProcessResult: (_$: any, e: any) => unknown = getNoProcessFound) {
+export function setSessionStubs(on: any, recorded: RecordedCalls, getMessages: () => unknown, getProcessResult: (_$: any, e: any) => unknown = getNoProcessFound, dispatchText = DISPATCH_ALL_ON) {
   function getWorkRoot() {
     return { value: '/work/my-project' };
   }
@@ -88,7 +89,8 @@ export function setSessionStubs(on: any, recorded: RecordedCalls, getMessages: (
   on('command.run', appendCommand);
   on('process.run', getProcessResult);
   on('session.messages', getMessages);
-  setFsStubs(on);
+  // setFsStubs(on);
+  setFsStubs(on, dispatchText);
   setTurnStubs(on, recorded);
 }
 

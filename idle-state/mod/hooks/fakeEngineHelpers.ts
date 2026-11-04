@@ -10,6 +10,7 @@ export function createFakeEngine(messages: unknown[]) {
     commands: [] as string[],
     submitted: [] as string[],
     argvs: [] as string[][],
+    submitFailure: '',
   };
   async function getNow() {
     return fake.nowMs;
@@ -25,7 +26,12 @@ export function createFakeEngine(messages: unknown[]) {
     fake.written.push({ path, text });
   }
   async function appendSubmitted(arg: { text: string }) {
+    if (fake.submitFailure !== '')
+      throw new Error(fake.submitFailure);
     fake.submitted.push(arg.text);
+  }
+  async function getFileExists() {
+    return false;
   }
   async function appendCommand(arg: { command: string }) {
     fake.commands.push(arg.command);
@@ -51,7 +57,7 @@ export function createFakeEngine(messages: unknown[]) {
   const engine = {
     plugin: { root: '/plugin' },
     clock: { now: getNow, after: appendTimer },
-    fs: { read: readTemplate, write: appendWrite },
+    fs: { read: readTemplate, write: appendWrite, exists: getFileExists },
     prompt: { submit: appendSubmitted },
     command: { run: appendCommand },
     session: { messages: getMessages, root: getRoot, id: getSessionId },

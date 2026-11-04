@@ -1,6 +1,6 @@
 import { test, expect } from 'claude-code/testing';
 import { EXIT_KEY_DELAY_MINUTES, LATE_LIMIT_MINUTES, MS_PER_MINUTE, idleState } from './idleStateShared';
-import { scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
+import { scheduleStatePrompt, sendStatePrompt, writeStateFileAndExit } from './stateWriting';
 import { STATE_OBJECT, getAssistantMessage, getUserMessage } from './idleStateTestHelpers';
 import { createFakeEngine } from './fakeEngineHelpers';
 
@@ -116,7 +116,25 @@ async function assertWriteStateFileAndExitPushesKeysWhenProgramRuns() {
   expect(fake.argvs[fake.argvs.length - 1]?.[0]).toBe('python3');
 }
 
-test('scheduleStatePrompt sends the state prompt when the timer fires', assertScheduleStatePromptSendsPromptWhenTimerFires);
+async function flushPendingPromises() {
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function assertSendStatePromptRecoversWhenPromptSubmitRejects() {
+  resetIdleState();
+  const { fake, engine } = createFakeEngine([]);
+  fake.submitFailure = 'submit refused';
+  await sendStatePrompt(engine);
+  await flushPendingPromises();
+  expect(idleState.isWritingState).toBe(false);
+  expect(fake.argvs[fake.argvs.length - 1]).toEqual(['rm', '-f', '/plugin/../../dispatcher/stop-hooks-off/abcdef1234567890']);
+  const failureLog = fake.written[fake.written.length - 1];
+  expect(failureLog?.path).toMatch(/^\/work\/p\/\.claude_hooks\/logs\/\d{4}-\d{2}-\d{2}\/idle-state\.log$/);
+  expect(failureLog?.text).toContain('submit refused');
+}
+
+test('sendStatePrompt clears the writing state, removes the marker and logs the failure when prompt.submit rejects', assertSendStatePromptRecoversWhenPromptSubmitRejects);
+test('scheduleStatePrompt sends the state prompt when the timer fires',assertScheduleStatePromptSendsPromptWhenTimerFires);
 test('scheduleStatePrompt sends no prompt when the timer fires too late', assertScheduleStatePromptSkipsPromptWhenTimerIsLate);
 test('writeStateFileAndExit writes no file after an aborted turn', assertWriteStateFileAndExitSkipsWhenAborted);
 test('writeStateFileAndExit writes the state file, then exits', assertWriteStateFileAndExitWritesFileThenExits);

@@ -4,6 +4,7 @@ import {
   IDLE_STATE_FOLDER_NAME,
   LATE_LIMIT_MINUTES,
   MS_PER_MINUTE,
+  PLUGIN_NAME,
   PUSH_KEYS_SCRIPT,
   encodeRegexCharacters,
   formatTwoDigits,
@@ -11,6 +12,7 @@ import {
   removeStopHooksOffMarker,
   writeStopHooksOffMarker,
 } from './idleStateShared';
+import { logHookFailure } from './logHookFailure';
 
 export async function sendStatePrompt($: EngineInterface) {
   const template = await $.fs.read(`${$.plugin.root}/../../shared/idle-state-template.json`);
@@ -30,7 +32,14 @@ Rules for populating the template:
 - Keep each section under 150 words.`;
   await writeStopHooksOffMarker($);
   idleState.isWritingState = true;
-  void $.prompt.submit({ text: idleState.statePrompt });
+  // void $.prompt.submit({ text: idleState.statePrompt });
+  async function clearStateAndLogRejectedStatePrompt(failure: unknown) {
+    idleState.isWritingState = false;
+    await removeStopHooksOffMarker($);
+    const message = failure instanceof Error ? failure.message : String(failure);
+    await logHookFailure($, PLUGIN_NAME, 'prompt.submit', { kind: 'throw', message, budget: 0 });
+  }
+  void $.prompt.submit({ text: idleState.statePrompt }).catch(clearStateAndLogRejectedStatePrompt);
 }
 
 export async function scheduleStatePrompt($: EngineInterface, idleMinutes: number) {

@@ -130,19 +130,31 @@ const updateIdleStateOnTurnComplete: Hook<'turn.complete'> = async ($, e, next) 
   return next(e);
 };
 
-const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
+// const writeIdleStateBeforeExit: Hook<'command.run'> = async ($, e, next) => {
+//   const enabled = await isEventEnabled($, PLUGIN_NAME, 'command.run');
+//   if (!enabled)
+//     return next(e);
+//   if (idleState.stateFilePath !== undefined)
+//     return next(e);
+//   idleState.idleTimer?.cancel();
+//   function sendStatePromptNow() {
+//     return sendStatePrompt($);
+//   }
+//   $.clock.after(0, sendStatePromptNow);
+//   return { text: 'Writing the idle-state file before exit.' };
+// };
+
+type ExitHookReturn = Awaited<ReturnType<Hook<'command.run'>>>;
+
+async function writeIdleStateBeforeExit($: EngineInterface, e: Parameters<Hook<'command.run'>>[1], next: Parameters<Hook<'command.run'>>[2]): Promise<{ returned: ExitHookReturn; isStatePromptDue: boolean }> {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'command.run');
   if (!enabled)
-    return next(e);
+    return { returned: await next(e), isStatePromptDue: false };
   if (idleState.stateFilePath !== undefined)
-    return next(e);
+    return { returned: await next(e), isStatePromptDue: false };
   idleState.idleTimer?.cancel();
-  function sendStatePromptNow() {
-    return sendStatePrompt($);
-  }
-  $.clock.after(0, sendStatePromptNow);
-  return { text: 'Writing the idle-state file before exit.' };
-};
+  return { returned: { text: 'Writing the idle-state file before exit.' }, isStatePromptDue: true };
+}
 
 const clearStateOnSessionStartWithDebugLog: Hook<'session.start'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'clearStateOnSessionStart', 'session.start', e, next);
@@ -179,10 +191,22 @@ const updateIdleStateOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = async (
   return returned;
 };
 
+// const writeIdleStateBeforeExitWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
+//   const debugLog = await wrapNextForDebugLog($, 'writeIdleStateBeforeExit', 'command.run', e, next);
+//   const returned = await writeIdleStateBeforeExit($, e, debugLog.next);
+//   await debugLog.finish(returned);
+//   return returned;
+// };
+
 const writeIdleStateBeforeExitWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'writeIdleStateBeforeExit', 'command.run', e, next);
-  const returned = await writeIdleStateBeforeExit($, e, debugLog.next);
+  const { returned, isStatePromptDue } = await writeIdleStateBeforeExit($, e, debugLog.next);
   await debugLog.finish(returned);
+  function sendStatePromptNow() {
+    return sendStatePrompt($);
+  }
+  if (isStatePromptDue)
+    $.clock.after(0, sendStatePromptNow);
   return returned;
 };
 
