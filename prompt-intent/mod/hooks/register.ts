@@ -116,7 +116,7 @@ const addIntentContext: Hook<'prompt.submit'> = async ($, e, next) => {
   const isUnchanged = hasNoContext && hasNoAskItems;
   if (isUnchanged)
     return next(e);
-  const text = hasNoAskItems ? e.text : `${e.text} ${ASK_IF_UNCLEAR_SENTENCE}`;
+  const text = hasNoAskItems ? e.text : `${e.text} \n\n${ASK_IF_UNCLEAR_SENTENCE}`;
   if (hasNoContext)
     return next({ ...e, text });
   return next({ ...e, text, context: [...(e.context ?? []), ...added] });
