@@ -1,3 +1,6 @@
 [submodule "tests/external/tmux_lib"]
 	path = tests/external/tmux_lib
 	url = https://github.com/matkatmusic/tmux_lib.git
+[submodule "typesafe-template/mod/typesafe-checks"]
+	path = typesafe-template/mod/typesafe-checks
+	url = https://github.com/matkatmusic/typesafe-checks.git
