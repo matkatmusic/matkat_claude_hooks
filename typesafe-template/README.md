@@ -23,9 +23,21 @@ The engine also needs `hooks/hooks.json` and `.claude-plugin/plugin.json`. `tsco
 
 The template does not load by itself. It costs nothing until you do step 6.
 
+## Logging
+
+- Each paid run writes `hooks/results/<time>.json`. The file has `asked` and `answer` for each question.
+- Git ignores the `results/` folder.
+- Logging is on by default. `ENABLE_RESPONSE_LOGGING` in `register.ts` sets the default.
+- To turn logging off, set `"values": { "<mod name>": { "loggingEnabled": false } }` in `dotfiles-hooks-list.json` or `dispatch.json`.
+- The mod reads `dotfiles-hooks-list.json` first. If that file has the setting, it wins.
+- The section name is the `name` in `plugin.json`.
+- **Warning:** `shared/settings.ts` throws an error for the dispatcher hooks when `dotfiles-hooks-list.json` has a `values` section that `dispatch.json` does not have. Add the same section name to `dispatch.json` first.
+- The mod reads the setting at the start of each hook run. If you remove the setting, the mod keeps the last value it read. The mod uses the default again only after it reloads.
+
 ## What to watch for
 
 - **Cost:** each finished turn makes one paid call. Subagent turns count too.
+- **Log files:** each run with logging on adds one file to `hooks/results/`.
 - **Failures:** a wrong slot name or a failed request stops that hook run with an error. The turn continues.
 - **Editor errors:** `Cannot find module 'claude-code'` shows until the engine first loads the mod and writes its types folder.
 - **Unused name:** your editor marks `hookInput` as unused. It stays in `reportAnswers` so you can use it there.

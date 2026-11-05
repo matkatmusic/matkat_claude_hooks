@@ -1,16 +1,115 @@
-import type { EngineInterface, Hook, Register } from 'claude-code';
+import type { EngineInterface, Hook, HttpResponse, Register } from 'claude-code';
+
+const ENABLE_RESPONSE_LOGGING = true;
+let shouldLogResponse: boolean = ENABLE_RESPONSE_LOGGING;
 
 const TYPESAFE_URL = 'https://api.typesafe.ai/v1/systemone';
 const TYPESAFE_MODEL = 'jev-latest';
 const WHOLE_PLACEHOLDER_PATTERN = /^\{\{\s*([^{}\s]+)\s*\}\}$/;
 const PLACEHOLDER_PATTERN = /\{\{\s*([^{}\s]+)\s*\}\}/g;
+const TIME_SEPARATOR_PATTERN = /[:.]/g;
 
 type PlaceholderSources = { hook: unknown; other: Record<string, unknown> };
 type TypesafeAnswer =
   | { type: 'noul'; noul: number }
   | { type: 'choice'; choice: string; confidence: number; probabilities: Record<string, number> }
-  | { type: 'score'; score: number };
+  | { type: 'score'; score: number; probabilities: Record<string, number> };
 type TypesafeAnswers = Record<string, TypesafeAnswer>;
+type LoggedQuestion = { instructions?: unknown; criteria?: any };
+
+async function readLoggingSetting($: EngineInterface, dispatchFilePath: string): Promise<boolean | undefined> {
+  const fileExists = await $.fs.exists(dispatchFilePath);
+  if (fileExists) {
+    const dispatchSettings = JSON.parse(await $.fs.read(dispatchFilePath));
+    if (typeof dispatchSettings.values === 'object') {
+      const modValues = dispatchSettings.values[$.plugin.name];
+      if (modValues !== undefined) {
+        if (modValues.loggingEnabled !== undefined)
+          return modValues.loggingEnabled;
+      }
+    }
+  }
+  return undefined;
+}
+
+async function loadLoggingSetting($: EngineInterface): Promise<void> {
+  const dispatcherFolder = `${$.plugin.root}/../../dispatcher`;
+  const userLoggingSetting = await readLoggingSetting($, `${dispatcherFolder}/user-dispatch.json`);
+  if (userLoggingSetting !== undefined) {
+    shouldLogResponse = userLoggingSetting;
+    return;
+  }
+  const defaultLoggingSetting = await readLoggingSetting($, `${dispatcherFolder}/dispatch.json`);
+  if (defaultLoggingSetting !== undefined)
+    shouldLogResponse = defaultLoggingSetting;
+}
+
+function formatCriteriaText(criteriaValue: unknown): string {
+  if (typeof criteriaValue === 'string')
+    return criteriaValue;
+  return JSON.stringify(criteriaValue);
+}
+
+function formatAskedText(instructions: unknown): string {
+  if (typeof instructions === 'string')
+    return instructions;
+  if (typeof instructions === 'object') {
+    if (instructions !== null) {
+      const question = (instructions as { question?: unknown }).question;
+      if (typeof question === 'string')
+        return question;
+    }
+  }
+  return JSON.stringify(instructions);
+}
+
+function formatNoulAnswerForLog(noul: number, criteria: any): string {
+  const isYes = noul >= 0.5;
+  const yesOrNo = isYes ? 'Yes' : 'No';
+  if (criteria === undefined)
+    return yesOrNo;
+  if (criteria === null)
+    return yesOrNo;
+  const criteriaKey = isYes ? 'true' : 'false';
+  const criteriaValue = criteria[criteriaKey];
+  if (criteriaValue === undefined)
+    return `${yesOrNo}, <no defined value in 'criteria'>`;
+  return `${yesOrNo}, ${formatCriteriaText(criteriaValue)}`;
+}
+
+function findMostLikelyScoreLevel(probabilities: Record<string, number>): number {
+  let mostLikelyLevel = '';
+  let highestProbability = -1;
+  for (const [level, probability] of Object.entries(probabilities)) {
+    if (probability > highestProbability) {
+      mostLikelyLevel = level;
+      highestProbability = probability;
+    }
+  }
+  return Number(mostLikelyLevel);
+}
+
+function formatAnswerForLog(questionName: string, answer: TypesafeAnswer, criteria: any): string {
+  if (answer.type === 'noul')
+    return formatNoulAnswerForLog(answer.noul, criteria);
+  if (answer.type === 'choice')
+    return formatCriteriaText(criteria[answer.choice]);
+  if (answer.type === 'score')
+    return formatCriteriaText(criteria[findMostLikelyScoreLevel(answer.probabilities)]);
+  throw new Error(`typesafe-template: question ${questionName} has an unknown answer type`);
+}
+
+async function writeResponseToLogFile($: EngineInterface, response: HttpResponse, questions: unknown, now: number): Promise<void> {
+  const answers: TypesafeAnswers = JSON.parse(response.text).answers;
+  const questionsByName = questions as Record<string, LoggedQuestion>;
+  const log: Record<string, { asked: string; answer: string }> = {};
+  for (const [questionName, answer] of Object.entries(answers)) {
+    const question = questionsByName[questionName]!;
+    log[questionName] = { asked: formatAskedText(question.instructions), answer: formatAnswerForLog(questionName, answer, question.criteria) };
+  }
+  const fileName = `${new Date(now).toISOString().replace(TIME_SEPARATOR_PATTERN, '-')}.json`;
+  await $.fs.write(`${$.plugin.root}/hooks/results/${fileName}`, JSON.stringify(log, null, 4));
+}
 
 // Add other data here. state.json reads each key as {{other.<key>}}.
 async function readOtherData($: EngineInterface): Promise<Record<string, unknown>> {
@@ -80,6 +179,8 @@ async function fetchTypesafeAnswers($: EngineInterface, state: unknown, question
   });
   if (!response.ok)
     throw new Error(`typesafe-template: TypeSafe answered ${response.status}: ${response.text}`);
+  if (shouldLogResponse === true)
+    await writeResponseToLogFile($, response, questions, await $.clock.now());
   return JSON.parse(response.text).answers;
 }
 
@@ -103,6 +204,7 @@ function reportAnswers($: EngineInterface, hookInput: unknown, answers: Typesafe
 
 // To use another event, change the event name here and in register.
 const sendHookInputToTypesafe: Hook<'turn.complete'> = async ($, e, next) => {
+  await loadLoggingSetting($);
   const questions = await readJsonFile($, 'questions.json');
   const stateTemplate = await readJsonFile($, 'state.json');
   const sources = { hook: e, other: await readOtherData($) };
