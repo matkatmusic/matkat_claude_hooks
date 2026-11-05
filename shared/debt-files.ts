@@ -33,7 +33,9 @@ export function filterUniqueDebtCheckedFiles(paths: string[]): string[] {
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i];
     const isTsFile = path.endsWith(".ts");
-    const isTestFile = path.endsWith(".test.ts");
+    const isDotTestFile = path.endsWith(".test.ts");
+    const isSpecFile = path.endsWith(".spec.ts");
+    const isTestFile = isDotTestFile || isSpecFile;
     const isHtmlFile = path.endsWith(".html");
     const isCssFile = path.endsWith(".css");
     const isNonTestTsFile = isTsFile && !isTestFile;

@@ -68,6 +68,10 @@ test("filterUniqueDebtCheckedFiles drops .test.ts files", () => {
   assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.test.ts", "/x/a.ts"]), ["/x/a.ts"]);
 });
 
+test("filterUniqueDebtCheckedFiles drops .spec.ts files", () => {
+  assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.spec.ts", "/x/a.ts"]), ["/x/a.ts"]);
+});
+
 test("filterUniqueDebtCheckedFiles drops files that are not .ts, .html or .css", () => {
   assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.js", "/x/a.tsx", "/x/a.md", "/x/a.ts"]), ["/x/a.ts"]);
 });

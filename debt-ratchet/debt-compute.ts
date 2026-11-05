@@ -41,7 +41,7 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   const result = countEslintMessages(["--format", "json", "--no-warn-ignored", realFilePath], repoRoot);
   const lineCount = afterFix.trimEnd().split("\n").length;
   const baseName = basename(realFilePath, ".ts");
-  const testFileCandidates = [`${dir}/${baseName}.test.ts`, `${repoRoot}/tests/${baseName}.test.ts`, `${repoRoot}/tests/test-${baseName}.ts`];
+  const testFileCandidates = [`${dir}/${baseName}.test.ts`, `${dir}/${baseName}.spec.ts`, `${repoRoot}/tests/${baseName}.test.ts`, `${repoRoot}/tests/test-${baseName}.ts`];
   let hasTestFile = false;
   for (let i = 0; i < testFileCandidates.length; i++) {
     const candidateExists = existsSync(testFileCandidates[i]);

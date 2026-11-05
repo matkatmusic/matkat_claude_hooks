@@ -135,14 +135,14 @@ async function assertNoItemsAddsNoContext($: any, on: any) {
 async function assertAskIfUnclearYesAppendsSentenceToText($: any, on: any) {
   const seen = setUpStubs(on, [NO, NO, NO, YES]);
   await $.prompt.submit(TYPED);
-  expect(seen.text).toBe(`${TYPED.text} ${ASK_SENTENCE}`);
+  expect(seen.text).toBe(`${TYPED.text} \n\n${ASK_SENTENCE}`);
   expect(seen.context).toBeUndefined();
 }
 
 async function assertAskIfUnclearYesKeepsOtherContext($: any, on: any) {
   const seen = setUpStubs(on, [YES, NO, NO, YES]);
   await $.prompt.submit(TYPED);
-  expect(seen.text).toBe(`${TYPED.text} ${ASK_SENTENCE}`);
+  expect(seen.text).toBe(`${TYPED.text} \n\n${ASK_SENTENCE}`);
   expect(seen.context).toHaveLength(1);
 }
 

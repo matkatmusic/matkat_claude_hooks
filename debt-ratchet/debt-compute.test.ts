@@ -56,6 +56,15 @@ test("a source file with no test file is flagged missingTest and costs 1 more de
   assert.equal(withTest?.current, (withoutTest?.current ?? 0) - 1);
 });
 
+test("a source file with a .spec.ts file next to it is not flagged missingTest", () => {
+  // Steps: a repo has a source file and a subject.spec.ts file next to it, and no .test.ts file.
+  const repo = setUpRepo("export const value = 1;\n");
+  rmSync(`${repo}/subject.test.ts`);
+  writeFileSync(`${repo}/subject.spec.ts`, "export const check = 1;\n");
+  // Compute debt: missingTest is false.
+  assert.equal(computeDebt(`${repo}/subject.ts`)?.missingTest, false);
+});
+
 test("a tests/<name>.test.ts file at the repo root counts as the test file", () => {
   const repo = setUpRepo("export const value = 1;\n");
   rmSync(`${repo}/subject.test.ts`);

@@ -74,7 +74,9 @@ if (import.meta.main) {
   }
   const testFiles: string[] = [];
   for (let i = 0; i < files.length; i++) {
-    const isTestFile = files[i].endsWith(".test.ts");
+    const isDotTestFile = files[i].endsWith(".test.ts");
+    const isSpecFile = files[i].endsWith(".spec.ts");
+    const isTestFile = isDotTestFile || isSpecFile;
     let alreadyAdded = false;
     for (let j = 0; j < testFiles.length; j++) {
       if (testFiles[j] === files[i])
@@ -109,7 +111,9 @@ if (import.meta.main) {
   for (let i = 0; i < savedFilePaths.length; i++) {
     const savedPath = savedFilePaths[i];
     const isMeasuredThisTurn = savedPath in measuredFiles;
-    const isTestFile = savedPath.endsWith(".test.ts");
+    const isDotTestFile = savedPath.endsWith(".test.ts");
+    const isSpecFile = savedPath.endsWith(".spec.ts");
+    const isTestFile = isDotTestFile || isSpecFile;
     const isStillThere = existsSync(savedPath);
     const shouldRemeasure = !isMeasuredThisTurn && !isTestFile && isStillThere;
     if (!shouldRemeasure)
