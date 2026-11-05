@@ -1,0 +1,5 @@
+{
+    "name": "typesafe-template",
+    "version": "0.1.0",
+    "description": "Template: asks TypeSafe the questions in questions.json about the state in state.json, filled from the hook input"
+}

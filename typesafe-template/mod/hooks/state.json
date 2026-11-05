@@ -1,0 +1,5 @@
+{
+    "agentReply": "{{hook.answer}}",
+    "projectFolder": "{{other.projectFolder}}",
+    "rule": "A bug is code or behavior that does not do what it should."
+}

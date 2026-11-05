@@ -1,0 +1,10 @@
+{
+    "reportsBug": {
+        "type": "noul",
+        "instructions": "`projectFolder` is the project. `rule` defines a bug. Does `agentReply` report a bug?",
+        "criteria": {
+            "true": "`agentReply` reports a bug.",
+            "false": "`agentReply` does not report a bug."
+        }
+    }
+}
