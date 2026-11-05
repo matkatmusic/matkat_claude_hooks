@@ -1,4 +1,5 @@
 import type { EngineInterface, Hook, HttpResponse, Register } from 'claude-code';
+import { listQuestionsErrors, listStateErrors, listUndefinedReferences } from '../typesafe-checks/typesafeChecks';
 
 const ENABLE_RESPONSE_LOGGING = true;
 let shouldLogResponse: boolean = ENABLE_RESPONSE_LOGGING;
@@ -168,6 +169,15 @@ function fillStateTemplate(template: unknown, sources: PlaceholderSources): unkn
   return filledFields;
 }
 
+function validateTypesafeRequest(state: unknown, questions: unknown): void {
+  const shapeErrors = [...listStateErrors(state), ...listQuestionsErrors(questions)];
+  if (shapeErrors.length > 0)
+    throw new Error(`typesafe-template: ${shapeErrors.join('; ')}`);
+  const referenceErrors = listUndefinedReferences(state, questions as Record<string, unknown>);
+  if (referenceErrors.length > 0)
+    throw new Error(`typesafe-template: ${referenceErrors.join('; ')}`);
+}
+
 async function fetchTypesafeAnswers($: EngineInterface, state: unknown, questions: unknown): Promise<TypesafeAnswers> {
   const apiKey = await $.env.get('TYPESAFE_API_KEY');
   if (!apiKey)
@@ -209,6 +219,7 @@ const sendHookInputToTypesafe: Hook<'turn.complete'> = async ($, e, next) => {
   const stateTemplate = await readJsonFile($, 'state.json');
   const sources = { hook: e, other: await readOtherData($) };
   const state = fillStateTemplate(stateTemplate, sources);
+  validateTypesafeRequest(state, questions);
   const answers = await fetchTypesafeAnswers($, state, questions);
   reportAnswers($, e, answers);
   return next(e);

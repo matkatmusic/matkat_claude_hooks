@@ -1,6 +1,6 @@
 import { test, expect } from 'claude-code/testing';
 
-const QUESTIONS_TEXT = '{ "reportsBug": { "type": "noul", "instructions": "Does `agentReply` report a bug?" } }';
+const QUESTIONS_TEXT = '{ "reportsBug": { "type": "noul", "instructions": "Does the reply report a bug?" } }';
 const NOUL_ANSWERS = { reportsBug: { type: 'noul', noul: 0.5 } };
 const TURN_ANSWER = { answer: 'found a crash', durationMs: 12, isAborted: false, turnId: 't1', reason: 'answer' } as const;
 
@@ -217,6 +217,7 @@ const EXAMPLE_QUESTIONS_TEXT = JSON.stringify({
         criteria: { true: '`agentReply` reports a bug.', false: '`agentReply` does not report a bug.' },
     },
 });
+const EXAMPLE_STATE_TEXT = '{"agentReply":"found a crash","projectFolder":"/work/p","rule":"fixed"}';
 const EXAMPLE_LOG_TEXT = '{\n    "reportsBug": {\n        "asked": "`projectFolder` is the project. `rule` defines a bug. Does `agentReply` report a bug?",\n        "answer": "Yes, `agentReply` reports a bug."\n    }\n}';
 const LOGGING_OFF_TEXT = '{"values":{"typesafe-template":{"loggingEnabled":false}}}';
 const LOGGING_ON_TEXT = '{"values":{"typesafe-template":{"loggingEnabled":true}}}';
@@ -224,7 +225,7 @@ const LOGGING_ON_TEXT = '{"values":{"typesafe-template":{"loggingEnabled":true}}
 test('test_logging_is_on_by_default_and_writes_the_answer_log', async ($, on) => {
     // No dispatcher file exists, and TypeSafe answers the example question with a high yes chance.
     const answers = { reportsBug: { type: 'noul', noul: 0.96 } };
-    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', { answers });
+    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, { answers });
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The hook writes one log file, named from the clock time.
@@ -238,7 +239,7 @@ test('test_logging_is_on_by_default_and_writes_the_answer_log', async ($, on) =>
 test('test_noul_below_half_logs_no_and_the_false_text', async ($, on) => {
     // TypeSafe answers the example question with a low yes chance.
     const answers = { reportsBug: { type: 'noul', noul: 0.2 } };
-    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', { answers });
+    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, { answers });
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The logged answer is "No, " and the false criteria text.
@@ -265,7 +266,7 @@ test('test_noul_with_missing_criteria_text_logs_no_value', async ($, on) => {
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The logged answer is "Yes, " and a marker for the missing text.
-    expect(readLoggedEntry(fileWrites, 'reportsBug').answer).toEqual('Yes, <no value>');
+    expect(readLoggedEntry(fileWrites, 'reportsBug').answer).toEqual('Yes, <no defined value in \'criteria\'>');
 });
 
 test('test_choice_logs_the_chosen_option_text', async ($, on) => {
@@ -305,7 +306,7 @@ test('test_asked_uses_the_question_field_or_the_json_text', async ($, on) => {
 
 test('test_user_dispatch_false_turns_logging_off', async ($, on) => {
     // user-dispatch.json turns logging off for this mod.
-    const { fetchCalls, existsPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', { userDispatchText: LOGGING_OFF_TEXT });
+    const { fetchCalls, existsPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, { userDispatchText: LOGGING_OFF_TEXT });
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The hook did run: it looked for user-dispatch.json and made the request.
@@ -317,7 +318,7 @@ test('test_user_dispatch_false_turns_logging_off', async ($, on) => {
 
 test('test_dispatch_false_turns_logging_off_without_user_dispatch', async ($, on) => {
     // user-dispatch.json does not exist, and dispatch.json turns logging off.
-    const { fetchCalls, readPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', { dispatchText: LOGGING_OFF_TEXT });
+    const { fetchCalls, readPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, { dispatchText: LOGGING_OFF_TEXT });
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The hook did run: it read dispatch.json and made the request.
@@ -330,7 +331,7 @@ test('test_dispatch_false_turns_logging_off_without_user_dispatch', async ($, on
 test('test_user_dispatch_true_wins_over_dispatch_false', async ($, on) => {
     // user-dispatch.json turns logging on, and dispatch.json turns it off.
     const options = { userDispatchText: LOGGING_ON_TEXT, dispatchText: LOGGING_OFF_TEXT };
-    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', options);
+    const { fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, options);
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The hook writes one log file.
@@ -340,7 +341,7 @@ test('test_user_dispatch_true_wins_over_dispatch_false', async ($, on) => {
 test('test_user_dispatch_without_the_mod_section_uses_dispatch_value', async ($, on) => {
     // user-dispatch.json has values for another mod only, and dispatch.json turns logging off.
     const options = { userDispatchText: '{"values":{"other-mod":{"x":"1"}}}', dispatchText: LOGGING_OFF_TEXT };
-    const { fetchCalls, readPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, '{"rule":"fixed"}', options);
+    const { fetchCalls, readPaths, fileWrites } = setUpStubs(on, EXAMPLE_QUESTIONS_TEXT, EXAMPLE_STATE_TEXT, options);
     // The turn ends, so the hook runs.
     await $.turn.complete(TURN_ANSWER);
     // The hook did run: it read user-dispatch.json, then dispatch.json, and made the request.
@@ -349,4 +350,61 @@ test('test_user_dispatch_without_the_mod_section_uses_dispatch_value', async ($,
     expect(fetchCalls).toHaveLength(1);
     // The hook wrote no log file.
     expect(findResultWrites(fileWrites)).toHaveLength(0);
+});
+
+function isStateFileRead(readPaths: string[]): boolean {
+    let isRead = false;
+    for (const path of readPaths) {
+        if (path.endsWith('/hooks/state.json'))
+            isRead = true;
+    }
+    return isRead;
+}
+
+test('test_unknown_backtick_name_stops_the_request', async ($, on) => {
+    // The instructions name `nope`, and neither the state nor the instructions have it.
+    const questionsText = '{"reportsBug":{"type":"noul","instructions":"Does `nope` report a bug?"}}';
+    const { fetchCalls, readPaths } = setUpStubs(on, questionsText, '{"rule":"fixed"}');
+    // The turn ends, so the hook runs.
+    await $.turn.complete(TURN_ANSWER);
+    // The hook did run: it read state.json.
+    expect(isStateFileRead(readPaths)).toEqual(true);
+    // The hook stopped before the paid call.
+    expect(fetchCalls).toHaveLength(0);
+});
+
+test('test_bad_question_shape_stops_the_request', async ($, on) => {
+    // A choice question has no criteria.
+    const questionsText = '{"mood":{"type":"choice","instructions":"How does it sound?"}}';
+    const { fetchCalls, readPaths } = setUpStubs(on, questionsText, '{"rule":"fixed"}');
+    // The turn ends, so the hook runs.
+    await $.turn.complete(TURN_ANSWER);
+    // The hook did run: it read state.json.
+    expect(isStateFileRead(readPaths)).toEqual(true);
+    // The hook stopped before the paid call.
+    expect(fetchCalls).toHaveLength(0);
+});
+
+test('test_bad_state_shape_stops_the_request', async ($, on) => {
+    // state.json holds a number, which is not a string, object or array.
+    const { fetchCalls, readPaths } = setUpStubs(on, '{"isBox":{"type":"box"}}', '5');
+    // The turn ends, so the hook runs.
+    await $.turn.complete(TURN_ANSWER);
+    // The hook did run: it read state.json.
+    expect(isStateFileRead(readPaths)).toEqual(true);
+    // The hook stopped before the paid call.
+    expect(fetchCalls).toHaveLength(0);
+});
+
+test('test_name_in_own_instructions_passes', async ($, on) => {
+    // The structured instructions name `field.value`, which only the instructions have.
+    const questionsText = '{"isValid":{"type":"noul","instructions":{"field":{"value":3},"question":"Is `field.value` valid?"}}}';
+    const answers = { isValid: { type: 'noul', noul: 0.9 } };
+    const { fetchCalls, readPaths } = setUpStubs(on, questionsText, '{"rule":"fixed"}', { answers });
+    // The turn ends, so the hook runs.
+    await $.turn.complete(TURN_ANSWER);
+    // The hook did run: it read state.json.
+    expect(isStateFileRead(readPaths)).toEqual(true);
+    // The name is found, so the hook makes the request.
+    expect(fetchCalls).toHaveLength(1);
 });

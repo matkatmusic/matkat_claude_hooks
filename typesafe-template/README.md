@@ -14,7 +14,7 @@ The engine also needs `hooks/hooks.json` and `.claude-plugin/plugin.json`. `tsco
 
 ## Make a new mod
 
-1. Copy the `typesafe-template` folder. Change `name` in `.claude-plugin/plugin.json`.
+1. Copy every file in the `typesafe-template` folder except `mod/typesafe-checks/`. Then run `git submodule add https://github.com/matkatmusic/typesafe-checks.git <new folder>/mod/typesafe-checks`. Change `name` in `.claude-plugin/plugin.json`.
 2. Edit `questions.json` and `state.json`.
 3. To use another hook, change the event name in `register.ts` in two places: `Hook<'turn.complete'>` and `on('turn.complete', ...)`.
 4. To add other data, add a key in `readOtherData`. Then use `{{other.<key>}}` in `state.json`.
@@ -34,8 +34,16 @@ The template does not load by itself. It costs nothing until you do step 6.
 - **Warning:** `shared/settings.ts` throws an error for the dispatcher hooks when `dotfiles-hooks-list.json` has a `values` section that `dispatch.json` does not have. Add the same section name to `dispatch.json` first.
 - The mod reads the setting at the start of each hook run. If you remove the setting, the mod keeps the last value it read. The mod uses the default again only after it reloads.
 
+## Checks
+
+- Before each paid call, the mod checks the state shape, the shape of each question, and each backtick name.
+- A backtick name must exist in the state or in the `instructions` of its own question.
+- An error stops the run before the call.
+- The checks come from the `typesafe-checks` submodule in `mod/typesafe-checks/`.
+
 ## What to watch for
 
+- **Submodule:** when you clone the repo, run `git submodule update --init --recursive`. Without it, the mod does not load.
 - **Cost:** each finished turn makes one paid call. Subagent turns count too.
 - **Log files:** each run with logging on adds one file to `hooks/results/`.
 - **Failures:** a wrong slot name or a failed request stops that hook run with an error. The turn continues.
