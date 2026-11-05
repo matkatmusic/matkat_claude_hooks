@@ -49,7 +49,8 @@ export function computeDebt(filePath: string): FileDebt | undefined {
       hasTestFile = true;
   }
   const isDeclarationFile = realFilePath.endsWith(".d.ts");
-  const missingTest = !hasTestFile && !isDeclarationFile;
+  const isTsFile = realFilePath.endsWith(".ts");
+  const missingTest = isTsFile && !hasTestFile && !isDeclarationFile;
   const current = result.count + (missingTest ? 1 : 0);
   return { file: filePath, current, lines: result.lines, reformatted, lineCount, missingTest };
 }
@@ -116,7 +117,13 @@ export function blockReason(
     for (let j = 0; j < debt.lines.length; j++) {
       sedAddresses.push(`${debt.lines[j]}p`);
     }
-    reasonLines.push(`${debt.file}: lines ${debt.lines.join(",")}  show: nl -ba '${debt.file}' | sed -n '${sedAddresses.join(";")}'`);
+    let flaggedLinesEntry = `${debt.file}: lines ${debt.lines.join(",")}  show: nl -ba '${debt.file}' | sed -n '${sedAddresses.join(";")}'`;
+    const isHtmlFile = debt.file.endsWith(".html");
+    const isCssFile = debt.file.endsWith(".css");
+    const needsReasonCommand = isHtmlFile || isCssFile;
+    if (needsReasonCommand)
+      flaggedLinesEntry += `  why: ${ESLINT_BIN} --config ${ESLINT_CONFIG} '${debt.file}'`;
+    reasonLines.push(flaggedLinesEntry);
   }
   return reasonLines.join("\n");
 }

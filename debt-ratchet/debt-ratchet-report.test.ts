@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { setUpRepo } from "./debt-ratchet-test-helpers.ts";
 
 function runReport(repo: string): string {
@@ -19,4 +20,16 @@ test("report on a repo with a flagged .ts file names that file under the Style d
   const output = runReport(repo);
   assert.match(output, /Style debt exists: 1 flagged line\(s\) across 1 file\(s\)/);
   assert.match(output, /subject\.ts: lines 1 /);
+});
+
+test("report on a repo with a flagged .css file names that file under the Style debt line", () => {
+  // Steps: a repo has a clean .ts file and a committed .css file with one !important on line 2.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/style.css`, "a {\n  color: red !important;\n}\n");
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add css"], { cwd: repo });
+  // The report names the .css file with its flagged line.
+  const output = runReport(repo);
+  assert.match(output, /Style debt exists: 1 flagged line\(s\) across 1 file\(s\)/);
+  assert.match(output, /style\.css: lines 2 /);
 });

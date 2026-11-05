@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { computeDebt } from "./debt-compute.ts";
-import { filterUniqueNonTestTsFiles } from "../shared/debt-files.ts";
+import { filterUniqueDebtCheckedFiles } from "../shared/debt-files.ts";
 // On-demand, non-blocking debt report: unlike the Stop hook, never blocks the turn.
 
 if (import.meta.main) {
@@ -12,7 +12,7 @@ if (import.meta.main) {
     throw gitRoot.error;
   const repoRoot = gitRoot.stdout.trim();
 
-  const lsFiles = spawnSync("git", ["ls-files", "*.ts"], { cwd: repoRoot, encoding: "utf8" });
+  const lsFiles = spawnSync("git", ["ls-files", "*.ts", "*.html", "*.css"], { cwd: repoRoot, encoding: "utf8" });
   if (lsFiles.error)
     throw lsFiles.error;
   const lines = lsFiles.stdout.split("\n");
@@ -27,7 +27,7 @@ if (import.meta.main) {
       continue;
     absolutePaths.push(absolutePath);
   }
-  const files = filterUniqueNonTestTsFiles(absolutePaths);
+  const files = filterUniqueDebtCheckedFiles(absolutePaths);
 
   const debtLines: string[] = [];
   let total = 0;

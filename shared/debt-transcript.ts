@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { findBashWrittenTsPaths } from "./debt-files.ts";
+import { findBashWrittenDebtCheckedPaths } from "./debt-files.ts";
 
 type ToolUseBlock = { type?: string; id?: string; name?: string; input?: { file_path?: string; command?: string } };
 
@@ -100,7 +100,7 @@ export function findEditedFilePaths(transcript: string): EditedTurn {
         continue;
       const isBashName = block.name === "Bash";
       if (isBashName) {
-        const bashPaths = findBashWrittenTsPaths(block.input?.command as string, cwdAtLine[i + 1] as string);
+        const bashPaths = findBashWrittenDebtCheckedPaths(block.input?.command as string, cwdAtLine[i + 1] as string);
         for (let p = 0; p < bashPaths.length; p++)
           files.push(bashPaths[p]);
         continue;
@@ -166,7 +166,7 @@ export function findSubagentEditedFilePaths(subagentsDir: string, turnStartTimes
           continue;
         const isBashName = block.name === "Bash";
         if (isBashName) {
-          const bashPaths = findBashWrittenTsPaths(block.input?.command as string, lastSeenCwd as string);
+          const bashPaths = findBashWrittenDebtCheckedPaths(block.input?.command as string, lastSeenCwd as string);
           for (let p = 0; p < bashPaths.length; p++)
             files.push(bashPaths[p]);
           continue;

@@ -111,6 +111,88 @@ test("eslint --fix runs: fixable brace-style debt is fixed in place, and the ref
   rmSync(ledgerPath, { force: true });
 });
 
+test("a .css file with one !important is flagged on that line and never flagged missingTest", () => {
+  // Steps: a repo has a .css file whose line 2 has one !important.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/style.css`, "a {\n  color: red !important;\n}\n");
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add css"], { cwd: repo });
+  // Compute debt: current is 1, lines holds line 2, missingTest is false.
+  const debt = computeDebt(`${repo}/style.css`);
+  assert.equal(debt?.current, 1);
+  assert.deepEqual(debt?.lines, [2]);
+  assert.equal(debt?.missingTest, false);
+});
+
+const CLEAN_PAGE_HEAD = ["<!DOCTYPE html>", '<html lang="en">', "<head>", '  <meta charset="utf-8">', "  <title>Test</title>"];
+const CLEAN_PAGE_TAIL = ["</head>", "<body>", "  <h1>Hi</h1>", "</body>", "</html>"];
+
+test("a clean .html page with an inline <style> and an inline <script> is flagged once for each", () => {
+  // Steps: a repo page head has an inline style on line 6, an inline script on line 7.
+  const repo = setUpRepo("export const value = 1;\n");
+  const pageLines = [...CLEAN_PAGE_HEAD, "  <style>body { margin: 0; }</style>", "  <script>const a = 1;</script>", ...CLEAN_PAGE_TAIL];
+  writeFileSync(`${repo}/page.html`, `${pageLines.join("\n")}\n`);
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add html"], { cwd: repo });
+  // Compute debt: both blocks are flagged and missingTest is false.
+  const debt = computeDebt(`${repo}/page.html`);
+  assert.deepEqual(debt?.lines, [6, 7]);
+  assert.equal(debt?.current, 2);
+  assert.equal(debt?.missingTest, false);
+});
+
+test("a clean .html page that only uses <script src> and <link rel=stylesheet> has no debt", () => {
+  // Steps: a repo has a complete page that loads its code and style from separate files.
+  const repo = setUpRepo("export const value = 1;\n");
+  const pageLines = [...CLEAN_PAGE_HEAD, '  <link rel="stylesheet" href="page.css">', '  <script src="page.js"></script>', ...CLEAN_PAGE_TAIL];
+  writeFileSync(`${repo}/page.html`, `${pageLines.join("\n")}\n`);
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add html"], { cwd: repo });
+  // Compute debt: current is 0 and missingTest is false.
+  const debt = computeDebt(`${repo}/page.html`);
+  assert.deepEqual(debt?.lines, []);
+  assert.equal(debt?.current, 0);
+  assert.equal(debt?.missingTest, false);
+});
+
+test("an .html element nested deeper than 8 levels is flagged", () => {
+  // Steps: a repo page has 7 nested divs in body, so the 7th div is at depth 9.
+  const repo = setUpRepo("export const value = 1;\n");
+  const divOpens = "<div>".repeat(7);
+  const divCloses = "</div>".repeat(7);
+  const pageLines = [...CLEAN_PAGE_HEAD, "</head>", "<body>", "<h1>Hi</h1>", `${divOpens}${divCloses}`, "</body>", "</html>"];
+  writeFileSync(`${repo}/page.html`, `${pageLines.join("\n")}\n`);
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add html"], { cwd: repo });
+  // Compute debt: exactly one flag, on the line that holds the divs.
+  const debt = computeDebt(`${repo}/page.html`);
+  assert.deepEqual(debt?.lines, [CLEAN_PAGE_HEAD.length + 4]);
+  assert.equal(debt?.current, 1);
+});
+
+test("blockReason names the eslint config on the flagged-lines entry of an .html debt and not of a .ts debt", () => {
+  // Steps: two files each have a flagged line and enough debt to block.
+  const htmlFile: FileDebt = { file: "/x/page.html", current: 10, lines: [3], reformatted: false, lineCount: 10, missingTest: false };
+  const tsFile: FileDebt = { file: "/x/long.ts", current: 10, lines: [4], reformatted: false, lineCount: 10, missingTest: false };
+  const reason = blockReason([htmlFile, tsFile], 20, undefined, [], DEBT_LIMITS) ?? "";
+  const eslintConfigPath = resolve(import.meta.dirname, "eslint.config.js");
+  // The entry for each file is the output line that starts with the file name.
+  const reasonLines = reason.split("\n");
+  let htmlEntry = "";
+  let tsEntry = "";
+  for (let i = 0; i < reasonLines.length; i++) {
+    if (reasonLines[i].startsWith("/x/page.html:"))
+      htmlEntry = reasonLines[i];
+    if (reasonLines[i].startsWith("/x/long.ts:"))
+      tsEntry = reasonLines[i];
+  }
+  // The .html entry holds the config path and the .ts entry does not.
+  assert.notEqual(htmlEntry, "");
+  assert.notEqual(tsEntry, "");
+  assert.ok(htmlEntry.includes(eslintConfigPath));
+  assert.ok(!tsEntry.includes(eslintConfigPath));
+});
+
 test("blockReason does not block a file over the line limit that has 9 flagged items", () => {
   const longFile: FileDebt = { file: "/x/long.ts", current: 9, lines: [1], reformatted: false, lineCount: 151, missingTest: false };
   const limits = { ...DEBT_LIMITS, debtTarget: 100 };

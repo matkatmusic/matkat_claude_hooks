@@ -2,7 +2,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, basename } from "node:path";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";
-import { filterUniqueNonTestTsFiles } from "../shared/debt-files.ts";
+import { filterUniqueDebtCheckedFiles } from "../shared/debt-files.ts";
 import { getSetting } from "../shared/settings.ts";
 import { computeDebt, blockReason, type FileDebt } from "./debt-compute.ts";
 import { removeOldLedgers } from "./debt-ratchet-ledger-cleanup.ts";
@@ -64,7 +64,7 @@ if (import.meta.main) {
     if (isDeleted)
       files.splice(i, 1);
   }
-  const uniqueFiles = filterUniqueNonTestTsFiles(files);
+  const uniqueFiles = filterUniqueDebtCheckedFiles(files);
   const debts: FileDebt[] = [];
   for (let i = 0; i < uniqueFiles.length; i++) {
     const debt = computeDebt(uniqueFiles[i]);

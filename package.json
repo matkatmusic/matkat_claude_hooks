@@ -1,5 +1,7 @@
 {
   "devDependencies": {
+    "@eslint/css": "^2.0.1",
+    "@html-eslint/eslint-plugin": "^0.67.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/bun": "^1.4.3",
     "@types/node": "^26.5.0",

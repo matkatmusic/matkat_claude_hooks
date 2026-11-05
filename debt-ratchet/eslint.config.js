@@ -1,5 +1,7 @@
 import tseslint from 'typescript-eslint';
 import stylistic from '@stylistic/eslint-plugin';
+import css from '@eslint/css';
+import html from '@html-eslint/eslint-plugin';
 
 const FUNCTION_VERBS = [
   'get', 'read', 'load', 'fetch', 'collect', 'extract', 'open',
@@ -82,6 +84,51 @@ export default [
           message: 'Pass a named function, not an inline one.',
         },
       ],
+    },
+  },
+  {
+    basePath: '/',
+    files: ['**/*.css'],
+    plugins: { css },
+    language: 'css/css',
+    rules: {
+      'css/no-invalid-properties': 'error',
+      'css/no-invalid-at-rules': 'error',
+      'css/no-invalid-at-rule-placement': 'error',
+      'css/no-invalid-named-grid-areas': 'error',
+      'css/no-empty-blocks': 'error',
+      'css/no-duplicate-imports': 'error',
+      'css/no-duplicate-keyframe-selectors': 'error',
+      'css/no-unmatchable-selectors': 'error',
+      'css/selector-complexity': ['error', { maxIds: 1, maxClasses: 3, maxTypes: 3, maxAttributes: 2, maxPseudoClasses: 2, maxUniversals: 1, maxCompounds: 4, maxCombinators: 3 }],
+      'css/no-important': 'error',
+      'css/relative-font-units': 'error',
+      'css/prefer-logical-properties': 'error',
+      'css/font-family-fallbacks': 'error',
+      'css/use-baseline': 'error',
+    },
+  },
+  {
+    basePath: '/',
+    files: ['**/*.html'],
+    plugins: { '@html-eslint': html },
+    language: '@html-eslint/html',
+    rules: {
+      '@html-eslint/no-duplicate-id': 'error',
+      '@html-eslint/no-duplicate-attrs': 'error',
+      '@html-eslint/require-closing-tags': 'error',
+      '@html-eslint/require-doctype': 'error',
+      '@html-eslint/require-title': 'error',
+      '@html-eslint/require-lang': 'error',
+      '@html-eslint/require-meta-charset': 'error',
+      '@html-eslint/max-element-depth': ['error', { max: 8 }],
+      '@html-eslint/no-inline-styles': 'error',
+      '@html-eslint/require-img-alt': 'error',
+      '@html-eslint/require-input-label': 'error',
+      '@html-eslint/no-skip-heading-levels': 'error',
+      '@html-eslint/no-nested-interactive': 'error',
+      '@html-eslint/no-restricted-tags': ['error', { tagPatterns: ['^style$'], message: 'Move the style block to a separate .css file.' }],
+      '@html-eslint/require-attrs': ['error', { tag: 'script', attr: 'src', message: 'Move the script block to a separate .js file.' }],
     },
   },
 ];
