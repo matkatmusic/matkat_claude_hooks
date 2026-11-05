@@ -1,6 +1,7 @@
 {
+  "version": 2,
   "work": ["what this chat worked on"],
-  "done": [{ "item": "what is done", "isCommitted": false }],
+  "done": [{ "item": "what is done", "files": ["paths this item changed"], "isCommitted": false }],
   "not_done": ["what is not done"],
   "files": { "thisChat": ["files this chat changed"], "otherChats": ["files other chats changed"] },
   "runningPrograms": [{ "command": "the exact command line that started the program", "purpose": "what the program does" }],

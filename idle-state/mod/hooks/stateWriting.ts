@@ -54,6 +54,46 @@ export async function scheduleStatePrompt($: EngineInterface, idleMinutes: numbe
   idleState.idleTimer = $.clock.after(idleMinutes * MS_PER_MINUTE, sendStatePromptUnlessLate);
 }
 
+async function getNearestExistingFolder($: EngineInterface, path: string) {
+  let folder = path.slice(0, path.lastIndexOf('/'));
+  let hasFolder = await $.fs.exists(folder);
+  while (!hasFolder) {
+    folder = folder.slice(0, folder.lastIndexOf('/'));
+    hasFolder = await $.fs.exists(folder);
+  }
+  return folder;
+}
+
+async function getIsFileCommitted($: EngineInterface, root: string, file: string) {
+  const path = file.startsWith('/') ? file : `${root}/${file}`;
+  const folder = await getNearestExistingFolder($, path);
+  const status = await $.process.run(['git', '-C', folder, 'status', '--porcelain', '--', path]);
+  if (status.exitCode !== 0)
+    throw new Error(`idle-state: git status failed for ${path}: ${status.stderr}`);
+  return status.stdout === '';
+}
+
+async function setDoneItemCommittedFromGit($: EngineInterface, root: string, doneItem: any) {
+  const hasFilesKey = doneItem.files !== undefined;
+  if (!hasFilesKey) {
+    doneItem.isCommitted = false;
+    doneItem.error = 'no files in state reply from agent';
+    return;
+  }
+  let isCommitted = true;
+  for (const file of doneItem.files) {
+    const isFileCommitted = await getIsFileCommitted($, root, file);
+    if (!isFileCommitted)
+      isCommitted = false;
+  }
+  doneItem.isCommitted = isCommitted;
+}
+
+async function setDoneItemsCommittedFromGit($: EngineInterface, root: string, state: any) {
+  for (const doneItem of state.done)
+    await setDoneItemCommittedFromGit($, root, doneItem);
+}
+
 export async function writeStateFileAndExit($: EngineInterface, isAborted: boolean | undefined) {
   idleState.isWritingState = false;
   await removeStopHooksOffMarker($);
@@ -100,6 +140,7 @@ export async function writeStateFileAndExit($: EngineInterface, isAborted: boole
   if (!isBareJsonObject)
     throw new Error(`idle-state: the reply is not a bare JSON object. It was: ${stateText}`);
   const state = JSON.parse(trimmedStateText);
+  await setDoneItemsCommittedFromGit($, root, state);
   let programsAreRunning = false;
   for (const program of state.runningPrograms) {
     const found = await $.process.run(['pgrep', '-f', encodeRegexCharacters(program.command)]);

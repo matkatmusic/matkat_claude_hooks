@@ -56,6 +56,44 @@ function collectOldFileWithoutSessionId() {
   assert.equal("sessionId" in JSON.parse(JSON.stringify(result.not_done[0])), false);
 }
 
+function buildVersion2State(suffix: string, version: number) {
+  return JSON.stringify({
+    version,
+    sessionId: `session-${suffix}`,
+    done: [{ item: `done ${suffix}`, files: ["a.ts"], isCommitted: true }],
+    not_done: [`not done ${suffix}`],
+    nextSteps: { actions: [`action ${suffix}`], questions: [`question ${suffix}`] },
+    traps: { rules: [`rule ${suffix}`], mistakes: [`mistake ${suffix}`] },
+  });
+}
+
+function collectVersion1AndVersion2Files() {
+  // a version 1 file and a version 2 file both load
+  const root = mkdtempSync(`${tmpdir()}/catch-up-`);
+  mkdirSync(`${root}/.idleState`);
+  writeFileSync(`${root}/.idleState/2026-10-15-0900-aaaaaaaa.json`, buildState("old", "session-old"));
+  writeFileSync(`${root}/.idleState/2026-10-15-1000-bbbbbbbb.json`, buildVersion2State("new", 2));
+  const result = collectLists(root);
+  assert.deepEqual(result.not_done, [
+    { text: "not done old", file: "2026-10-15-0900-aaaaaaaa", sessionId: "session-old" },
+    { text: "not done new", file: "2026-10-15-1000-bbbbbbbb", sessionId: "session-new" },
+  ]);
+  assert.equal(result.actions[1].text, "action new");
+  assert.equal(result.questions[1].text, "question new");
+  assert.equal(result.rules[1].text, "rule new");
+  assert.equal(result.mistakes[1].text, "mistake new");
+}
+
+function collectThrowsOnUnknownVersion() {
+  // a file with version 3 throws
+  const root = mkdtempSync(`${tmpdir()}/catch-up-`);
+  mkdirSync(`${root}/.idleState`);
+  writeFileSync(`${root}/.idleState/2026-10-15-1000-bbbbbbbb.json`, buildVersion2State("new", 3));
+  assert.throws(() => collectLists(root), /version/);
+}
+
+test("a version 1 file and a version 2 file both load", collectVersion1AndVersion2Files);
+test("a file with an unknown version throws", collectThrowsOnUnknownVersion);
 test("reads .json files in filename order and skips other files", collectInFilenameOrder);
 test("keeps one item per text with the newest file", collectWithDuplicateTexts);
 test("an old state file with no sessionId still loads", collectOldFileWithoutSessionId);

@@ -2,8 +2,10 @@ import { mock } from 'claude-code/testing';
 
 export const IDLE_MS = 3300000;
 export const STATE_OBJECT = {
+  version: 2,
   work: ['built the idle-state mod'],
-  done: ['tests pass; not committed'],
+  // done: ['tests pass; not committed'],
+  done: [{ item: 'tests pass', files: [], isCommitted: true }],
   not_done: ['live test'],
   files: ['hooks/register.ts'],
   runningPrograms: [

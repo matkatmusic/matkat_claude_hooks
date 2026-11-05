@@ -11,6 +11,8 @@ export function createFakeEngine(messages: unknown[]) {
     submitted: [] as string[],
     argvs: [] as string[][],
     submitFailure: '',
+    gitStatusLines: {} as Record<string, string>,
+    existingPaths: [] as string[],
   };
   async function getNow() {
     return fake.nowMs;
@@ -30,8 +32,8 @@ export function createFakeEngine(messages: unknown[]) {
       throw new Error(fake.submitFailure);
     fake.submitted.push(arg.text);
   }
-  async function getFileExists() {
-    return false;
+  async function getFileExists(path: string) {
+    return fake.existingPaths.includes(path);
   }
   async function appendCommand(arg: { command: string }) {
     fake.commands.push(arg.command);
@@ -45,11 +47,21 @@ export function createFakeEngine(messages: unknown[]) {
   async function getSessionId() {
     return 'abcdef1234567890';
   }
+  function getGitStatusResult(argv: string[]) {
+    const path = argv[argv.length - 1]!;
+    const hasStatusLine = path in fake.gitStatusLines;
+    if (hasStatusLine)
+      return { ...NO_PROCESS_FOUND, exitCode: 0, stdout: fake.gitStatusLines[path]! };
+    return { ...NO_PROCESS_FOUND, exitCode: 0 };
+  }
   async function getProcessResult(argv: string[]) {
     fake.argvs.push(argv);
     const isKeyPush = argv[0] === 'python3';
     if (isKeyPush)
       return { ...NO_PROCESS_FOUND, exitCode: 0 };
+    const isGitStatus = argv[0] === 'git';
+    if (isGitStatus)
+      return getGitStatusResult(argv);
     if (fake.foundPids === '')
       return NO_PROCESS_FOUND;
     return { ...NO_PROCESS_FOUND, exitCode: 0, stdout: fake.foundPids };

@@ -22,6 +22,30 @@ function pushItems(list: Item[], texts: string[], file: string, sessionId?: stri
   }
 }
 
+type StateLists = { sessionId?: string; not_done: string[]; actions: string[]; questions: string[]; rules: string[]; mistakes: string[] };
+
+function parseVersion1State(state: any): StateLists {
+  return {
+    sessionId: state.sessionId,
+    not_done: state.not_done,
+    actions: state.nextSteps.actions,
+    questions: state.nextSteps.questions,
+    rules: state.traps.rules,
+    mistakes: state.traps.mistakes,
+  };
+}
+
+function parseVersion2State(state: any): StateLists {
+  return {
+    sessionId: state.sessionId,
+    not_done: state.not_done,
+    actions: state.nextSteps.actions,
+    questions: state.nextSteps.questions,
+    rules: state.traps.rules,
+    mistakes: state.traps.mistakes,
+  };
+}
+
 export function collectLists(root: string) {
   const folder = join(root, ".idleState");
   const names = readdirSync(folder).sort();
@@ -35,14 +59,23 @@ export function collectLists(root: string) {
     const isJson = name.endsWith(".json");
     if (!isJson)
       continue;
-    const state = JSON.parse(readFileSync(join(folder, name), "utf8"));
+    const fileState = JSON.parse(readFileSync(join(folder, name), "utf8"));
+    let state: StateLists;
+    const isVersion1 = fileState.version === undefined;
+    const isVersion2 = fileState.version === 2;
+    if (isVersion1)
+      state = parseVersion1State(fileState);
+    else if (isVersion2)
+      state = parseVersion2State(fileState);
+    else
+      throw new Error(`Unknown state file version ${fileState.version} in ${join(folder, name)}`);
     const file = basename(name, ".json");
     files.push(file);
     pushItems(not_done, state.not_done, file, state.sessionId);
-    pushItems(actions, state.nextSteps.actions, file, state.sessionId);
-    pushItems(questions, state.nextSteps.questions, file, state.sessionId);
-    pushItems(rules, state.traps.rules, file, state.sessionId);
-    pushItems(mistakes, state.traps.mistakes, file, state.sessionId);
+    pushItems(actions, state.actions, file, state.sessionId);
+    pushItems(questions, state.questions, file, state.sessionId);
+    pushItems(rules, state.rules, file, state.sessionId);
+    pushItems(mistakes, state.mistakes, file, state.sessionId);
   }
   return { not_done, actions, questions, rules, mistakes, files };
 }

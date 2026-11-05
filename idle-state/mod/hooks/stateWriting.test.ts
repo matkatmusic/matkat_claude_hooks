@@ -116,6 +116,94 @@ async function assertWriteStateFileAndExitPushesKeysWhenProgramRuns() {
   expect(fake.argvs[fake.argvs.length - 1]?.[0]).toBe('python3');
 }
 
+function getReplyWithDoneFiles(files: string[]) {
+  return JSON.stringify({ ...STATE_OBJECT, done: [{ item: 'the work', files, isCommitted: false }] });
+}
+
+async function getWrittenDoneItem(files: string[], setUpGit: (fake: ReturnType<typeof createFakeEngine>['fake']) => void) {
+  resetIdleState();
+  const { fake, engine } = createFakeEngine(getStateMessages(getReplyWithDoneFiles(files)));
+  fake.existingPaths.push('/work/p', '/work/p/src', '/work/p/sub', '/work/p/sub/lib');
+  setUpGit(fake);
+  await writeStateFileAndExit(engine, false);
+  return { doneItem: JSON.parse(fake.written[1]?.text ?? '').done[0], fake };
+}
+
+function setNoGitChanges() {}
+
+async function assertWriteStateFileAndExitSetsCommittedFileToTrue() {
+  // the reply says false for a file that git shows as committed: the written file says true
+  const { doneItem } = await getWrittenDoneItem(['src/a.ts'], setNoGitChanges);
+  expect(doneItem.isCommitted).toBe(true);
+}
+
+async function assertWriteStateFileAndExitSetsChangedFileToFalse() {
+  // git shows the file as changed: the written file says false
+  function setChangedFile(fake: ReturnType<typeof createFakeEngine>['fake']) {
+    fake.gitStatusLines['/work/p/src/a.ts'] = ' M src/a.ts\n';
+  }
+  const { doneItem } = await getWrittenDoneItem(['src/a.ts', 'src/b.ts'], setChangedFile);
+  expect(doneItem.isCommitted).toBe(false);
+}
+
+async function assertWriteStateFileAndExitSetsStagedFileToFalse() {
+  // git shows the file as staged but not committed: the written file says false
+  function setStagedFile(fake: ReturnType<typeof createFakeEngine>['fake']) {
+    fake.gitStatusLines['/work/p/src/a.ts'] = 'M  src/a.ts\n';
+  }
+  const { doneItem } = await getWrittenDoneItem(['src/a.ts'], setStagedFile);
+  expect(doneItem.isCommitted).toBe(false);
+}
+
+async function assertWriteStateFileAndExitSetsEmptyFilesToTrue() {
+  // an item with no files is committed, and git does not run
+  const { doneItem, fake } = await getWrittenDoneItem([], setNoGitChanges);
+  expect(doneItem.isCommitted).toBe(true);
+  let gitRuns = 0;
+  for (const argv of fake.argvs) {
+    const isGitRun = argv[0] === 'git';
+    if (isGitRun)
+      gitRuns++;
+  }
+  expect(gitRuns).toBe(0);
+}
+
+async function assertWriteStateFileAndExitSetsMissingFilesToFalseWithError() {
+  // an item with no files key gets false and an error, and git does not run
+  resetIdleState();
+  const reply = JSON.stringify({ ...STATE_OBJECT, done: [{ item: 'the work', isCommitted: true }] });
+  const { fake, engine } = createFakeEngine(getStateMessages(reply));
+  await writeStateFileAndExit(engine, false);
+  const doneItem = JSON.parse(fake.written[1]?.text ?? '').done[0];
+  expect(doneItem.isCommitted).toBe(false);
+  expect(doneItem.error).toBe('no files in state reply from agent');
+  let gitRuns = 0;
+  for (const argv of fake.argvs) {
+    const isGitRun = argv[0] === 'git';
+    if (isGitRun)
+      gitRuns++;
+  }
+  expect(gitRuns).toBe(0);
+}
+
+async function assertWriteStateFileAndExitAddsNoErrorForEmptyFiles() {
+  // an item with an empty files list gets no error key
+  const { doneItem } = await getWrittenDoneItem([], setNoGitChanges);
+  expect('error' in doneItem).toBe(false);
+}
+
+async function assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder() {
+  // a file in a nested repo runs git in the file's own folder, so its own repo answers
+  const { fake } = await getWrittenDoneItem(['sub/lib/c.ts'], setNoGitChanges);
+  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub/lib', 'status', '--porcelain', '--', '/work/p/sub/lib/c.ts']);
+}
+
+async function assertWriteStateFileAndExitChecksMissingFolderInNearestParent() {
+  // the file's folder no longer exists: git runs in the nearest folder that exists
+  const { fake } = await getWrittenDoneItem(['/work/p/sub/gone/d.ts'], setNoGitChanges);
+  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub', 'status', '--porcelain', '--', '/work/p/sub/gone/d.ts']);
+}
+
 async function flushPendingPromises() {
   await new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -142,3 +230,11 @@ test('writeStateFileAndExit writes no file when the user took over', assertWrite
 test('writeStateFileAndExit writes the state file after a denied tool call', assertWriteStateFileAndExitWritesFileAfterDeniedToolCall);
 test('writeStateFileAndExit throws when the reply is not a bare JSON object', assertWriteStateFileAndExitThrowsOnWrappedReply);
 test('writeStateFileAndExit pushes the exit keys when a program runs', assertWriteStateFileAndExitPushesKeysWhenProgramRuns);
+test('writeStateFileAndExit sets isCommitted to true when git shows the file as committed', assertWriteStateFileAndExitSetsCommittedFileToTrue);
+test('writeStateFileAndExit sets isCommitted to false when git shows a file as changed', assertWriteStateFileAndExitSetsChangedFileToFalse);
+test('writeStateFileAndExit sets isCommitted to false when git shows a file as staged', assertWriteStateFileAndExitSetsStagedFileToFalse);
+test('writeStateFileAndExit sets isCommitted to true for an item with no files', assertWriteStateFileAndExitSetsEmptyFilesToTrue);
+test('writeStateFileAndExit sets isCommitted to false and adds an error for an item with no files key', assertWriteStateFileAndExitSetsMissingFilesToFalseWithError);
+test('writeStateFileAndExit adds no error for an item with an empty files list', assertWriteStateFileAndExitAddsNoErrorForEmptyFiles);
+test('writeStateFileAndExit checks a nested repo file in its own folder',assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder);
+test('writeStateFileAndExit checks a file in a missing folder from the nearest folder that exists', assertWriteStateFileAndExitChecksMissingFolderInNearestParent);

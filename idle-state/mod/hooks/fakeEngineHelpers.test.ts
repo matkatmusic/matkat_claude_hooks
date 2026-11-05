@@ -44,7 +44,27 @@ async function assertFakeEngineProcessResultFollowsFoundPids() {
   expect(fake.argvs).toHaveLength(3);
 }
 
-test('fake engine records writes, commands and prompts', assertFakeEngineRecordsWritesCommandsAndPrompts);
+async function assertFakeEngineGitStatusFollowsGitStatusLines() {
+  const { fake, engine } = createFakeEngine([]);
+  const $ = engine as any;
+  // a path with no status line prints nothing
+  expect(await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', '/work/p/a.ts'])).toEqual({ ...NO_PROCESS_FOUND, exitCode: 0 });
+  // a path with a status line prints that line
+  fake.gitStatusLines['/work/p/a.ts'] = ' M a.ts\n';
+  expect((await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', '/work/p/a.ts'])).stdout).toBe(' M a.ts\n');
+}
+
+async function assertFakeEngineExistsFollowsExistingPaths() {
+  const { fake, engine } = createFakeEngine([]);
+  const $ = engine as any;
+  expect(await $.fs.exists('/work/p')).toBe(false);
+  fake.existingPaths.push('/work/p');
+  expect(await $.fs.exists('/work/p')).toBe(true);
+}
+
+test('fake engine git status follows gitStatusLines', assertFakeEngineGitStatusFollowsGitStatusLines);
+test('fake engine fs.exists follows existingPaths', assertFakeEngineExistsFollowsExistingPaths);
+test('fake engine records writes, commands and prompts',assertFakeEngineRecordsWritesCommandsAndPrompts);
 test('fake engine returns the messages and session values', assertFakeEngineReturnsMessagesAndSessionValues);
 test('fake engine records timers and moves the clock', assertFakeEngineRecordsTimersAndClock);
 test('fake engine process result follows foundPids', assertFakeEngineProcessResultFollowsFoundPids);

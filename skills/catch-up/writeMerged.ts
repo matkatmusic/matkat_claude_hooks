@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Writes one merged state file, moves the state files it replaces to .idleState/archive, and deletes archive files older than 7 days.
+// Writes one merged state file, moves replaced state files to .idleState/archive, and deletes archive files older than 7 days.
 import { mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -18,6 +18,7 @@ export function writeMerged(root: string, input: any, now: Date): void {
   const folder = join(root, ".idleState");
   const archive = join(folder, "archive");
   const state = {
+    version: 2,
     not_done: input.not_done,
     nextSteps: { actions: input.actions, questions: input.questions },
     traps: { rules: input.rules, mistakes: input.mistakes },

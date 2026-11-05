@@ -1,6 +1,7 @@
 ---
 name: handoff-state
 description: Write the idle-state handoff JSON for this chat so a fresh chat can continue. Use when the user says "/handoff-state" or "hand off this session".
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/setCommittedFromGit.ts" *)
 ---
 
 # handoff-state
@@ -15,8 +16,9 @@ Write a state file for this chat. A fresh chat reads it and continues the work.
 5. Make the JSON object that describes this chat. Read the template from `../../shared/idle-state-template.json`, then fill it.
    Add a top-level `sessionId` key. Its value is the full session id.
 6. Use the Write tool. Write the JSON to `<project root>/<folder name>/<stamp>-<session id 8>.json`.
-7. Write `*` and a newline to `<project root>/<folder name>/.gitignore`. Git then ignores the state files.
-8. Reply with only the file path.
+7. Use the Bash tool. Run `node "${CLAUDE_SKILL_DIR}/setCommittedFromGit.ts" <the state file path>`. The script sets each `isCommitted` value from git.
+8. Write `*` and a newline to `<project root>/<folder name>/.gitignore`. Git then ignores the state files.
+9. Reply with only the file path.
 
 ## Rules
 - Write only JSON in the file. Do not use a code fence.
@@ -24,4 +26,4 @@ Write a state file for this chat. A fresh chat reads it and continues the work.
 - Use an empty array when there is nothing to say.
 - For `runningPrograms`, give the exact command line that started each program.
 - Keep each section under 150 words.
-- Do not use other tools to write the file.
+- Write the file only with the Write tool. Step 7 then updates it.

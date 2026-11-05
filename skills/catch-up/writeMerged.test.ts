@@ -27,6 +27,7 @@ function writeMergedFileWithLocalStamp() {
   const path = `${root}/.idleState/2026-10-19-0805-merged.json`;
   const state = JSON.parse(readFileSync(path, "utf8"));
   assert.deepEqual(state, {
+    version: 2,
     not_done: ["a"],
     nextSteps: { actions: ["b"], questions: ["c"] },
     traps: { rules: ["d"], mistakes: ["e"] },
