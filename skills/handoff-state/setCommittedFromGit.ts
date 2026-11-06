@@ -14,13 +14,18 @@ function getNearestExistingFolder(path: string): string {
   return folder;
 }
 
-function getIsFileCommitted(root: string, file: string): boolean {
+function getFileCommitState(root: string, file: string): string {
   const path = resolve(root, file);
   const folder = getNearestExistingFolder(path);
   const status = spawnSync("git", ["-C", folder, "status", "--porcelain", "--", path], { encoding: "utf8" });
-  if (status.status !== 0)
+  if (status.status !== 0) {
+    if (status.stderr.includes("not a git repository"))
+      return "outside a git repository";
     throw new Error(`git status failed for ${path}: ${status.stderr}`);
-  return status.stdout === "";
+  }
+  if (status.stdout === "")
+    return "committed";
+  return "changed";
 }
 
 function setDoneItemCommittedFromGit(root: string, doneItem: any): void {
@@ -32,8 +37,10 @@ function setDoneItemCommittedFromGit(root: string, doneItem: any): void {
   }
   let isCommitted = true;
   for (const file of doneItem.files) {
-    const isFileCommitted = getIsFileCommitted(root, file);
-    if (!isFileCommitted)
+    const fileCommitState = getFileCommitState(root, file);
+    if (fileCommitState === "outside a git repository")
+      doneItem.error = "file is outside a git repository";
+    if (fileCommitState !== "committed")
       isCommitted = false;
   }
   doneItem.isCommitted = isCommitted;

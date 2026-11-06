@@ -204,6 +204,17 @@ async function assertWriteStateFileAndExitChecksMissingFolderInNearestParent() {
   expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub', 'status', '--porcelain', '--', '/work/p/sub/gone/d.ts']);
 }
 
+async function assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError() {
+  // git says the file is outside any repository: the written file says false and has an error
+  function setOutsideRepoFile(fake: ReturnType<typeof createFakeEngine>['fake']) {
+    fake.existingPaths.push('/outside');
+    fake.gitOutsideRepoPaths.push('/outside/plan.md');
+  }
+  const { doneItem } = await getWrittenDoneItem(['/outside/plan.md'], setOutsideRepoFile);
+  expect(doneItem.isCommitted).toBe(false);
+  expect(doneItem.error).toBe('file is outside a git repository');
+}
+
 async function flushPendingPromises() {
   await new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -238,3 +249,4 @@ test('writeStateFileAndExit sets isCommitted to false and adds an error for an i
 test('writeStateFileAndExit adds no error for an item with an empty files list', assertWriteStateFileAndExitAddsNoErrorForEmptyFiles);
 test('writeStateFileAndExit checks a nested repo file in its own folder',assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder);
 test('writeStateFileAndExit checks a file in a missing folder from the nearest folder that exists', assertWriteStateFileAndExitChecksMissingFolderInNearestParent);
+test('writeStateFileAndExit sets isCommitted to false and adds an error for a file outside a git repository', assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError);

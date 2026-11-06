@@ -64,13 +64,18 @@ async function getNearestExistingFolder($: EngineInterface, path: string) {
   return folder;
 }
 
-async function getIsFileCommitted($: EngineInterface, root: string, file: string) {
+async function getFileCommitState($: EngineInterface, root: string, file: string) {
   const path = file.startsWith('/') ? file : `${root}/${file}`;
   const folder = await getNearestExistingFolder($, path);
   const status = await $.process.run(['git', '-C', folder, 'status', '--porcelain', '--', path]);
-  if (status.exitCode !== 0)
+  if (status.exitCode !== 0) {
+    if (status.stderr.includes('not a git repository'))
+      return 'outside a git repository';
     throw new Error(`idle-state: git status failed for ${path}: ${status.stderr}`);
-  return status.stdout === '';
+  }
+  if (status.stdout === '')
+    return 'committed';
+  return 'changed';
 }
 
 async function setDoneItemCommittedFromGit($: EngineInterface, root: string, doneItem: any) {
@@ -82,8 +87,10 @@ async function setDoneItemCommittedFromGit($: EngineInterface, root: string, don
   }
   let isCommitted = true;
   for (const file of doneItem.files) {
-    const isFileCommitted = await getIsFileCommitted($, root, file);
-    if (!isFileCommitted)
+    const fileCommitState = await getFileCommitState($, root, file);
+    if (fileCommitState === 'outside a git repository')
+      doneItem.error = 'file is outside a git repository';
+    if (fileCommitState !== 'committed')
       isCommitted = false;
   }
   doneItem.isCommitted = isCommitted;

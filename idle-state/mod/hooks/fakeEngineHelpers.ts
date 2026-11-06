@@ -12,6 +12,7 @@ export function createFakeEngine(messages: unknown[]) {
     argvs: [] as string[][],
     submitFailure: '',
     gitStatusLines: {} as Record<string, string>,
+    gitOutsideRepoPaths: [] as string[],
     existingPaths: [] as string[],
   };
   async function getNow() {
@@ -49,6 +50,9 @@ export function createFakeEngine(messages: unknown[]) {
   }
   function getGitStatusResult(argv: string[]) {
     const path = argv[argv.length - 1]!;
+    const isOutsideRepo = fake.gitOutsideRepoPaths.includes(path);
+    if (isOutsideRepo)
+      return { ...NO_PROCESS_FOUND, exitCode: 128, stderr: 'fatal: not a git repository (or any of the parent directories): .git' };
     const hasStatusLine = path in fake.gitStatusLines;
     if (hasStatusLine)
       return { ...NO_PROCESS_FOUND, exitCode: 0, stdout: fake.gitStatusLines[path]! };

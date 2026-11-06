@@ -105,6 +105,19 @@ function checksNestedRepoFileInItsOwnRepo() {
   assert.equal(readIsCommitted(path), true);
 }
 
+function setsOutsideRepoFileToFalseWithError() {
+  // a file outside any git repository gives false and an error
+  const root = createProject();
+  const outsideFolder = mkdtempSync(`${tmpdir()}/handoff-state-outside-`);
+  const outsideFile = `${outsideFolder}/plan.md`;
+  writeFileSync(outsideFile, "plan\n");
+  const path = writeStateFile(root, [outsideFile]);
+  setCommittedFromGit(path);
+  const doneItem = JSON.parse(readFileSync(path, "utf8")).done[0];
+  assert.equal(doneItem.isCommitted, false);
+  assert.equal(doneItem.error, "file is outside a git repository");
+}
+
 function keepsVersion() {
   // the written file keeps its version key
   const root = createProject();
@@ -120,4 +133,5 @@ test("sets isCommitted to true for an item with no files", setsEmptyFilesToTrue)
 test("sets isCommitted to false and adds an error for an item with no files key", setsMissingFilesToFalseWithError);
 test("adds no error for an item with an empty files list", addsNoErrorForEmptyFiles);
 test("checks a nested repo file in its own repo",checksNestedRepoFileInItsOwnRepo);
+test("sets isCommitted to false and adds an error for a file outside a git repository", setsOutsideRepoFileToFalseWithError);
 test("keeps the version key", keepsVersion);
