@@ -208,6 +208,22 @@ test("blockReason does not block a file over the line limit that has 9 flagged i
   assert.equal(blockReason([longFile], 9, undefined, [], limits), undefined);
 });
 
+test("computeDebt does not throw ENOBUFS when the eslint report is bigger than 1 MB", () => {
+  // Steps: a repo has an html file with 10000 inline-style lines. Its eslint json report is over 1 MB.
+  const dir = mkdtempSync(`${tmpdir()}/debt-ratchet-bigreport-`);
+  spawnSync("git", ["init"], { cwd: dir });
+  spawnSync("git", ["config", "user.email", "test@test.com"], { cwd: dir });
+  spawnSync("git", ["config", "user.name", "test"], { cwd: dir });
+  const inlineStyleLines = '<div style="color:red">x</div>\n'.repeat(10000);
+  writeFileSync(`${dir}/big.html`, inlineStyleLines);
+  spawnSync("git", ["add", "-A"], { cwd: dir });
+  spawnSync("git", ["commit", "-m", "initial"], { cwd: dir });
+  // computeDebt returns a count above zero instead of throwing.
+  const debt = computeDebt(`${dir}/big.html`);
+  assert.equal(typeof debt?.current, "number");
+  assert.ok(debt !== undefined && debt.current > 0);
+});
+
 test("blockReason blocks a file over the line limit that has 10 flagged items", () => {
   const longFile: FileDebt = { file: "/x/long.ts", current: 10, lines: [1], reformatted: false, lineCount: 151, missingTest: false };
   const limits = { ...DEBT_LIMITS, debtTarget: 100 };

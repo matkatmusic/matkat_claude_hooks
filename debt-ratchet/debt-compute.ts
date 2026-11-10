@@ -10,7 +10,7 @@ export type DebtLimits = { maxFileLines: number; debtTarget: number; fixBatchSiz
 export type FileDebt = { file: string; current: number; lines: number[]; reformatted: boolean; lineCount: number; missingTest: boolean };
 
 function countEslintMessages(args: string[], cwd: string, input?: string): { count: number; lines: number[] } {
-  const result = spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, ...args], { cwd, encoding: "utf8", input });
+  const result = spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, ...args], { cwd, encoding: "utf8", input, maxBuffer: 256 * 1024 * 1024 });
   if (result.error)
     throw result.error;
   const report = JSON.parse(result.stdout);
@@ -35,7 +35,7 @@ export function computeDebt(filePath: string): FileDebt | undefined {
     return undefined;
   const repoRoot = gitRoot.stdout.trim();
   const beforeFix = readFileSync(realFilePath, "utf8");
-  spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, "--fix", realFilePath], { cwd: repoRoot, encoding: "utf8" });
+  spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, "--fix", realFilePath], { cwd: repoRoot, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   const afterFix = readFileSync(realFilePath, "utf8");
   const reformatted = beforeFix !== afterFix;
   const result = countEslintMessages(["--format", "json", "--no-warn-ignored", realFilePath], repoRoot);
