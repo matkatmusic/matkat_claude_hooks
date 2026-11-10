@@ -3,6 +3,7 @@ export const EFFORT_ABBREVIATION = { low: "L", medium: "M", high: "H", xhigh: "x
 const MODEL_NAMES: Record<string, string> = {
   "claude-fable-5": "Fable 5",
   "claude-fable-5-1": "Fable 5.1",
+  "claude-fable-5-2": "Fable 5.2",
   "claude-opus-4-7": "Opus 4.7",
   "claude-opus-4-8": "Opus 4.8",
   "claude-opus-5": "Opus 5",
@@ -33,6 +34,8 @@ const SHORT_MODEL_NAMES: Record<string, string> = {
   "Fable 5 (1M context)": "fable5[1m]",
   "Fable 5.1": "fable5.1",
   "Fable 5.1 (1M context)": "fable5.1[1m]",
+  "Fable 5.2": "fable5.2",
+  "Fable 5.2 (1M context)": "fable5.2[1m]",
   "Opus 4.7": "opus4.7",
   "Opus 4.7 (1M context)": "opus4.7[1m]",
   "Opus 4.8": "opus4.8",

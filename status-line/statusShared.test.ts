@@ -19,6 +19,15 @@ test("formatShortModelName: display names from the live status line, unknown thr
   assert.throws(() => formatShortModelName(undefined), /undefined/);
 });
 
+test("formatModelName: claude-fable-5-2 maps to Fable 5.2", () => {
+  assert.equal(formatModelName("claude-fable-5-2"), "Fable 5.2");
+});
+
+test("formatShortModelName: Fable 5.2 display names map to short names", () => {
+  assert.equal(formatShortModelName("Fable 5.2"), "fable5.2");
+  assert.equal(formatShortModelName("Fable 5.2 (1M context)"), "fable5.2[1m]");
+});
+
 test("effort abbreviations, model names, unknown model throws", () => {
   assert.deepEqual(EFFORT_ABBREVIATION, { low: "L", medium: "M", high: "H", xhigh: "x", max: "max" });
   assert.equal(formatModelName("claude-opus-5"), "Opus 5");
