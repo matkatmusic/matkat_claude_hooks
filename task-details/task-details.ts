@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 
 // UserPromptSubmit hook: /task-details #N blocks the prompt and shows that session task to the user.
@@ -40,9 +40,47 @@ function buildReason(taskNumber: string | undefined): string {
     return formatTask(taskNumber, JSON.parse(readFileSync(taskPath, "utf8")));
 }
 
+const TASK_STATUS_BY_LIST_COMMAND = new Map([
+    ["/pending-task-list", "pending"],
+    ["/in-progress-task-list", "in_progress"],
+]);
+
+function compareTaskNumbers(first: { taskNumber: number }, second: { taskNumber: number }): number {
+    return first.taskNumber - second.taskNumber;
+}
+
+function buildTaskListReason(status: string): string {
+    const taskListId = process.env.CLAUDE_CODE_TASK_LIST_ID;
+    if (!taskListId)
+        return "CLAUDE_CODE_TASK_LIST_ID is not set, so the task list is unknown.";
+    const taskFolder = `${homedir()}/.claude/tasks/${taskListId}`;
+    const matchingTasks: { taskNumber: number; subject: string }[] = [];
+    for (const fileName of readdirSync(taskFolder)) {
+        if (!fileName.endsWith(".json"))
+            continue;
+        const task = JSON.parse(readFileSync(`${taskFolder}/${fileName}`, "utf8"));
+        if (task.status !== status)
+            continue;
+        matchingTasks.push({ taskNumber: Number(fileName.slice(0, -".json".length)), subject: task.subject });
+    }
+    if (matchingTasks.length === 0)
+        return `No ${status.replace("_", " ")} tasks.`;
+    matchingTasks.sort(compareTaskNumbers);
+    const subjectLines: string[] = [];
+    for (const matchingTask of matchingTasks)
+        subjectLines.push(matchingTask.subject);
+    return subjectLines.join("\n");
+}
+
 const payload = JSON.parse(readFileSync(0, "utf8"));
 // Plugin skills reach the hook namespaced, as /matkat-hooks:task-details.
 const prompt = (typeof payload.prompt === "string" ? payload.prompt.trimStart() : "").replace(/^\/[\w-]+:/, "/");
+const listStatus = TASK_STATUS_BY_LIST_COMMAND.get(prompt.split(/\s/)[0]);
+if (listStatus !== undefined) {
+    const listReason = buildTaskListReason(listStatus);
+    process.stdout.write(JSON.stringify({ decision: "block", reason: listReason }) + "\n");
+    process.exit(0);
+}
 if (prompt !== "/task-details" && !prompt.startsWith("/task-details "))
     process.exit(0);
 

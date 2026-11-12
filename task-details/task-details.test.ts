@@ -122,6 +122,66 @@ test("test_other_prompt_prints_nothing", () => {
     assert.equal(result.stdout, "");
 });
 
+function makeHomeWithTasks(tasks: Record<string, unknown>[]): string {
+    const home = mkdtempSync(`${tmpdir()}/task-details-`);
+    const taskFolder = `${home}/.claude/tasks/${TASK_LIST_ID}`;
+    mkdirSync(taskFolder, { recursive: true });
+    for (const task of tasks)
+        writeFileSync(`${taskFolder}/${task.id}.json`, JSON.stringify(task));
+    return home;
+}
+
+const mixedStatusTasks = [
+    { id: "10", subject: "ten pending", description: "d", status: "pending" },
+    { id: "2", subject: "two pending", description: "d", status: "pending" },
+    { id: "3", subject: "three working", description: "d", status: "in_progress" },
+    { id: "4", subject: "four done", description: "d", status: "completed" },
+];
+
+test("test_pending_task_list_prints_pending_subjects_sorted_by_number", () => {
+    // Setup: a temp home with pending, in_progress and completed tasks.
+    const home = makeHomeWithTasks(mixedStatusTasks);
+    // Action: run the hook with "/pending-task-list".
+    const result = runHook("/pending-task-list", home, TASK_LIST_ID);
+    // Verify: the reason is one subject per line, pending only, task 2 before task 10.
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.decision, "block");
+    assert.equal(output.reason, "two pending\nten pending");
+});
+
+test("test_in_progress_task_list_prints_in_progress_subjects", () => {
+    // Setup: a temp home with pending, in_progress and completed tasks.
+    const home = makeHomeWithTasks(mixedStatusTasks);
+    // Action: run the hook with the plugin-namespaced "/in-progress-task-list".
+    const result = runHook("/matkat-hooks:in-progress-task-list", home, TASK_LIST_ID);
+    // Verify: the reason is the in_progress subject only.
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.decision, "block");
+    assert.equal(output.reason, "three working");
+});
+
+test("test_task_list_with_no_matching_tasks_says_there_are_none", () => {
+    // Setup: a temp home with one completed task.
+    const home = makeHomeWithTasks([{ id: "4", subject: "four done", description: "d", status: "completed" }]);
+    // Action: run the hook with "/pending-task-list".
+    const result = runHook("/pending-task-list", home, TASK_LIST_ID);
+    // Verify: the reason is one short line saying there are none.
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.decision, "block");
+    assert.equal(output.reason, "No pending tasks.");
+});
+
+test("test_task_list_with_unset_task_list_id_says_it_is_not_set", () => {
+    // Setup: a temp home with tasks and no CLAUDE_CODE_TASK_LIST_ID.
+    const home = makeHomeWithTasks(mixedStatusTasks);
+    // Action: run the hook with "/in-progress-task-list".
+    const result = runHook("/in-progress-task-list", home, undefined);
+    // Verify: the reason says the variable is not set.
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.decision, "block");
+    assert.ok(output.reason.includes("CLAUDE_CODE_TASK_LIST_ID is not set"));
+});
+
 test("test_similar_command_name_prints_nothing", () => {
     // Setup: a temp home with task 384.
     const home = makeHomeWithTask("384", completedTask);
