@@ -70,7 +70,7 @@ test("test_buildSubjectListForStatus_lists_matching_subjects_sorted_by_number", 
         { id: "4", subject: "four done", status: "completed" },
     ]);
     // Verify: pending subjects only, task 2 before task 10.
-    assert.equal(buildSubjectListForStatus(taskFolder, "pending"), "two pending\nten pending");
+    assert.equal(buildSubjectListForStatus(taskFolder, "pending"), "#2 two pending\n#10 ten pending");
 });
 
 test("test_buildSubjectListForStatus_says_none_for_no_match", () => {

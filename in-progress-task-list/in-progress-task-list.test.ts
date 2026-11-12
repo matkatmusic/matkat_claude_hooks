@@ -41,7 +41,7 @@ test("test_in_progress_task_list_prints_in_progress_subjects", () => {
     // Verify: the reason is the in_progress subject only.
     const output = JSON.parse(result.stdout);
     assert.equal(output.decision, "block");
-    assert.equal(output.reason, "three working");
+    assert.equal(output.reason, "#3 three working");
 });
 
 test("test_plain_in_progress_task_list_works", () => {
@@ -50,7 +50,7 @@ test("test_plain_in_progress_task_list_works", () => {
     // Action: run the hook with "/in-progress-task-list".
     const result = runHook("/in-progress-task-list", home, TASK_LIST_ID);
     // Verify: the reason is the in_progress subject only.
-    assert.equal(JSON.parse(result.stdout).reason, "three working");
+    assert.equal(JSON.parse(result.stdout).reason, "#3 three working");
 });
 
 test("test_task_list_with_no_matching_tasks_says_there_are_none", () => {
