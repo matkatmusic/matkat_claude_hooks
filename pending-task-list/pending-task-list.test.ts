@@ -41,7 +41,7 @@ test("test_pending_task_list_prints_pending_subjects_sorted_by_number", () => {
     // Verify: the reason is one subject per line, pending only, task 2 before task 10.
     const output = JSON.parse(result.stdout);
     assert.equal(output.decision, "block");
-    assert.equal(output.reason, "two pending\nten pending");
+    assert.equal(output.reason, "#2 two pending\n#10 ten pending");
 });
 
 test("test_namespaced_pending_task_list_works", () => {
@@ -50,7 +50,7 @@ test("test_namespaced_pending_task_list_works", () => {
     // Action: run the hook with the plugin-namespaced command.
     const result = runHook("/matkat-hooks:pending-task-list", home, TASK_LIST_ID);
     // Verify: the reason is the pending subjects.
-    assert.equal(JSON.parse(result.stdout).reason, "two pending\nten pending");
+    assert.equal(JSON.parse(result.stdout).reason, "#2 two pending\n#10 ten pending");
 });
 
 test("test_task_list_with_no_matching_tasks_says_there_are_none", () => {

@@ -39,6 +39,6 @@ export function buildSubjectListForStatus(taskFolder: string, status: string): s
     matchingTasks.sort(compareTaskNumbers);
     const subjectLines: string[] = [];
     for (const matchingTask of matchingTasks)
-        subjectLines.push(matchingTask.subject);
+        subjectLines.push(`#${matchingTask.taskNumber} ${matchingTask.subject}`);
     return subjectLines.join("\n");
 }
