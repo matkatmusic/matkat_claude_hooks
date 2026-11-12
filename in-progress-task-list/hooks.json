@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"/path/to/claude_hooks/in-progress-task-list/in-progress-task-list.ts\"" }
+        ]
+      }
+    ]
+  }
+}
