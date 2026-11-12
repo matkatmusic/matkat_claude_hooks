@@ -215,6 +215,52 @@ async function assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError() 
   expect(doneItem.error).toBe('file is outside a git repository');
 }
 
+function getTaskToolUseMessage(tool: string, input: Record<string, unknown>, text: string, isError?: true) {
+  const toolUse = { tool_use_id: 'toolu_x', tool, input, text, isError };
+  return { ...getAssistantMessage(''), toolUses: [toolUse] };
+}
+
+async function getWrittenStateForMessages(taskMessages: unknown[]) {
+  resetIdleState();
+  const { fake, engine } = createFakeEngine([...taskMessages, ...getStateMessages(JSON.stringify(STATE_OBJECT))]);
+  await writeStateFileAndExit(engine, false);
+  return JSON.parse(fake.written[1]?.text ?? '');
+}
+
+async function assertWriteStateFileAndExitSetsCreatedTasksFromChatLog() {
+  // TaskCreate results name the task numbers: the written file lists them once each, in first-seen order
+  const state = await getWrittenStateForMessages([
+    getTaskToolUseMessage('TaskCreate', { subject: 'a' }, 'Task #508 created successfully: a'),
+    getTaskToolUseMessage('TaskCreate', { subject: 'b' }, 'Task #507 created successfully: b'),
+    getTaskToolUseMessage('TaskCreate', { subject: 'a' }, 'Task #508 created successfully: a'),
+    getTaskToolUseMessage('TaskUpdate', { taskId: '9', status: 'completed' }, 'Updated task #9 status'),
+  ]);
+  expect(state.createdTasks).toEqual([508, 507]);
+}
+
+async function assertWriteStateFileAndExitSetsFinishedTasksFromChatLog() {
+  // only completed and deleted TaskUpdate calls count, once each, even for a task this chat did not create
+  const state = await getWrittenStateForMessages([
+    getTaskToolUseMessage('TaskUpdate', { taskId: '12', status: 'in_progress' }, 'Updated task #12 status'),
+    getTaskToolUseMessage('TaskUpdate', { taskId: '12', status: 'completed' }, 'Updated task #12 status'),
+    getTaskToolUseMessage('TaskUpdate', { taskId: '3', status: 'deleted' }, 'Updated task #3 deleted'),
+    getTaskToolUseMessage('TaskUpdate', { taskId: '12', status: 'completed' }, 'Updated task #12 status'),
+    getTaskToolUseMessage('TaskUpdate', { taskId: '77', status: 'completed' }, 'Task not found', true),
+  ]);
+  expect(state.finishedTasks).toEqual([12, 3]);
+}
+
+async function assertWriteStateFileAndExitWritesEmptyTaskListsWhenNoTaskCalls() {
+  // the agent's own createdTasks and finishedTasks values are overwritten by the chat log
+  resetIdleState();
+  const reply = JSON.stringify({ ...STATE_OBJECT, createdTasks: [1], finishedTasks: [2] });
+  const { fake, engine } = createFakeEngine(getStateMessages(reply));
+  await writeStateFileAndExit(engine, false);
+  const state = JSON.parse(fake.written[1]?.text ?? '');
+  expect(state.createdTasks).toEqual([]);
+  expect(state.finishedTasks).toEqual([]);
+}
+
 async function flushPendingPromises() {
   await new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -250,3 +296,6 @@ test('writeStateFileAndExit adds no error for an item with an empty files list',
 test('writeStateFileAndExit checks a nested repo file in its own folder',assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder);
 test('writeStateFileAndExit checks a file in a missing folder from the nearest folder that exists', assertWriteStateFileAndExitChecksMissingFolderInNearestParent);
 test('writeStateFileAndExit sets isCommitted to false and adds an error for a file outside a git repository', assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError);
+test('writeStateFileAndExit sets createdTasks from the TaskCreate results in the chat log', assertWriteStateFileAndExitSetsCreatedTasksFromChatLog);
+test('writeStateFileAndExit sets finishedTasks from the completed and deleted TaskUpdate calls in the chat log', assertWriteStateFileAndExitSetsFinishedTasksFromChatLog);
+test('writeStateFileAndExit overwrites the agent task lists with empty lists when the chat log has no task calls', assertWriteStateFileAndExitWritesEmptyTaskListsWhenNoTaskCalls);

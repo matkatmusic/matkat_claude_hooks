@@ -101,6 +101,39 @@ async function setDoneItemsCommittedFromGit($: EngineInterface, root: string, st
     await setDoneItemCommittedFromGit($, root, doneItem);
 }
 
+function setTaskNumbersFromMessages(messages: any[], state: any) {
+  const createdTasks: number[] = [];
+  const finishedTasks: number[] = [];
+  for (const message of messages) {
+    for (const toolUse of message.toolUses) {
+      if (toolUse.text === undefined)
+        continue;
+      if (toolUse.isError)
+        continue;
+      if (toolUse.tool === 'TaskCreate') {
+        const createdMatch = toolUse.text.match(/^Task #(\d+) created successfully/);
+        if (createdMatch === null)
+          throw new Error(`idle-state: TaskCreate result has no task number: ${toolUse.text}`);
+        const taskNumber = Number(createdMatch[1]);
+        if (!createdTasks.includes(taskNumber))
+          createdTasks.push(taskNumber);
+      }
+      if (toolUse.tool === 'TaskUpdate') {
+        let isFinishing = toolUse.input.status === 'completed';
+        if (toolUse.input.status === 'deleted')
+          isFinishing = true;
+        if (isFinishing) {
+          const taskNumber = Number(toolUse.input.taskId);
+          if (!finishedTasks.includes(taskNumber))
+            finishedTasks.push(taskNumber);
+        }
+      }
+    }
+  }
+  state.createdTasks = createdTasks;
+  state.finishedTasks = finishedTasks;
+}
+
 export async function writeStateFileAndExit($: EngineInterface, isAborted: boolean | undefined) {
   idleState.isWritingState = false;
   await removeStopHooksOffMarker($);
@@ -166,6 +199,7 @@ export async function writeStateFileAndExit($: EngineInterface, isAborted: boole
   }
 
   state.sessionId = sessionId;
+  setTaskNumbersFromMessages(messages, state);
   await $.fs.write(path, JSON.stringify(state, null, 2) + '\n');
 
   idleState.stateFilePath = path;

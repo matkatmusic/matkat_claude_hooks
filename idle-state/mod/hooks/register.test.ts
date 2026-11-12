@@ -65,6 +65,8 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   expect(JSON.parse(stateFile?.text ?? '')).toEqual({
     ...STATE_OBJECT,
     sessionId: 'abcdef1234567890',
+    createdTasks: [],
+    finishedTasks: [],
     runningPrograms: [
       { command: 'bun run server', purpose: 'serves the app', pids: [123, 456], isRunning: true },
       { command: 'bun run watcher', purpose: 'watches files', pids: [], isRunning: false },
