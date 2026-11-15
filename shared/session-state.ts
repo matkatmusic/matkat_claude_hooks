@@ -17,6 +17,7 @@ export type SessionState = {
   ponytailUltraInvoked?: boolean;
   idleStateFiles?: string[];
   editedFiles?: string[];
+  lastCommitCheckSeconds?: number;
 };
 
 export function getSessionStatePath(transcriptPathOrSessionId: string, stateDir: string): string {
