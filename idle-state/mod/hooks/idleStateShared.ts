@@ -14,12 +14,14 @@ export const idleState: {
   idleTimer: { cancel: () => void } | undefined;
   lastAnswerAt: number;
   statePrompt: string;
+  transcriptPath: string | undefined;
 } = {
   isWritingState: false,
   stateFilePath: undefined,
   idleTimer: undefined,
   lastAnswerAt: 0,
   statePrompt: '',
+  transcriptPath: undefined,
 };
 
 async function getStopHooksOffMarkerPath($: EngineInterface): Promise<string> {

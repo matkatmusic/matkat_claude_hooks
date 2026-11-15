@@ -12,6 +12,7 @@ function resetIdleState() {
   idleState.idleTimer = undefined;
   idleState.lastAnswerAt = 0;
   idleState.statePrompt = STATE_PROMPT;
+  idleState.transcriptPath = '/work/p/chat.jsonl';
 }
 
 function getErrorMessage(error: Error) {
@@ -261,6 +262,57 @@ async function assertWriteStateFileAndExitWritesEmptyTaskListsWhenNoTaskCalls() 
   expect(state.finishedTasks).toEqual([]);
 }
 
+const CUSTOM_TITLE_LINE_OLD = '{"type":"custom-title","customTitle":"old name","sessionId":"abcdef1234567890"}';
+const CUSTOM_TITLE_LINE_NEW = '{"type":"custom-title","customTitle":"new name","sessionId":"abcdef1234567890"}';
+
+async function assertWriteStateFileAndExitPutsCustomTitleAndSessionIdFirst() {
+  // the written file starts with customTitle, then sessionId, then the keys of the reply
+  resetIdleState();
+  const { fake, engine } = createFakeEngine(getStateMessages(JSON.stringify(STATE_OBJECT)));
+  fake.customTitleLines = `${CUSTOM_TITLE_LINE_NEW}\n`;
+  await writeStateFileAndExit(engine, false);
+  const keys = Object.keys(JSON.parse(fake.written[1]?.text ?? ''));
+  expect(keys[0]).toBe('customTitle');
+  expect(keys[1]).toBe('sessionId');
+  expect(keys).toContain('createdTasks');
+}
+
+async function assertWriteStateFileAndExitUsesLastCustomTitle() {
+  // the chat log repeats the custom-title line: the newest line wins
+  resetIdleState();
+  const { fake, engine } = createFakeEngine(getStateMessages(JSON.stringify(STATE_OBJECT)));
+  fake.customTitleLines = `${CUSTOM_TITLE_LINE_OLD}\n${CUSTOM_TITLE_LINE_OLD}\n${CUSTOM_TITLE_LINE_NEW}\n`;
+  await writeStateFileAndExit(engine, false);
+  expect(JSON.parse(fake.written[1]?.text ?? '').customTitle).toBe('new name');
+}
+
+async function assertWriteStateFileAndExitSetsCustomTitleToNullWhenNoMatch() {
+  // the chat log has no custom-title line: customTitle is null
+  resetIdleState();
+  const { fake, engine } = createFakeEngine(getStateMessages(JSON.stringify(STATE_OBJECT)));
+  await writeStateFileAndExit(engine, false);
+  expect(JSON.parse(fake.written[1]?.text ?? '').customTitle).toBeNull();
+}
+
+async function assertWriteStateFileAndExitSearchesTheSavedTranscriptPath() {
+  // the title search runs on the chat log path that the Stop hook saved
+  resetIdleState();
+  idleState.transcriptPath = '/logs/saved.jsonl';
+  const { fake, engine } = createFakeEngine(getStateMessages(JSON.stringify(STATE_OBJECT)));
+  await writeStateFileAndExit(engine, false);
+  expect(fake.argvs).toContainEqual(['rg', '--no-ignore', '--fixed-strings', '"type":"custom-title"', '/logs/saved.jsonl']);
+}
+
+async function assertWriteStateFileAndExitThrowsWithoutTranscriptPath() {
+  // no Stop hook has saved a chat log path: the writer throws and writes no state file
+  resetIdleState();
+  idleState.transcriptPath = undefined;
+  const { fake, engine } = createFakeEngine(getStateMessages(JSON.stringify(STATE_OBJECT)));
+  const message = await writeStateFileAndExit(engine, false).catch(getErrorMessage);
+  expect(message).toBeDefined();
+  expect(fake.commands).toEqual([]);
+}
+
 async function flushPendingPromises() {
   await new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -299,3 +351,8 @@ test('writeStateFileAndExit sets isCommitted to false and adds an error for a fi
 test('writeStateFileAndExit sets createdTasks from the TaskCreate results in the chat log', assertWriteStateFileAndExitSetsCreatedTasksFromChatLog);
 test('writeStateFileAndExit sets finishedTasks from the completed and deleted TaskUpdate calls in the chat log', assertWriteStateFileAndExitSetsFinishedTasksFromChatLog);
 test('writeStateFileAndExit overwrites the agent task lists with empty lists when the chat log has no task calls', assertWriteStateFileAndExitWritesEmptyTaskListsWhenNoTaskCalls);
+test('writeStateFileAndExit puts customTitle first and sessionId second in the state file', assertWriteStateFileAndExitPutsCustomTitleAndSessionIdFirst);
+test('writeStateFileAndExit uses the last custom-title line in the chat log', assertWriteStateFileAndExitUsesLastCustomTitle);
+test('writeStateFileAndExit sets customTitle to null when the chat log has no custom-title line', assertWriteStateFileAndExitSetsCustomTitleToNullWhenNoMatch);
+test('writeStateFileAndExit searches the chat log path that the Stop hook saved', assertWriteStateFileAndExitSearchesTheSavedTranscriptPath);
+test('writeStateFileAndExit throws when no chat log path was saved', assertWriteStateFileAndExitThrowsWithoutTranscriptPath);

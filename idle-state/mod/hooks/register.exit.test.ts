@@ -8,6 +8,7 @@ import {
   DISPATCH_ALL_ON_WITH_DEBUG,
   NO_PROCESS_FOUND,
   STATE_OBJECT,
+  STOP_EVENT,
   createRecordedCalls,
   getAssistantMessage,
   getUserMessage,
@@ -83,6 +84,7 @@ async function assertExitSetsNoTimerWhenStateFileIsWritten($: any, on: any) {
   // exit starts the state write, the state file is written, the second exit sets no timer
   const { clock, recorded, events } = setUpExitRecording(on, DISPATCH_ALL_ON);
 
+  await $.classic.Stop(STOP_EVENT);
   await $.command.run(EXIT_COMMAND);
   await clock.settle();
   await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
@@ -110,6 +112,7 @@ async function assertExitDuringRunningTurnWaitsForTheStatePromptTurn($: any, on:
   const { clock, recorded, messagesOverride } = setUpExitRecording(on, DISPATCH_ALL_ON);
   const toolRuns = countToolRuns(on);
 
+  await $.classic.Stop(STOP_EVENT);
   // exit queues the state prompt, and the older turn is still running
   await $.command.run(EXIT_COMMAND);
   await clock.settle();

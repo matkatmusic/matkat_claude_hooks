@@ -20,6 +20,7 @@ export const ANSWER = { answer: 'the state', durationMs: 1, isAborted: false, tu
 export const DISPATCH_ALL_ON = '{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "turn.start": true, "tool.call": true, "command.run": true } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
 export const DISPATCH_ALL_ON_WITH_DEBUG = DISPATCH_ALL_ON.replace('"debugLoggingEnabled": false', '"debugLoggingEnabled": true');
 export const DISPATCH_ALL_OFF ='{ "debugLoggingEnabled": false, "enablements": { "idle-state": { "session.start": false, "session.end": false, "prompt.submit": false, "turn.complete": false, "turn.start": false, "tool.call": false, "command.run": false } }, "values": { "idle-state": { "CLAUDE_HOOKS_IDLE_MINUTES": "55" } } }';
+export const STOP_EVENT = { stop_hook_active: false, transcript_path: '/logs/chat.jsonl' } as const;
 export const MARKER_PATH_END = '/dispatcher/stop-hooks-off/abcdef1234567890';
 export const NO_PROCESS_FOUND = { exitCode: 1, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false };
 
@@ -90,6 +91,7 @@ export function setSessionStubs(on: any, recorded: RecordedCalls, getMessages: (
     recorded.commands.push(e.command);
     return { text: '' };
   }
+  on('classic.Stop', () => ({}));
   on('session.root', getWorkRoot);
   on('session.id', getSessionId);
   on('fs.write', appendWrite);

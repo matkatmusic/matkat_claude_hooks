@@ -14,6 +14,7 @@ export function createFakeEngine(messages: unknown[]) {
     gitStatusLines: {} as Record<string, string>,
     gitOutsideRepoPaths: [] as string[],
     existingPaths: [] as string[],
+    customTitleLines: '',
   };
   async function getNow() {
     return fake.nowMs;
@@ -63,6 +64,12 @@ export function createFakeEngine(messages: unknown[]) {
     const isKeyPush = argv[0] === 'python3';
     if (isKeyPush)
       return { ...NO_PROCESS_FOUND, exitCode: 0 };
+    const isCustomTitleSearch = argv[0] === 'rg';
+    if (isCustomTitleSearch) {
+      if (fake.customTitleLines === '')
+        return NO_PROCESS_FOUND;
+      return { ...NO_PROCESS_FOUND, exitCode: 0, stdout: fake.customTitleLines };
+    }
     const isGitStatus = argv[0] === 'git';
     if (isGitStatus)
       return getGitStatusResult(argv);

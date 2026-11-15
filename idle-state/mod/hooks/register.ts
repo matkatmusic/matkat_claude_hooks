@@ -118,6 +118,11 @@ const enableStateWriteOnStatePromptTurn: Hook<'turn.start'> = async ($, e, next)
   return next(e);
 };
 
+const saveTranscriptPathOnStop: Hook<'classic.Stop'> = async (_$, e, next) => {
+  idleState.transcriptPath = e.transcript_path;
+  return next(e);
+};
+
 // const blockStopHooksWhileStatePromptPending: Hook<'classic.Stop'> = async ($, e, next) => {
 //   if (!idleState.isWritingState)
 //     return next(e);
@@ -214,6 +219,13 @@ const enableStateWriteOnStatePromptTurnWithDebugLog: Hook<'turn.start'> = async 
   return returned;
 };
 
+const saveTranscriptPathOnStopWithDebugLog: Hook<'classic.Stop'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'saveTranscriptPathOnStop', 'classic.Stop', e, next);
+  const returned = await saveTranscriptPathOnStop($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 // const writeIdleStateBeforeExitWithDebugLog: Hook<'command.run'> = async ($, e, next) => {
 //   const debugLog = await wrapNextForDebugLog($, 'writeIdleStateBeforeExit', 'command.run', e, next);
 //   const returned = await writeIdleStateBeforeExit($, e, debugLog.next);
@@ -240,6 +252,7 @@ export const register: Register = on => {
   on('turn.complete', updateIdleStateOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
   on('tool.call', denyToolsWhileStatePromptPendingWithDebugLog).catch(logAndRethrowHookFailure);
   on('turn.start', enableStateWriteOnStatePromptTurnWithDebugLog).catch(logAndRethrowHookFailure);
+  on('classic.Stop', saveTranscriptPathOnStopWithDebugLog).catch(logAndRethrowHookFailure);
   // on('classic.Stop', blockStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   // on('classic.SubagentStop', blockSubagentStopHooksWhileStatePromptPending).catch(logAndRethrowHookFailure);
   on('command.run', { command: 'exit' }, writeIdleStateBeforeExitWithDebugLog).catch(logAndRethrowHookFailure);

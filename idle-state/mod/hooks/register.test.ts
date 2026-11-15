@@ -5,6 +5,7 @@ import {
   MARKER_PATH_END,
   NO_PROCESS_FOUND,
   STATE_OBJECT,
+  STOP_EVENT,
   TEMPLATE_TEXT,
   createRecordedCalls,
   getAssistantMessage,
@@ -49,6 +50,7 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   }
   setSessionStubs(on, recorded, getMessages, getProcessResult);
 
+  await $.classic.Stop(STOP_EVENT);
   await $.turn.complete(ANSWER);
   expect(submitted).toEqual([]);
   await clock.advance(IDLE_MS);
@@ -64,6 +66,7 @@ async function assertIdleChatWritesStateFileThenDropsPrompts($: any, on: any) {
   expect(stateFile?.path).toMatch(/^\/work\/my-project\/\.idleState\/\d{4}-\d{2}-\d{2}-\d{4}-abcdef12\.json$/);
   expect(JSON.parse(stateFile?.text ?? '')).toEqual({
     ...STATE_OBJECT,
+    customTitle: null,
     sessionId: 'abcdef1234567890',
     createdTasks: [],
     finishedTasks: [],
@@ -95,6 +98,7 @@ async function assertTypingExitWritesStateFileThenExits($: any, on: any) {
   }
   setSessionStubs(on, recorded, getMessages);
 
+  await $.classic.Stop(STOP_EVENT);
   await $.command.run({ command: 'exit', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } });
   await clock.settle();
   expect(submitted).toHaveLength(1);
@@ -109,5 +113,31 @@ async function assertTypingExitWritesStateFileThenExits($: any, on: any) {
   expect(commands).toEqual(['exit']);
 }
 
+async function assertClassicStopSavesTranscriptPath($: any, on: any) {
+  // the transcript_path of a classic.Stop event is the file that the title search reads when the state file is written
+  const clock = setUpClockAndEnv(on);
+  const recorded = createRecordedCalls();
+  const searchedPaths: string[] = [];
+  function getProcessResult(_$: any, e: any) {
+    const isTitleSearch = e.argv[0] === 'rg';
+    if (isTitleSearch)
+      searchedPaths.push(e.argv[e.argv.length - 1]);
+    return { value: NO_PROCESS_FOUND };
+  }
+  function getMessages() {
+    return { value: [getUserMessage(`The idle-state plugin sent a message:\n${recorded.submitted[0]}`), getAssistantMessage(JSON.stringify(STATE_OBJECT))] };
+  }
+  setSessionStubs(on, recorded, getMessages, getProcessResult);
+
+  await $.classic.Stop(STOP_EVENT);
+  await $.command.run({ command: 'exit', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } });
+  await clock.settle();
+  await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
+  await $.turn.complete(ANSWER);
+  await clock.settle();
+  expect(searchedPaths).toEqual(['/logs/chat.jsonl']);
+}
+
+test('classic.Stop saves the transcript path', assertClassicStopSavesTranscriptPath);
 test('idle chat writes a state file, exits, then drops prompts', assertIdleChatWritesStateFileThenDropsPrompts);
 test('typing exit writes the state file first, then exits', assertTypingExitWritesStateFileThenExits);

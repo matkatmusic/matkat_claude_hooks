@@ -134,6 +134,20 @@ function setTaskNumbersFromMessages(messages: any[], state: any) {
   state.finishedTasks = finishedTasks;
 }
 
+async function readCustomTitleFromTranscript($: EngineInterface, transcriptPath: string) {
+  const found = await $.process.run(['rg', '--no-ignore', '--fixed-strings', '"type":"custom-title"', transcriptPath]);
+  if (found.exitCode === 1)
+    return null;
+  if (found.exitCode > 1)
+    throw new Error(`idle-state: rg failed: ${found.stderr}`);
+  let lastLine = '';
+  for (const line of found.stdout.split('\n')) {
+    if (line !== '')
+      lastLine = line;
+  }
+  return JSON.parse(lastLine).customTitle;
+}
+
 export async function writeStateFileAndExit($: EngineInterface, isAborted: boolean | undefined) {
   idleState.isWritingState = false;
   await removeStopHooksOffMarker($);
@@ -198,9 +212,12 @@ export async function writeStateFileAndExit($: EngineInterface, isAborted: boole
       programsAreRunning = true;
   }
 
-  state.sessionId = sessionId;
+  // state.sessionId = sessionId;
   setTaskNumbersFromMessages(messages, state);
-  await $.fs.write(path, JSON.stringify(state, null, 2) + '\n');
+  if (idleState.transcriptPath === undefined)
+    throw new Error('idle-state: no transcript path was saved by a Stop hook');
+  const customTitle = await readCustomTitleFromTranscript($, idleState.transcriptPath);
+  await $.fs.write(path, JSON.stringify({ customTitle, sessionId, ...state }, null, 2) + '\n');
 
   idleState.stateFilePath = path;
   void $.command.run({ command: 'exit' });

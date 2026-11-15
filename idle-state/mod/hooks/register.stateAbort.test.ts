@@ -4,6 +4,7 @@ import {
   IDLE_MS,
   MARKER_PATH_END,
   STATE_OBJECT,
+  STOP_EVENT,
   createRecordedCalls,
   getAssistantMessage,
   getUserMessage,
@@ -89,6 +90,7 @@ async function assertSessionEndStopsDroppingPrompts($: any, on: any) {
   setSessionStubs(on, recorded, getMessages);
   on('session.end', getSessionEnd);
 
+  await $.classic.Stop(STOP_EVENT);
   await $.turn.complete(ANSWER);
   await clock.advance(IDLE_MS);
   await $.turn.start({ text: recorded.submitted[0]!, turnId: 't2' });
