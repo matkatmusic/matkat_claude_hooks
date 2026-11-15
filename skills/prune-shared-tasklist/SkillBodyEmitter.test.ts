@@ -65,10 +65,46 @@ test("pending ids are listed in number order and other statuses are left out", (
     const fixture = createFixture();
     // Action: run the emitter.
     const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
-    // Verification: only pending ids, sorted by number, and the count matches.
+    // Verification: only pending ids, sorted by number.
     const parsed = parseArgumentsBlock(output);
     assert.deepEqual((parsed.args as Record<string, unknown>).taskIds, ["2", "10"]);
-    assert.equal(parsed.pendingCount, 2);
+});
+
+test("the JSON block has exactly the keys scriptPath and args", () => {
+    // Setup: a normal fixture.
+    const fixture = createFixture();
+    // Action: run the emitter.
+    const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
+    // Verification: the block holds those two keys and no other key.
+    const parsed = parseArgumentsBlock(output);
+    assert.deepEqual(Object.keys(parsed).sort(), ["args", "scriptPath"]);
+});
+
+test("the text holds the real pending count and the real number of proposing agents", () => {
+    // Setup: 41 pending tasks, so 3 agents propose (41 divided by 20, rounded up).
+    const fixture = createFixture();
+    const taskFolder = join(fixture.homeFolder, ".claude", "tasks", "fakelist");
+    for (let taskNumber = 100; taskNumber < 139; taskNumber++)
+        writeTask(taskFolder, String(taskNumber), "pending");
+    // Action: run the emitter.
+    const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
+    // Verification: both numbers appear as whole words in the text before the JSON block.
+    const textBeforeJsonBlock = output.slice(0, output.indexOf("```json"));
+    assert.match(textBeforeJsonBlock, /\b41\b/);
+    assert.match(textBeforeJsonBlock, /\b3\b/);
+});
+
+test("no JSON is printed when the task folder has no pending task", () => {
+    // Setup: every task is completed.
+    const fixture = createFixture();
+    const taskFolder = join(fixture.homeFolder, ".claude", "tasks", "fakelist");
+    writeTask(taskFolder, "10", "completed");
+    writeTask(taskFolder, "2", "completed");
+    // Action: run the emitter.
+    const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
+    // Verification: the output holds no JSON block and no braces.
+    assert.equal(output.includes("```json"), false);
+    assert.equal(output.includes("{"), false);
 });
 
 test("repoFolders holds the repo top-level folder and a submodule folder", () => {
@@ -117,7 +153,7 @@ test("taskFolder and closedBy hold the task list folder and today's date", () =>
     assert.match((parsed.args as Record<string, unknown>).closedBy as string, /^task-list pruning \d{4}-\d{2}-\d{2}$/);
 });
 
-test("the text after the JSON block holds the real scriptPath and taskFolder values", () => {
+test("the text after the JSON block holds the real listTasksClosedByRun path and closedBy value", () => {
     // Setup: a normal fixture.
     const fixture = createFixture();
     // Action: run the emitter and cut off everything up to the end of the JSON block.
@@ -125,8 +161,21 @@ test("the text after the JSON block holds the real scriptPath and taskFolder val
     const parsed = parseArgumentsBlock(output);
     const closingFenceIndex = output.indexOf("\n```\n");
     const textAfterJsonBlock = output.slice(closingFenceIndex);
-    // Verification: both real values from the JSON appear in the text after the block.
-    assert.equal(textAfterJsonBlock.includes(parsed.scriptPath as string), true);
+    // Verification: the path of the list script and the closedBy value appear in the text.
+    assert.equal(textAfterJsonBlock.includes(join(import.meta.dirname, "listTasksClosedByRun.ts")), true);
+    assert.equal(textAfterJsonBlock.includes(join(import.meta.dirname, "listTasksClosedByPruning.ts")), true);
+    assert.equal(textAfterJsonBlock.includes((parsed.args as Record<string, unknown>).closedBy as string), true);
+});
+
+test("the text after the JSON block holds the real taskFolder value", () => {
+    // Setup: a normal fixture.
+    const fixture = createFixture();
+    // Action: run the emitter and cut off everything up to the end of the JSON block.
+    const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
+    const parsed = parseArgumentsBlock(output);
+    const closingFenceIndex = output.indexOf("\n```\n");
+    const textAfterJsonBlock = output.slice(closingFenceIndex);
+    // Verification: the real task folder from the JSON appears in the text after the block.
     assert.equal(textAfterJsonBlock.includes((parsed.args as Record<string, unknown>).taskFolder as string), true);
 });
 

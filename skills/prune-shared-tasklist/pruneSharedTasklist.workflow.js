@@ -166,4 +166,33 @@ const laneResults = await parallel(lanes.map((laneProposals, laneIndex) => async
     }
     return results
 }))
-return { pendingCount: taskIds.length, proposals, heldOut, results: laneResults.filter(Boolean).flat() }
+const results = laneResults.filter(Boolean).flat()
+
+function compareTaskIds(first, second) {
+    return Number(first.id) - Number(second.id)
+}
+
+const closedLines = []
+const leftOpenLines = []
+const failedLines = []
+const heldOutLines = []
+const sortedResults = [...results].sort(compareTaskIds)
+for (const result of sortedResults) {
+    if (result.action === 'closed') {
+        closedLines.push(`#${result.id} closed: ${result.finalReason}`)
+    }
+    if (result.action === 'left-open') {
+        const leftOpenCause = result.note ? result.note : result.finalReason
+        leftOpenLines.push(`#${result.id} left open: ${leftOpenCause}`)
+    }
+    if (result.action === 'failed') {
+        failedLines.push(`#${result.id} failed: ${result.note}`)
+    }
+}
+const sortedHeldOut = [...heldOut].sort(compareTaskIds)
+for (const heldOutItem of sortedHeldOut) {
+    heldOutLines.push(`#${heldOutItem.id} held out: ${heldOutItem.note}`)
+}
+const countLine = `Pending before: ${taskIds.length}. Proposed: ${proposals.length}. Closed: ${closedLines.length}. Left open after check: ${leftOpenLines.length}. Failed: ${failedLines.length}. Held out: ${heldOutLines.length}.`
+const report = [countLine, ...closedLines, ...leftOpenLines, ...failedLines, ...heldOutLines].join('\n')
+return { pendingCount: taskIds.length, proposals, heldOut, results, report }

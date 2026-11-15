@@ -54,30 +54,24 @@ export function formatLocalDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-function getInstructions(scriptPath: string, taskFolder: string): string {
+function getSteps(pendingCount: number, workflowInput: string): string {
+    const proposingAgentCount = Math.ceil(pendingCount / 20);
+    return `## Steps
+1. Tell the user this one line: This run checks ${pendingCount} pending tasks. ${proposingAgentCount} agents propose tasks to close. Then one agent for each proposed task closes it, 5 at a time.
+2. Call the Workflow tool with exactly this input. Change nothing. Launch it at once. This skill is the opt-in of the user.
+
+\`\`\`json
+${workflowInput}
+\`\`\`
+`;
+}
+
+function getInstructions(taskFolder: string, listScriptPath: string, closedBy: string, listPruningScriptPath: string): string {
     return `
-## Steps
-1. If \`taskIds\` is empty, tell the user there are no pending tasks. Then stop.
-2. Remove from \`taskIds\` the task that tracks this prune run, if one exists.
-3. Before the launch, tell the user one line about the cost: the run uses one agent for about 20 pending tasks to propose, then one agent for each proposed task to close, 5 at a time.
-4. Call the Workflow tool with scriptPath \`${scriptPath}\` and the changed \`args\`. Launch it at once. This skill is the opt-in of the user.
-
-## Scope
-- The run closes duplicates, tasks that are already done, and tasks that are not needed. It closes them without asking.
-- A task stays open when it has no proposal. A task also stays open when git, code, stored memory, and chat logs of the last 14 days do not prove its reason.
-- The run marks tasks completed. It never deletes tasks.
-- Each closed task gets the metadata \`closedReason\`, \`closedEvidence\`, and \`closedBy\`.
-
 ## When the workflow finishes
-1. Check each task that the result reports as closed. Run \`jq -r .status ${taskFolder}/<id>.json\`.
-2. Report these counts: pending before, proposed, closed, left open, failed.
-3. Report one line for each closed task with its reason.
-4. Report one line for each task that stays open or was held out, with the cause.
-5. The task files are the truth after the run. To list the closed tasks, run \`jq 'select(.metadata.closedBy|tostring|test("pruning"))'\` on them.
-
-## Known limits
-- Subagents of the Agent tool have no TaskGet tool and no TaskUpdate tool. The closing step must stay inside the Workflow.
-- The run reads tasks that are in progress to find duplicates. It never closes them.
+1. Run \`bun "${listScriptPath}" "${taskFolder}" "${closedBy}"\`. Each task that the report lists as closed must print with the status completed.
+2. Show the user the \`report\` text of the workflow result. Do not change it.
+3. To list the tasks that every prune run closed, run \`bun "${listPruningScriptPath}" "${taskFolder}"\`.
 `;
 }
 
@@ -88,20 +82,24 @@ export function buildSkillBody(): string {
     const repoTopLevelFolder = getRepoTopLevelFolder();
     const transcriptFolder = computeTranscriptFolder(repoTopLevelFolder);
     const taskIds = listPendingTaskIds(taskFolder);
+    if (taskIds.length === 0)
+        return "No pending tasks.\n";
     const scriptPath = join(import.meta.dirname, "pruneSharedTasklist.workflow.js");
+    const closedBy = `task-list pruning ${formatLocalDate(new Date())}`;
     const workflowArguments = {
         scriptPath,
-        pendingCount: taskIds.length,
         args: {
             taskFolder,
             memoryFile: join(transcriptFolder, "memory", "MEMORY.md"),
             transcriptFolder,
             repoFolders: listRepoFolders(repoTopLevelFolder),
-            closedBy: `task-list pruning ${formatLocalDate(new Date())}`,
+            closedBy,
             taskIds,
         },
     };
-    return `# prune-shared-tasklist\n\n\`\`\`json\n${JSON.stringify(workflowArguments, null, 2)}\n\`\`\`\n${getInstructions(scriptPath, taskFolder)}`;
+    const steps = getSteps(taskIds.length, JSON.stringify(workflowArguments, null, 2));
+    const instructions = getInstructions(taskFolder, join(import.meta.dirname, "listTasksClosedByRun.ts"), closedBy, join(import.meta.dirname, "listTasksClosedByPruning.ts"));
+    return `# prune-shared-tasklist\n\n${steps}${instructions}`;
 }
 
 if (import.meta.main)
