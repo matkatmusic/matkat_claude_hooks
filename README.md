@@ -22,7 +22,7 @@ Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce
 | [committed-task-check](committed-task-check/README.md) | Blocks the stop after new commits until matching tasks are marked completed. |
 | [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
 | [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |
-| [skills](skills) | Three skills: `catch-up` (shows open work from the idle-state reports), `clear-dead-code` (removes commented-out code), and `handoff-state` (writes the handoff file for a fresh chat). |
+| [skills](skills) | Skills: `catch-up` (shows open work from the idle-state reports), `clear-dead-code` (removes commented-out code), `handoff-state` (writes the handoff file for a fresh chat), and `prune-shared-tasklist` (closes duplicate, done, or unneeded pending tasks with proof). |
 | [status-line](status-line/README.md) | Shows model, context, turns, tokens, and usage limits under the prompt. |
 | [typecheck-on-stop](typecheck-on-stop/README.md) | Blocks the stop while the TypeScript checker reports errors. |
 | [unlisted-items](unlisted-items/README.md) | Blocks the stop when named work is not on the task list. |
