@@ -30,6 +30,22 @@ The hook stores `lastCommitCheckSeconds` in the session state file. The file is 
 - The marker moves only when there are new commits. It moves to the next whole second, so a reported commit is not reported again.
 - A stop with `stop_hook_active` set to true passes and does not move the marker.
 
+### Roadmap
+
+The `/task-roadmap` skill writes a roadmap file at `<repo top-level folder>/plans/<CLAUDE_CODE_TASK_LIST_ID>-roadmap.json`. When that file exists, the block reason also holds a ready command. Claude runs it after each TaskUpdate that marks a task completed:
+
+```
+bun markRoadmapTaskCompleted.ts <roadmap file> <task number>
+```
+
+The script sets `completed` on the element of that task to the current UTC time (`YYYY-MM-DDTHH:MM:SSZ`). It edits only that value on the element's line, so all other bytes stay the same. It prints one line. It changes nothing in these three cases, prints one line that says so, and exits with code 0:
+
+1. The roadmap file does not exist.
+2. No element has that task number.
+3. The element already has a `completed` value.
+
+When the roadmap file does not exist, the block reason has no roadmap command.
+
 ### Steps
 
 1. The hook reads `cwd`, `session_id`, `transcript_path`, and `stop_hook_active` from the Stop payload.
@@ -53,4 +69,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test committed-task-check/committed-task-check.test.ts` from the `claude_hooks` folder.
+Run `node --test committed-task-check/committed-task-check.test.ts committed-task-check/markRoadmapTaskCompleted.test.ts` from the `claude_hooks` folder.

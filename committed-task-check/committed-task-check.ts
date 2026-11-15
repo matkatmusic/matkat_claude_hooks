@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename } from "node:path";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
 import { buildSubjectListForStatus, findTaskFolder, writeBlockDecision } from "../shared/session-tasks.ts";
 import { getSetting } from "../shared/settings.ts";
@@ -72,6 +73,15 @@ function writeLastCommitCheck(statePath: string, seconds: number): void {
     writeSessionState(statePath, state);
 }
 
+function buildRoadmapInstruction(repoFolder: string, taskFolder: string): string {
+    const roadmapFile = `${repoFolder}/plans/${basename(taskFolder)}-roadmap.json`;
+    const roadmapExists = existsSync(roadmapFile);
+    if (!roadmapExists)
+        return "";
+    const scriptPath = `${import.meta.dirname}/markRoadmapTaskCompleted.ts`;
+    return ` After each TaskUpdate that marks a task completed, run this command with the task number: bun "${scriptPath}" "${roadmapFile}" <task number>`;
+}
+
 const input = JSON.parse(readFileSync(0, "utf8"));
 if (input.stop_hook_active)
     process.exit(0);
@@ -101,5 +111,6 @@ if (openTasksText === "")
 writeBlockDecision(
     `New commits exist since the last check:\n\n${newCommitsText}\n\nOpen tasks:\n${openTasksText}\n\n` +
     "Mark a task as completed with TaskUpdate only when a listed commit clearly holds that task's work. " +
-    "The task list is shared by all chats. Leave a task alone when you are unsure.",
+    "The task list is shared by all chats. Leave a task alone when you are unsure." +
+    buildRoadmapInstruction(repoFolder, taskFolder),
 );

@@ -168,3 +168,32 @@ test("test_missing_task_list_id_passes", () => {
     // The stop prints nothing.
     assert.equal(runHook(fixture, {}, null), "");
 });
+
+test("test_reason_holds_script_path_and_roadmap_path_when_roadmap_exists", () => {
+    // Scenario: a commit and an open task exist, and the repo has a roadmap file for the task list.
+    const fixture = setUpFixture("pending");
+    const topLevelFolder = runGit(fixture.repo, ["rev-parse", "--show-toplevel"]);
+    const roadmapFile = `${topLevelFolder}/plans/${TASK_LIST_ID}-roadmap.json`;
+    mkdirSync(`${topLevelFolder}/plans`);
+    writeFileSync(roadmapFile, "[]\n");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt");
+    // The stop blocks.
+    const decision = JSON.parse(runHook(fixture));
+    assert.equal(decision.decision, "block");
+    // The reason holds the real script path and the real roadmap path.
+    assert.ok(decision.reason.includes(`${import.meta.dirname}/markRoadmapTaskCompleted.ts`));
+    assert.ok(decision.reason.includes(roadmapFile));
+});
+
+test("test_reason_holds_no_script_path_when_roadmap_is_missing", () => {
+    // Scenario: a commit and an open task exist, and the repo has no roadmap file.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt");
+    // The stop blocks.
+    const decision = JSON.parse(runHook(fixture));
+    assert.equal(decision.decision, "block");
+    // The reason holds no roadmap script path.
+    assert.ok(!decision.reason.includes("markRoadmapTaskCompleted"));
+});
