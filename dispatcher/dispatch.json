@@ -81,7 +81,22 @@
     "claude-team": {
       "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL": "fable",
       "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB": "orchestrator",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PROMPT": "You are the orchestrator/director.\nUse helper agents in this way:\n- Use Haiku agents to read files and find things.\n- Use sonnet agents to write/create plans.\n- use Opus agents to verify/judge plans.\n- use Adversarial Opus agents to critique plans that Opus approves.\n- use Sonnet agents to edit plans.\n- use sonnet agents to build opus-approved plans."
+      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PROMPT": "You are the orchestrator/director.\nUse helper agents in this way:\n- Use Haiku agents to read files and find things.\n- Use sonnet agents to write/create plans.\n- use Opus agents to verify/judge plans.\n- use Adversarial Opus agents to critique plans that Opus approves.\n- use Sonnet agents to edit plans.\n- use sonnet agents to build opus-approved plans.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_JOBS": "readers,planner,verifier,adversary,builder",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_READERS_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_VERIFIER_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_ADVERSARY_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_BUILDER_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_READERS_PROMPT": "You are the reader director. Start Haiku helper agents (readers and finders) as needed. Report back to the chat that asked.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_PROMPT": "You are the planner. You create plans. Edits from the verifier and the adversary come back to you.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_VERIFIER_PROMPT": "You are the verifier. You verify the plans that the planner creates.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_ADVERSARY_PROMPT": "You are the adversary. You adversarially judge the plans that the verifier approves. Send any edits back to the planner.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_BUILDER_PROMPT": "You are the builder. You build the plans that the verifier and the adversary approved.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_SEND_INSTRUCTIONS": "You are the chat \"{chatName}\" in the team \"{teamName}\". Your job is {job}.\nThe jobs in this team are: {jobs}.\nTo send a message to a job, run this command: bun {sendScript} <job> \"<text>\"\nThe chat for a job starts the first time a message is sent to that job.\nA message from another chat starts with [claude-team].",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_MESSAGE_HEADER": "[claude-team] From \"{senderChatName}\" (job {senderJob}). To reply, send to the job {senderJob}.",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_DIALOG_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_START_WAIT_SECONDS": "300"
     }
   },
   "hooks": [
