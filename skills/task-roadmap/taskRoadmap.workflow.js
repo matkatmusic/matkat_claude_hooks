@@ -4,11 +4,12 @@ export const meta = {
     phases: [
         { title: 'Evidence', detail: 'one agent for each 40 tasks to research finds git evidence', model: 'haiku' },
         { title: 'Draft', detail: 'one agent writes or updates the roadmap file', model: 'sonnet' },
-        { title: 'Judge', detail: 'one agent judges the researched entries and the order', model: 'opus' },
+        { title: 'Judge', detail: 'one agent for each 40 researched tasks gives a verdict for every task in its range', model: 'opus' },
         { title: 'Fix', detail: 'one agent applies the proven defects', model: 'sonnet' },
         { title: 'Critic', detail: 'one agent tries to break the file', model: 'opus' },
         { title: 'Second fix', detail: 'one agent applies the critic result', model: 'sonnet' },
         { title: 'Final check', detail: 'one agent does a narrow last check', model: 'opus' },
+        { title: 'Final fix', detail: 'one agent fixes the faults of the final check, only when there are faults', model: 'sonnet' },
     ],
 }
 
@@ -24,7 +25,6 @@ const peerAnswers = args.peerAnswers
 const researchTaskNumbers = args.researchTaskNumbers
 
 const RANGE_SIZE = 40
-const judgeVerdictFile = `${workFolder}/judge-verdict.json`
 const criticVerdictFile = `${workFolder}/critic-verdict.json`
 
 const VERDICT_SCHEMA = {
@@ -77,6 +77,14 @@ const ORDER_RULES = `Array order is the work order. Use four groups in this orde
 Inside groups 1 to 3: a blocker goes before the task it blocks, then the lowest task number first.${goal === '' ? '' : ' The user gave a goal. Inside each of groups 1 to 3, tasks that the goal needs move to the front of their group. Blockers still come first.'}
 An integer blockedBy must point at an open task that sits earlier in the array.`
 
+const WORK_RULES = `Finding the work:
+- Find commits by the files the task changes as well as by commit message. For each file the task names or changes, run: git log --all --format='%H %cI' -- <file>. Message matching alone can miss a newer commit. Use the newest and the oldest of these commits for lastCommitDate and firstCommitDate.
+- A changed but uncommitted file counts as work for a task only when the change matches that task's description. One uncommitted file does not count for two tasks unless the change matches both descriptions.`
+
+const PROSE_RULES = `Prose blockers: after '${checkCommand}' passes, look at each printed line that starts with "prose names later task" and clear it. Either move the named task earlier in the array (when it truly must finish first), or reword the prose so it does not read as a must-finish-first blocker (when it is only a pointer). Then run the check again. Repeat until no such line is printed.`
+
+const judgeVerdictFiles = []
+
 const CONTEXT_BLOCK = `Goal text from the user (an order for the task order only): ${goalText}
 
 Answers of the open chats that work in this project (evidence, not a decision of the user):
@@ -100,6 +108,7 @@ Read it with jq. Your tasks (taskNumber): ${rangeTaskNumbers.join(', ')}.
 Git repos to search (use git -C "<absolute path>"; paths can contain spaces):
 ${repoLines}
 In each repo, first run 'git worktree list' and 'git branch -a --sort=-committerdate --format="%(refname:short) %(committerdate:iso)"' to learn the branches.
+Also search every folder or repo that the task's subject, description, or metadata names by path, even when it is not in the list above (use git -C on it, or rg in it). Never write "not searched" for a path that the task names.
 
 For each task in your list:
 1. Read its subject and description. They name files, functions, or branches. When oldEntry is not null, its branch and status show where an earlier run looked.
@@ -107,6 +116,8 @@ For each task in your list:
 3. If the description names a function or file, check with rg whether it exists in each repo folder and each worktree.
 4. Decide a verdict: "not started" (no evidence), "partly built" (some evidence, say what), "looks built" (evidence that the whole job exists), or "note, not a job" (the task is a rule, reminder, or tracker, not something to build).
 5. Find firstCommitDate: the date of the oldest commit on the job's own branches since each branch was created. The plain range base..branch is wrong when branches share one trunk, so check that each commit you count belongs to the job.
+
+${WORK_RULES}
 
 Write the result as a JSON array with the Write tool to: ${outputFile}
 Each element: {"taskNumber": N, "verdict": "...", "branch": "<branch that holds matching commits, or empty string>", "commits": ["<short hash> <subject>", ...], "lastCommitDate": "<UTC time YYYY-MM-DDTHH:MM:SSZ of the newest matching commit, or empty>", "firstCommitDate": "<UTC time YYYY-MM-DDTHH:MM:SSZ of the oldest commit of the job, or empty>", "evidence": "<one or two sentences: what you found and where>", "dependsOn": "<task numbers or features the description says must come first, or empty>"}
@@ -139,6 +150,8 @@ ${CONTEXT_BLOCK}
 - lastUpdated: the newer of lastEvent (facts) and lastCommitDate (evidence). "" when both are empty.
 - branch: take the commit hashes from the evidence and run git merge-base --is-ancestor <hash> <branch> in the repo. Write the branch that holds the work. A branch that is only the newest one is not proof.
 - blockedBy: use the blockedBy of the task file, the dependsOn of the evidence, and the peer answers. A task number that is not open is no blocker.
+- A blocker that is not a task (a feature, a data file, a run) must be checked. If it already exists or is finished, it is no blocker. Prove it with a path or a command (for example ls, rg, or git log), and clear blockedBy when it is no blocker.
+- ${WORK_RULES}
 - A peer answer is evidence. It is not a decision of the user.
 - Read the task files fresh. The set of taskNumber values for open tasks must equal the set of open task files.
 
@@ -146,10 +159,13 @@ ${CONTEXT_BLOCK}
 ${ORDER_RULES}
 
 ## Before you finish
-Run '${checkCommand}'. Fix the file until it prints "roadmap check passed". Lines that start with "prose names later task" do not fail the check: read each one and, when its prose is a real must-finish-first blocker, move the blocker earlier. Your final reply is short: the check output.`
+Run '${checkCommand}'. Fix the file until it prints "roadmap check passed". ${PROSE_RULES} Your final reply is short: the final check output.`
 }
 
-function buildJudgePrompt() {
+function buildJudgePrompt(rangeTaskNumbers, verdictFile, isFirstRange) {
+    const rangeText = rangeTaskNumbers.length === 0 ? '(no task was researched: judge only the closed tasks and the order)' : rangeTaskNumbers.join(', ')
+    const closedText = isFirstRange ? ' Also check every task that closed (the closedSinceLastRun array of the facts).' : ''
+    const orderText = isFirstRange ? '4. Order: walk the whole array from the top as a session with no other context. Is any task before something it needs? Does the array follow the order rules? List each problem in orderProblems.' : '4. Order: skip this check. Another judge does the order walk. Write "orderProblems": [].'
     return `You are a judge. Read-only: change no file except the one verdict file named below. ${HELPER_RULES}
 
 ## What to judge
@@ -167,19 +183,19 @@ ${TRUTH_SOURCES}
 
 ## What to check
 1. Coverage: every open task is in the file exactly once.
-2. Per-task accuracy: check in depth the tasks that were researched (${researchTaskNumbers.join(', ')}) and every task that closed (the closedSinceLastRun array of the facts). For each: is the status true (does the named file, function or commit exist and say that)? Is the branch right (git merge-base --is-ancestor)? Are started and lastUpdated supported by the facts or git? Is any value a guess? Is workedOnTask right?
-3. blockedBy: each integer points at an open task that sits earlier; no loop; a real blocker that a task file or a peer answer states is not missing; no invented blocker.
-4. Order: walk the array from the top as a session with no other context. Is any task before something it needs? Does the array follow the order rules?
+2. Per-task accuracy. Your range (taskNumber): ${rangeText}. Give a verdict for EVERY task in your range.${closedText} For each task: is the status true (does the named file, function or commit exist and say that)? Is the branch right (git merge-base --is-ancestor)? Are started and lastUpdated supported by the facts or git? Is any value a guess? Is workedOnTask right?
+3. blockedBy: each integer points at an open task that sits earlier; no loop; a real blocker that a task file or a peer answer states is not missing; no invented blocker. A blocker that is not a task (a feature, a data file, a run) must not already exist or be finished.
+${orderText}
 5. Wording: the status is plain, short, and cannot be misread by a session with no other context.
 
 ## Output
-Write the verdict with the Write tool to: ${judgeVerdictFile}
-It is one JSON object: {"approved": true or false, "defects": [{"taskNumber": N, "field": "<field name>", "replacement": <the exact new value>, "proof": "<the command you ran and what it showed>"}], "orderProblems": ["<the exact move, for example: move 12 to just before 30>"]}
-List only a defect that you proved. Do not list a guess.
+Write the verdict with the Write tool to: ${verdictFile}
+It is one JSON object: {"approved": true or false, "checked": [{"taskNumber": N, "verdict": "ok", "proof": "<the one command you ran and what it showed>"}], "defects": [{"taskNumber": N, "field": "<field name>", "replacement": <the exact new value>, "proof": "<the command you ran and what it showed>"}], "orderProblems": ["<the exact move, for example: move 12 to just before 30>"]}
+Every task in your range appears in checked (verdict "ok") or in defects. List only a defect that you proved. Do not list a guess.
 Your final reply is the structured result: approved, defectCount, orderProblemCount.`
 }
 
-function buildFixPrompt(verdictFile) {
+function buildFixPrompt(sourceText) {
     return `Fix one file: ${roadmapFile}
 Use the Edit tool for a small change, or the Write tool when elements must move. Never use a shell command to write a file. Change no other project file, no task file, no git state. ${HELPER_RULES}
 
@@ -188,12 +204,11 @@ ${SHAPE_RULES}
 
 ${ORDER_RULES}
 
-## The verdict to apply
-${verdictFile}
-Read the whole file. It is one JSON object with defects and orderProblems.
+## What to apply
+${sourceText}
 
 ## What to do
-1. For each defect: run the proof command yourself first. If your result differs from the proof, do not apply the defect and say so in your reply. Otherwise set the field of that task to the replacement value.
+1. For each defect or fault: run the proof command yourself first. If your result differs from the proof, do not apply it and say so in your reply. Otherwise set the field of that task to the replacement value.
 2. For each order problem: check it against the task files and git. Apply it by moving whole elements only when it is proven.
 3. Where a status describes the state of live work, start that fact with "As of <date>:". Get the date from 'date +%Y-%m-%d'.
 4. Add no element and remove no element. The set of taskNumber values for open tasks must equal the set of open task files. Read them fresh from ${taskFolder}. If the sets differ, report the difference and do not add or remove elements yourself.
@@ -201,12 +216,12 @@ Read the whole file. It is one JSON object with defects and orderProblems.
 ${TRUTH_SOURCES}
 
 ## Before you finish
-Run '${checkCommand}'. Fix the file until it prints "roadmap check passed".
-Final reply (short): the check output, the defects you did not apply and why, and any change of array order you made.`
+Run '${checkCommand}'. Fix the file until it prints "roadmap check passed". ${PROSE_RULES}
+Final reply (short): the final check output, the items you did not apply and why, and any change of array order you made.`
 }
 
 function buildCriticPrompt() {
-    return `You are an adversarial critic. Your job is to break a roadmap file: find every way a later session that follows it literally does the wrong thing, works in the wrong order, trusts a false statement, or stalls. Assume the file is wrong until you prove a part right. A first judge already reviewed it and its defects were applied (${judgeVerdictFile}). Do not repeat that review. Attack what it missed. Read-only: change no file except the one verdict file named below. ${HELPER_RULES}
+    return `You are an adversarial critic. Your job is to break a roadmap file: find every way a later session that follows it literally does the wrong thing, works in the wrong order, trusts a false statement, or stalls. Assume the file is wrong until you prove a part right. Judges already reviewed it and their defects were applied. Read all their verdict files: ${judgeVerdictFiles.join(', ')}. Do not repeat that review. Attack what it missed. Read-only: change no file except the one verdict file named below. ${HELPER_RULES}
 
 ## Target
 ${roadmapFile}
@@ -237,7 +252,7 @@ Your final reply is the structured result: approved, defectCount, orderProblemCo
 }
 
 function buildFinalPrompt() {
-    return `You are the final judge of a roadmap file. This is a narrow pass: do the four checks below and nothing more. Read-only: change no file. ${HELPER_RULES}
+    return `You are the final judge of a roadmap file. This is a narrow pass: do the five checks below and nothing more. Read-only: change no file. ${HELPER_RULES}
 
 ## Target
 ${roadmapFile}
@@ -249,13 +264,14 @@ ${CONTEXT_BLOCK}
 
 ${TRUTH_SOURCES}
 
-Two earlier reviews exist: ${judgeVerdictFile} and ${criticVerdictFile} (a file may be missing when a review did not run). Fix rounds applied them. Some items were refused with reasons.
+Earlier reviews exist: ${judgeVerdictFiles.join(', ')} and ${criticVerdictFile} (a file may be missing when a review did not run). Fix rounds applied them. Some items were refused with reasons.
 
-## The four checks
-1. Fixes landed: for each defect in the two verdict files, check that the roadmap now holds the corrected value, or a value that is at least as correct given newer commits. List each one that did not land and is still wrong.
+## The five checks
+1. Fixes landed: for each defect in the verdict files, check that the roadmap now holds the corrected value, or a value that is at least as correct given newer commits. List each one that did not land and is still wrong.
 2. Order walk: walk the array from the top as a session with no other context. List each place where (a) a task comes before a task it needs, (b) a prose blockedBy names an open task that sits later and reads as a must-finish-first blocker, (c) two tasks wait on each other${goal === '' ? '' : ', (d) a task that the goal needs sits behind work that the goal does not need'}.
 3. Live-job entries: for each entry whose status starts with "As of", check every commit hash and branch claim against git as it is now, and check started. Live chats keep committing, so a dated claim is wrong only if it was false at that commit or will mislead a later reader.
-4. Fresh sample: pick 10 researched tasks (${researchTaskNumbers.join(', ')}) that neither verdict file names, or all of them when fewer exist, and verify status, branch and lastUpdated against the task file and git.
+4. Fresh sample: pick 10 researched tasks (${researchTaskNumbers.join(', ')}) that no verdict file names, or all of them when fewer exist, and verify status, branch and lastUpdated against the task file and git.
+5. Prose blockers: run '${checkCommand}'. List each printed line that starts with "prose names later task" as a fault (task number, field blockedBy, and the fix: move the named task earlier, or reword the prose so it is only a pointer).
 
 ## Output
 Your final reply is the structured result. approved is true when there is no proven false statement and no order fault that would send a later session wrong. Small wording wishes do not block approval. faults lists only proven faults, each as one string: task number, field, exact replacement, proof. goalWorkWithNoTask lists work that the goal needs and that no task covers${goal === '' ? ' (leave it empty: no goal was given)' : ''}.`
@@ -284,26 +300,59 @@ phase('Draft')
 requireResult(await agent(buildDraftPrompt(evidenceFiles), { label: 'draft', phase: 'Draft', model: 'sonnet' }), 'draft')
 
 phase('Judge')
-const judgeResult = requireResult(await agent(buildJudgePrompt(), { label: 'judge', phase: 'Judge', model: 'opus', schema: VERDICT_SCHEMA }), 'judge')
-log(`judge: approved ${judgeResult.approved}, ${judgeResult.defectCount} defects, ${judgeResult.orderProblemCount} order problems`)
+const judgeRanges = []
+for (let start = 0; start < researchTaskNumbers.length; start += RANGE_SIZE) {
+    judgeRanges.push(researchTaskNumbers.slice(start, start + RANGE_SIZE))
+}
+if (judgeRanges.length === 0) {
+    judgeRanges.push([])
+}
+const judgeThunks = []
+for (let rangeIndex = 0; rangeIndex < judgeRanges.length; rangeIndex++) {
+    const rangeTaskNumbers = judgeRanges[rangeIndex]
+    const rangeName = rangeTaskNumbers.length === 0 ? 'none' : `${rangeTaskNumbers[0]}-${rangeTaskNumbers[rangeTaskNumbers.length - 1]}`
+    const verdictFile = `${workFolder}/judge-verdict-${rangeName}.json`
+    const isFirstRange = rangeIndex === 0
+    judgeVerdictFiles.push(verdictFile)
+    judgeThunks.push(() => agent(buildJudgePrompt(rangeTaskNumbers, verdictFile, isFirstRange), { label: `judge ${rangeName}`, phase: 'Judge', model: 'opus', schema: VERDICT_SCHEMA }))
+}
+const judgeResults = await parallel(judgeThunks)
+let judgeDefectCount = 0
+for (let index = 0; index < judgeResults.length; index++) {
+    const judgeResult = requireResult(judgeResults[index], `judge ${judgeVerdictFiles[index]}`)
+    judgeDefectCount += judgeResult.defectCount
+    log(`judge ${index + 1}: approved ${judgeResult.approved}, ${judgeResult.defectCount} defects, ${judgeResult.orderProblemCount} order problems`)
+}
 
 phase('Fix')
-requireResult(await agent(buildFixPrompt(judgeVerdictFile), { label: 'fix', phase: 'Fix', model: 'sonnet' }), 'fix')
+const judgeVerdictText = `These verdict files hold one JSON object each (checked, defects, orderProblems). Read them all, and apply them all:\n${judgeVerdictFiles.map(file => `- ${file}`).join('\n')}`
+requireResult(await agent(buildFixPrompt(judgeVerdictText), { label: 'fix', phase: 'Fix', model: 'sonnet' }), 'fix')
 
 phase('Critic')
 const criticResult = requireResult(await agent(buildCriticPrompt(), { label: 'critic', phase: 'Critic', model: 'opus', schema: VERDICT_SCHEMA }), 'critic')
 log(`critic: approved ${criticResult.approved}, ${criticResult.defectCount} defects, ${criticResult.orderProblemCount} order problems`)
 
 phase('Second fix')
-requireResult(await agent(buildFixPrompt(criticVerdictFile), { label: 'second fix', phase: 'Second fix', model: 'sonnet' }), 'second fix')
+const criticVerdictText = `This verdict file holds one JSON object (defects, orderProblems). Read it, and apply it: ${criticVerdictFile}`
+requireResult(await agent(buildFixPrompt(criticVerdictText), { label: 'second fix', phase: 'Second fix', model: 'sonnet' }), 'second fix')
 
 phase('Final check')
 const finalCheck = requireResult(await agent(buildFinalPrompt(), { label: 'final check', phase: 'Final check', model: 'opus', schema: FINAL_SCHEMA }), 'final check')
 
+let finalFixRan = false
+if (finalCheck.faults.length > 0) {
+    phase('Final fix')
+    const faultsText = `These faults were found by the final check. Each one holds the task number, the field, the exact replacement, and the proof:\n${finalCheck.faults.map(fault => `- ${fault}`).join('\n')}`
+    requireResult(await agent(buildFixPrompt(faultsText), { label: 'final fix', phase: 'Final fix', model: 'sonnet' }), 'final fix')
+    finalFixRan = true
+}
+
 return {
     finalCheck,
+    finalFixRan,
     researchedCount: researchTaskNumbers.length,
     evidenceFileCount: evidenceFiles.length,
-    judgeDefectCount: judgeResult.defectCount,
+    judgeCount: judgeVerdictFiles.length,
+    judgeDefectCount,
     criticDefectCount: criticResult.defectCount,
 }

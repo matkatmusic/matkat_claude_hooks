@@ -151,7 +151,7 @@ function getSteps(factsFile: string): string {
 2. Send one message to each chat in \`peerChats\`, except your own chat. Use SendMessage with \`notify_when_idle: true\`. Ask these questions: Which open tasks do you work on? On which branch? What is done? What is left? Which tasks are only notes? Do you prune the task list now? If a chat prunes the task list, wait until it finishes.
 3. End your turn to wait. Continue when each chat has answered or its idle notice has arrived. Write "no answer" for a chat that sent only a notice. Put all answers in \`args.peerAnswers\`. A peer answer is evidence. It is not a decision of the user.
 4. Run the facts command. Read the counts. Then run \`jq '[.openTasks[] | select(.needsResearch) | .taskNumber]' "${factsFile}"\` and put the numbers in \`args.researchTaskNumbers\`. If that list is empty and the count of closedSinceLastRun is 0, tell the user that the roadmap needs no change. Then stop.
-5. Tell the user one line about the cost: one Haiku helper for each 40 tasks to research, 3 Sonnet helpers, and 3 Opus helpers. Then call the Workflow tool with \`scriptPath\` and \`args\`. Launch it at once. This skill is the opt-in of the user.
+5. Tell the user one line about the cost: one Haiku helper and one Opus judge for each 40 tasks to research, 3 or 4 Sonnet helpers, and 2 more Opus helpers. Then call the Workflow tool with \`scriptPath\` and \`args\`. Launch it at once. This skill is the opt-in of the user.
 6. When the workflow finishes, run \`checkCommand\` yourself. Report these items: pass or fail, the open count, the researched count, the closed count, each "prose names later task" line, each fault of the final check, and the \`goalWorkWithNoTask\` list apart from the file. Do not stage or commit.
 `;
 }
