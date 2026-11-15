@@ -54,12 +54,13 @@ export function formatLocalDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-const INSTRUCTIONS = `
+function getInstructions(scriptPath: string, taskFolder: string): string {
+    return `
 ## Steps
 1. If \`taskIds\` is empty, tell the user there are no pending tasks. Then stop.
 2. Remove from \`taskIds\` the task that tracks this prune run, if one exists.
 3. Before the launch, tell the user one line about the cost: the run uses one agent for about 20 pending tasks to propose, then one agent for each proposed task to close, 5 at a time.
-4. Call the Workflow tool with \`scriptPath\` and the changed \`args\`. Launch it at once. This skill is the opt-in of the user.
+4. Call the Workflow tool with scriptPath \`${scriptPath}\` and the changed \`args\`. Launch it at once. This skill is the opt-in of the user.
 
 ## Scope
 - The run closes duplicates, tasks that are already done, and tasks that are not needed. It closes them without asking.
@@ -68,7 +69,7 @@ const INSTRUCTIONS = `
 - Each closed task gets the metadata \`closedReason\`, \`closedEvidence\`, and \`closedBy\`.
 
 ## When the workflow finishes
-1. Check each task that the result reports as closed. Run \`jq -r .status <taskFolder>/<id>.json\`.
+1. Check each task that the result reports as closed. Run \`jq -r .status ${taskFolder}/<id>.json\`.
 2. Report these counts: pending before, proposed, closed, left open, failed.
 3. Report one line for each closed task with its reason.
 4. Report one line for each task that stays open or was held out, with the cause.
@@ -78,6 +79,7 @@ const INSTRUCTIONS = `
 - Subagents of the Agent tool have no TaskGet tool and no TaskUpdate tool. The closing step must stay inside the Workflow.
 - The run reads tasks that are in progress to find duplicates. It never closes them.
 `;
+}
 
 export function buildSkillBody(): string {
     const taskFolder = findTaskFolder();
@@ -86,8 +88,9 @@ export function buildSkillBody(): string {
     const repoTopLevelFolder = getRepoTopLevelFolder();
     const transcriptFolder = computeTranscriptFolder(repoTopLevelFolder);
     const taskIds = listPendingTaskIds(taskFolder);
+    const scriptPath = join(import.meta.dirname, "pruneSharedTasklist.workflow.js");
     const workflowArguments = {
-        scriptPath: join(import.meta.dirname, "pruneSharedTasklist.workflow.js"),
+        scriptPath,
         pendingCount: taskIds.length,
         args: {
             taskFolder,
@@ -98,7 +101,7 @@ export function buildSkillBody(): string {
             taskIds,
         },
     };
-    return `# prune-shared-tasklist\n\n\`\`\`json\n${JSON.stringify(workflowArguments, null, 2)}\n\`\`\`\n${INSTRUCTIONS}`;
+    return `# prune-shared-tasklist\n\n\`\`\`json\n${JSON.stringify(workflowArguments, null, 2)}\n\`\`\`\n${getInstructions(scriptPath, taskFolder)}`;
 }
 
 if (import.meta.main)

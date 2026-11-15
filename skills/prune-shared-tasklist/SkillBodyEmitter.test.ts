@@ -117,6 +117,19 @@ test("taskFolder and closedBy hold the task list folder and today's date", () =>
     assert.match((parsed.args as Record<string, unknown>).closedBy as string, /^task-list pruning \d{4}-\d{2}-\d{2}$/);
 });
 
+test("the text after the JSON block holds the real scriptPath and taskFolder values", () => {
+    // Setup: a normal fixture.
+    const fixture = createFixture();
+    // Action: run the emitter and cut off everything up to the end of the JSON block.
+    const output = runEmitter(fixture.homeFolder, fixture.repoFolder, "fakelist");
+    const parsed = parseArgumentsBlock(output);
+    const closingFenceIndex = output.indexOf("\n```\n");
+    const textAfterJsonBlock = output.slice(closingFenceIndex);
+    // Verification: both real values from the JSON appear in the text after the block.
+    assert.equal(textAfterJsonBlock.includes(parsed.scriptPath as string), true);
+    assert.equal(textAfterJsonBlock.includes((parsed.args as Record<string, unknown>).taskFolder as string), true);
+});
+
 test("no JSON is printed when CLAUDE_CODE_TASK_LIST_ID is unset", () => {
     // Setup: a normal fixture.
     const fixture = createFixture();

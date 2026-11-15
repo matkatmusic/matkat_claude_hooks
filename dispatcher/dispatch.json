@@ -77,6 +77,11 @@
       "CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH": "5",
       "CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS": "2",
       "CLAUDE_HOOKS_TASKS_DIR": "~/.claude/tasks"
+    },
+    "claude-team": {
+      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL": "fable",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB": "orchestrator",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PROMPT": "You are the orchestrator/director.\nUse helper agents in this way:\n- Use Haiku agents to read files and find things.\n- Use sonnet agents to write/create plans.\n- use Opus agents to verify/judge plans.\n- use Adversarial Opus agents to critique plans that Opus approves.\n- use Sonnet agents to edit plans.\n- use sonnet agents to build opus-approved plans."
     }
   },
   "hooks": [
