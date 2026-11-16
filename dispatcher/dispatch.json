@@ -58,7 +58,27 @@
     },
     "context-exit": {
       "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80",
-      "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30"
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30",
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "This chat passed its context limit. It writes a handoff file now. Then a new chat opens in a new window and continues the work. Do not type in this chat.",
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "This chat hands off its work to a new chat now. The new chat opens in a new window. Send your prompt there."
+    },
+    "claude-tmux": {
+      "CLAUDE_HOOKS_CLAUDE_TMUX_MODEL": "fable",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_CLOSE_WAIT_SECONDS": "120",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT": [
+        "You continue the work of the chat {oldChatName}. That chat passed its context limit and wrote a handoff file for you.",
+        "The handoff file is: {handoffPath}",
+        "Read the handoff file with the Read tool, 200 lines at a time: give offset and limit in each read, until you reach the end of the file.",
+        "Do not read the file without offset and limit. That read often shows only a search pointer.",
+        "Items in the handoff file can be out of date. Check each open item against git and the files before you act on it.",
+        "A script closes the chat {oldChatName} for you. Do not send messages to it. Do not close it yourself.",
+        "Continue the open work of the handoff file at once. Do not wait for a prompt from the user.",
+        "The user sees this chat now. Start your first reply with this line: I continue the work of {oldChatName}."
+      ],
+      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap of this chat to a new chat failed. This chat stays open and active. The error is in the file {logPath}. Tell the user in one line. A new swap starts when this turn ends."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "plan-file-reminder": {

@@ -1,11 +1,13 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+// import { mkdirSync, writeFileSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { buildDirectorPaneCommand } from "./teamCommand.ts";
-import { addReplacementChat, buildHandle, buildHandleList, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, findDirectorChatOfJobTeam, findNewHandoffFile, findTeamLeader, getReplacementChatModel, listHandoffFiles, listIdleStateDirectories, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+// import { addReplacementChat, buildHandle, buildHandleList, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, findDirectorChatOfJobTeam, findNewHandoffFile, findTeamLeader, getReplacementChatModel, listHandoffFiles, listIdleStateDirectories, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { addReplacementChat, buildHandle, buildHandleList, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, findDirectorChatOfJobTeam, findTeamLeader, getReplacementChatModel, listIdleStateDirectories, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { Team, TeamChat } from "./teamFile.ts";
 import { sendTextToChat } from "./teamSend.ts";
 import { startChatInNewWindow } from "./teamStart.ts";
+import { sendHandoffCommandAndWaitForFile, waitForChatReady, writeHandoffDoneMarker } from "../chat-swap/chatSwap.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 4)
@@ -33,30 +35,32 @@ const projectRootResult = tmux_lib.run(["git", "-C", team.workDirectory, "rev-pa
 // const idleStateDirectory = `${projectRootResult.stdout.trim()}/.idleState`;
 // const handoffFilesBefore = listHandoffFiles(idleStateDirectory, oldSessionId);
 const idleStateDirectories = listIdleStateDirectories(team, projectRootResult.stdout.trim());
-const handoffFilesBefore: string[] = [];
-for (const idleStateDirectory of idleStateDirectories)
-  handoffFilesBefore.push(...listHandoffFiles(idleStateDirectory, oldSessionId));
+// const handoffFilesBefore: string[] = [];
+// for (const idleStateDirectory of idleStateDirectories)
+//   handoffFilesBefore.push(...listHandoffFiles(idleStateDirectory, oldSessionId));
 const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDOFF_COMMAND"], { sessionId: oldSessionId });
-sendTextToChat(oldChat.pane, oldChatName, handoffCommand, dialogWaitSeconds);
+// sendTextToChat(oldChat.pane, oldChatName, handoffCommand, dialogWaitSeconds);
 
 const handoffWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDOFF_WAIT_SECONDS"]);
-const handoffStartedAt = Date.now();
-let handoffFilePath: string | undefined;
-while (handoffFilePath === undefined) {
-  if (Date.now() - handoffStartedAt > handoffWaitSeconds * 1000)
-    throw new Error(`"${oldChatName}" did not write a handoff file`);
-  // handoffFilePath = findNewHandoffFile(handoffFilesBefore, listHandoffFiles(idleStateDirectory, oldSessionId));
-  const handoffFilesNow: string[] = [];
-  for (const idleStateDirectory of idleStateDirectories)
-    handoffFilesNow.push(...listHandoffFiles(idleStateDirectory, oldSessionId));
-  handoffFilePath = findNewHandoffFile(handoffFilesBefore, handoffFilesNow);
-  if (handoffFilePath === undefined)
-    tmux_lib.sleep(2);
-}
-tmux_lib.sleep(5);
+const handoffFilePath = sendHandoffCommandAndWaitForFile(oldChat.pane, oldChatName, handoffCommand, idleStateDirectories, oldSessionId, dialogWaitSeconds, handoffWaitSeconds);
+// const handoffStartedAt = Date.now();
+// let handoffFilePath: string | undefined;
+// while (handoffFilePath === undefined) {
+//   if (Date.now() - handoffStartedAt > handoffWaitSeconds * 1000)
+//     throw new Error(`"${oldChatName}" did not write a handoff file`);
+//   // handoffFilePath = findNewHandoffFile(handoffFilesBefore, listHandoffFiles(idleStateDirectory, oldSessionId));
+//   const handoffFilesNow: string[] = [];
+//   for (const idleStateDirectory of idleStateDirectories)
+//     handoffFilesNow.push(...listHandoffFiles(idleStateDirectory, oldSessionId));
+//   handoffFilePath = findNewHandoffFile(handoffFilesBefore, handoffFilesNow);
+//   if (handoffFilePath === undefined)
+//     tmux_lib.sleep(2);
+// }
+// tmux_lib.sleep(5);
 
-mkdirSync(`${DISPATCHER_DIR}/handoff-done`, { recursive: true });
-writeFileSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, "");
+// mkdirSync(`${DISPATCHER_DIR}/handoff-done`, { recursive: true });
+// writeFileSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, "");
+writeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 lockTeamFile(teamFilePath);
 const teamWithSessionId = readTeamFile(teamFilePath);
 findChatWithStatus(teamWithSessionId, job, "leaving")!.sessionId = oldSessionId;
@@ -159,9 +163,10 @@ findChatWithStatus(teamWithPane, job, "starting")!.pane = newPane;
 writeTeamFile(teamFilePath, teamWithPane);
 unlockTeamFile(teamFilePath);
 
-const readinessCode = tmux_lib.tmux_waitForClaudeReadiness(newPane);
-if (readinessCode !== 0)
-  throw new Error(`${newChat.chatName} did not become ready in pane ${newPane}`);
+// const readinessCode = tmux_lib.tmux_waitForClaudeReadiness(newPane);
+// if (readinessCode !== 0)
+//   throw new Error(`${newChat.chatName} did not become ready in pane ${newPane}`);
+waitForChatReady(newPane, newChat.chatName);
 
 lockTeamFile(teamFilePath);
 const teamToActivate = readTeamFile(teamFilePath);
