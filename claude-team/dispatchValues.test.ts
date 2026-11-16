@@ -146,7 +146,7 @@ test("test_helper_role_prompts_use_send_message_and_send_questions_to_the_team_l
 test("test_replacedNotice_and_handleLine_have_the_given_shape", () => {
   // Scenario: the notice text and the handle line are fixed by the user.
   // Step: read both values. Check the exact text.
-  assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TEAM_REPLACED_NOTICE"), "replaced teammate {oldHandle} with {newHandle}");
+  assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TEAM_REPLACED_NOTICE"), "replaced teammate {oldHandle} with {newHandle}. No reply is necessary.");
   assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LINE"), '- @"{chatName}": {role}');
 });
 

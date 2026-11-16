@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Team } from "./teamFile.ts";
+import type { Team, TeamChat } from "./teamFile.ts";
 
 const {
   buildTeamFilePath,
@@ -29,6 +29,7 @@ const {
   buildJobChatFields,
   buildMessageWithRoleText,
   listNoticeChats,
+  listReplacedNoticeChats,
   buildHandle,
   findTeamLeader,
   markDirectorAsTeamLeader,
@@ -509,6 +510,168 @@ test("test_listNoticeChats_leaves_out_leaving_chat", () => {
   // Scenario: the old chat has the status leaving.
   // Step: list the notice chats. Check that "T Director 1" is not in the list.
   assert.ok(!listNoticeChatNames().includes("T Director 1"));
+});
+
+function buildReplacedChat(teamName: string, job: string, chatNumber: number, extraFields: Partial<TeamChat> = {}): TeamChat {
+  return { job, chatNumber, chatName: `${teamName} ${job} ${chatNumber}`, pane: "%1", model: "sonnet", status: "active" as const, needsRoleText: false, ...extraFields };
+}
+
+function buildReplacedTeam(teamName: string, chats: TeamChat[]): Team {
+  return { teamName, workDirectory: "/w", chats };
+}
+
+function listReplacedNoticeChatNames(team: Team, oldChat: TeamChat, newChatName: string, parentTeam: Team | undefined, childTeams: Team[], liveSessionNames: string[]): string[] {
+  const chatNames: string[] = [];
+  for (const chat of listReplacedNoticeChats(team, oldChat, newChatName, parentTeam, childTeams, liveSessionNames, "Director", "Read-Find-orchestrator"))
+    chatNames.push(chat.chatName);
+  return chatNames.sort();
+}
+
+test("test_listReplacedNoticeChats_helper_replaced_notifies_only_team_leader", () => {
+  // Scenario: a helper (Planner) is replaced. The team has a Director, a TeamLeader and another helper.
+  // Step: list the replaced notice chats. Check that only the TeamLeader is in the list.
+  const oldChat = buildReplacedChat("T", "Planner", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+    oldChat,
+    buildReplacedChat("T", "Planner", 2),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Planner 2", undefined, [], []), ["T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_helper_replaced_without_team_leader_gives_empty_list", () => {
+  // Scenario: a helper (Planner) is replaced in a team that has no TeamLeader.
+  // Step: list the replaced notice chats. Check that the list is empty.
+  const oldChat = buildReplacedChat("T", "Planner", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    oldChat,
+    buildReplacedChat("T", "Planner", 2),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Planner 2", undefined, [], []), []);
+});
+
+test("test_listReplacedNoticeChats_read_find_replaced_notifies_team_leader_and_same_team_director", () => {
+  // Scenario: the Read-Find-orchestrator of the Director's own team is replaced. The Director talks to that chat too.
+  // Step: list the replaced notice chats. Check that the TeamLeader and the Director are in the list.
+  const oldChat = buildReplacedChat("T", "Read-Find-orchestrator", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+    oldChat,
+    buildReplacedChat("T", "Read-Find-orchestrator", 2),
+    buildReplacedChat("T", "Planner", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Read-Find-orchestrator 2", undefined, [], []), ["T Director 1", "T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_team_leader_replaced_in_first_team_notifies_helpers_and_director", () => {
+  // Scenario: the TeamLeader of the first job team is replaced. There is no parent team.
+  // Step: list the replaced notice chats. Check that the Director and the helpers are in the list.
+  const oldChat = buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    oldChat,
+    buildReplacedChat("T", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T TeamLeader 2", undefined, [], []), ["T Director 1", "T PlanAuditor 1", "T Planner 1"]);
+});
+
+test("test_listReplacedNoticeChats_team_leader_replaced_in_child_team_notifies_helpers_and_parent_director", () => {
+  // Scenario: the TeamLeader of a child team is replaced. The parent team has a Director and a Read-Find-orchestrator.
+  // Step: list the replaced notice chats. Check that the child helpers and the parent Director are in the list.
+  // Step: check that the parent Read-Find-orchestrator is not in the list.
+  const oldChat = buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("C", [
+    oldChat,
+    buildReplacedChat("C", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("C", "Planner", 1),
+    buildReplacedChat("C", "PlanAuditor", 1),
+  ]);
+  const parentTeam = buildReplacedTeam("P", [
+    buildReplacedChat("P", "Director", 1),
+    buildReplacedChat("P", "Read-Find-orchestrator", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "C TeamLeader 2", parentTeam, [], []), ["C PlanAuditor 1", "C Planner 1", "P Director 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_that_leads_directly_replaced_notifies_helpers", () => {
+  // Scenario: a Director that is also the TeamLeader (isTeamLeader true) is replaced.
+  // Step: list the replaced notice chats. Check that both helpers are in the list.
+  const oldChat = buildReplacedChat("T", "Director", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "Director", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Director 2", undefined, [], []), ["T PlanAuditor 1", "T Planner 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_that_leads_directly_replaced_notifies_child_team_leader", () => {
+  // Scenario: a Director that is also the TeamLeader (isTeamLeader true) is replaced. Its child team "C" is live and has a TeamLeader and a Planner.
+  // Step: list the replaced notice chats. Check that the own helpers and the child TeamLeader are in the list.
+  // Step: check that the Planner of the child team is not in the list.
+  const oldChat = buildReplacedChat("T", "Director", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "Director", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  const childTeam = buildReplacedTeam("C", [
+    buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true }),
+    buildReplacedChat("C", "Planner", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Director 2", undefined, [childTeam], ["C"]), ["C TeamLeader 1", "T PlanAuditor 1", "T Planner 1"]);
+});
+
+const replacedDirectorOldChat = buildReplacedChat("T", "Director", 1, { status: "leaving" });
+const replacedDirectorTeam = buildReplacedTeam("T", [
+  replacedDirectorOldChat,
+  buildReplacedChat("T", "Director", 2),
+  buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+  buildReplacedChat("T", "Read-Find-orchestrator", 1),
+  buildReplacedChat("T", "Planner", 1),
+]);
+const replacedDirectorChildTeam = buildReplacedTeam("C", [
+  buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true }),
+  buildReplacedChat("C", "Planner", 1),
+]);
+
+test("test_listReplacedNoticeChats_director_replaced_notifies_read_find_and_team_leaders", () => {
+  // Scenario: a Director (not the TeamLeader) is replaced. Its child team is live.
+  // Step: list the replaced notice chats. Check that the Read-Find-orchestrator, the own TeamLeader and the child TeamLeader are in the list.
+  // Step: check that the Planner of the own team and the Planner of the child team are not in the list.
+  const chatNames = listReplacedNoticeChatNames(replacedDirectorTeam, replacedDirectorOldChat, "T Director 2", undefined, [replacedDirectorChildTeam], ["C"]);
+  assert.deepEqual(chatNames, ["C TeamLeader 1", "T Read-Find-orchestrator 1", "T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_replaced_leaves_out_team_leader_of_child_team_that_is_not_live", () => {
+  // Scenario: a Director (not the TeamLeader) is replaced. Its child team "C" is not in the live session names.
+  // Step: list the replaced notice chats. Check that "C TeamLeader 1" is not in the list.
+  const chatNames = listReplacedNoticeChatNames(replacedDirectorTeam, replacedDirectorOldChat, "T Director 2", undefined, [replacedDirectorChildTeam], []);
+  assert.ok(!chatNames.includes("C TeamLeader 1"));
+});
+
+test("test_listReplacedNoticeChats_leaves_out_leaving_starting_new_and_idle_chats", () => {
+  // Scenario: a TeamLeader is replaced. The team also has a leaving chat, a starting chat, an idle chat (needsRoleText true) and the new chat.
+  // Step: list the replaced notice chats. Check that only the active Planner that has worked is in the list.
+  const oldChat = buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "Planner", 2, { status: "leaving" }),
+    buildReplacedChat("T", "Planner", 3, { status: "starting" }),
+    buildReplacedChat("T", "PlanAuditor", 1, { needsRoleText: true }),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T TeamLeader 2", undefined, [], []), ["T Planner 1"]);
 });
 
 const handleValues = {
