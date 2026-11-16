@@ -32,6 +32,17 @@ test("test_startClaudeTmux_throws_outside_a_git_repository", () => {
   assert.match(result.stderr, /must start inside a git repository/);
 });
 
+test("test_startClaudeTmux_throws_for_a_bad_swap_percent_before_it_starts_anything", () => {
+  // Scenario: claude-tmux starts with a bad CLAUDE_TMUX_SWAP_PERCENT value.
+  // Step 1: make a new temporary folder with no git. Without the new check, the script stops at the git check.
+  const plainFolder = mkdtempSync(join(tmpdir(), "claude-tmux-plain-"));
+  // Step 2: run startClaudeTmux.ts with a name and CLAUDE_TMUX_SWAP_PERCENT set to "abc".
+  const result = spawnSync("bun", [`${import.meta.dirname}/startClaudeTmux.ts`, "--name", "t"], { encoding: "utf8", cwd: plainFolder, env: { ...process.env, BUN_JSC_useTailCalls: "0", CLAUDE_TMUX_SWAP_PERCENT: "abc" } });
+  // Step 3: check that it fails and the error names CLAUDE_TMUX_SWAP_PERCENT.
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
 test("test_startClaudeTmux_throws_when_a_tmux_session_with_the_name_exists", (t) => {
   // Scenario: a tmux session with the chosen name is already open.
   // Step 1: start a tmux session named claude-tmux-test-PID. Kill it when the test ends.

@@ -5,7 +5,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction } = await import("./singleChat.ts");
+const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText } = await import("./singleChat.ts");
 const { buildDirectorPaneCommand } = await import("../teamSession/teamCommand.ts");
 
 test("test_parseSingleChatArguments_returns_the_given_name", () => {
@@ -160,4 +160,52 @@ test("test_isTmuxSessionNameTaken_true_for_the_exact_name", (t) => {
   // Step 3: check that the child worked and printed true.
   assert.equal(child.status, 0, child.stderr);
   assert.equal(child.stdout.trim(), "true");
+});
+
+test("test_validateSwapPercentText_accepts_a_missing_value", () => {
+  // Scenario: the swap percent is not set.
+  // Step: validate undefined. Check that it does not throw.
+  assert.doesNotThrow(() => validateSwapPercentText(undefined));
+});
+
+test("test_validateSwapPercentText_accepts_1", () => {
+  // Scenario: the swap percent is the lowest allowed number.
+  // Step: validate "1". Check that it does not throw.
+  assert.doesNotThrow(() => validateSwapPercentText("1"));
+});
+
+test("test_validateSwapPercentText_accepts_100", () => {
+  // Scenario: the swap percent is the highest allowed number.
+  // Step: validate "100". Check that it does not throw.
+  assert.doesNotThrow(() => validateSwapPercentText("100"));
+});
+
+test("test_validateSwapPercentText_rejects_abc", () => {
+  // Scenario: the swap percent is not a number.
+  // Step: validate "abc". Check that it throws the swap percent error.
+  assert.throws(() => validateSwapPercentText("abc"), /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
+test("test_validateSwapPercentText_rejects_0", () => {
+  // Scenario: the swap percent is below the lowest allowed number.
+  // Step: validate "0". Check that it throws the swap percent error.
+  assert.throws(() => validateSwapPercentText("0"), /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
+test("test_validateSwapPercentText_rejects_101", () => {
+  // Scenario: the swap percent is above the highest allowed number.
+  // Step: validate "101". Check that it throws the swap percent error.
+  assert.throws(() => validateSwapPercentText("101"), /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
+test("test_validateSwapPercentText_rejects_2_point_5", () => {
+  // Scenario: the swap percent is not a whole number.
+  // Step: validate "2.5". Check that it throws the swap percent error.
+  assert.throws(() => validateSwapPercentText("2.5"), /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
+test("test_validateSwapPercentText_rejects_an_empty_value", () => {
+  // Scenario: the swap percent is an empty text.
+  // Step: validate "". Check that it throws the swap percent error.
+  assert.throws(() => validateSwapPercentText(""), /CLAUDE_TMUX_SWAP_PERCENT/);
 });

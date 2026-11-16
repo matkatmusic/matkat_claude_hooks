@@ -80,3 +80,11 @@ export function getSwapFailedAction(swapRecord: SingleChatSwapRecord | undefined
     return "undoSwap";
   return "closeNewChatAndUndoSwap";
 }
+
+export function validateSwapPercentText(swapPercentText: string | undefined): void {
+  if (swapPercentText === undefined)
+    return;
+  const isWholeNumberFrom1To100 = /^(100|[1-9][0-9]?)$/.test(swapPercentText);
+  if (!isWholeNumberFrom1To100)
+    throw new Error(`CLAUDE_TMUX_SWAP_PERCENT must be a whole number from 1 to 100, not "${swapPercentText}"`);
+}
