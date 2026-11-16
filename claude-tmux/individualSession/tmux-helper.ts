@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { writeBlockDecision } from "../shared/session-tasks.ts";
+// import { writeBlockDecision } from "../shared/session-tasks.ts";
+import { writeBlockDecision } from "../../shared/session-tasks.ts";
+import { wrapShellWord } from "../shared/chatSwap.ts";
 // UserPromptSubmit hook: /tmux-switch opens the tmux chat list, /tmux-new-helper [model] starts a helper chat in a new tmux window.
 const HELPER_SUFFIX_PATTERN = / helper \d+$/;
 
@@ -23,14 +25,16 @@ export function computeNextHelperNumber(windowNames: string[], baseName: string)
     return highestNumber + 1;
 }
 
-function quoteForShell(text: string): string {
-    return `'${text.replaceAll("'", "'\\''")}'`;
-}
+// function quoteForShell(text: string): string {
+//     return `'${text.replaceAll("'", "'\\''")}'`;
+// }
 
 export function buildClaudeCommand(helperName: string, model: string): string {
-    let claudeCommand = `claude --name ${quoteForShell(helperName)}`;
+    // let claudeCommand = `claude --name ${quoteForShell(helperName)}`;
+    let claudeCommand = `claude --name ${wrapShellWord(helperName)}`;
     if (model !== "")
-        claudeCommand += ` --model ${quoteForShell(model)}`;
+        // claudeCommand += ` --model ${quoteForShell(model)}`;
+        claudeCommand += ` --model ${wrapShellWord(model)}`;
     return claudeCommand;
 }
 
