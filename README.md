@@ -15,14 +15,15 @@ Claude Code often ignores rules that you write in CLAUDE.md. These hooks enforce
 | [block-parent-edits](block-parent-edits/README.md) | Blocks file edits from the main session. A subagent must make them. |
 | [check-task-list-id](check-task-list-id/README.md) | Warns at session start when `CLAUDE_CODE_TASK_LIST_ID` is not set. |
 | [clarify-ambiguous](clarify-ambiguous/README.md) | Makes Claude ask one question when your prompt is vague. |
-| [context-exit](context-exit/README.md) | A separate plugin. Shows one message when the context reaches 30, 50, or 80 percent, so you can start a new chat. |
+| [context-exit](context-exit/README.md) | A separate plugin. Shows one message when the context reaches 30, 50, or 80 percent, so you can start a new chat. In a chat that `claude-tmux` starts, it also starts the swap to a new chat. |
+| [claude-tmux](claude-tmux/README.md) | A shell command that starts Claude chats in tmux. It swaps a chat for a new chat at the context limit. `--team` starts a team of chats. |
 | [debt-ratchet](debt-ratchet/README.md) | Runs eslint on edited `.ts` files. Blocks the stop unless the style debt dropped. |
 | [idle-state](idle-state/README.md) | Writes a state file when a chat sits idle. Lists recent state files on the first prompt. |
 | [nudge-task-list](nudge-task-list/README.md) | Blocks the stop when work starts without a task list. |
 | [committed-task-check](committed-task-check/README.md) | Blocks the stop after new commits until matching tasks are marked completed. |
 | [plan-file-reminder](plan-file-reminder/README.md) | Reminds Claude of your planning guide after a plan file edit. |
 | [ponytail-ultra-nudge](ponytail-ultra-nudge/README.md) | Tells Claude to use the ponytail skill at the ultra level first. |
-| [skills](skills) | Skills: `catch-up` (shows open work from the idle-state reports), `clear-dead-code` (removes commented-out code), `handoff-state` (writes the handoff file for a fresh chat), `prune-shared-tasklist` (closes duplicate, done, or unneeded pending tasks with proof), and `task-roadmap` (builds the roadmap file of the open tasks). |
+| [skills](skills) | Skills: `catch-up` (shows open work from the idle-state reports), `clear-dead-code` (removes commented-out code), `handoff-state` (writes the handoff file for a fresh chat), `prune-shared-tasklist` (closes duplicate, done, or unneeded pending tasks with proof), `task-roadmap` (builds the roadmap file of the open tasks), `tmux-new-helper` (opens a helper chat in a new tmux window), and `tmux-switch` (opens the tmux window picker). |
 | [status-line](status-line/README.md) | Shows model, context, turns, tokens, and usage limits under the prompt. |
 | [typecheck-on-stop](typecheck-on-stop/README.md) | Blocks the stop while the TypeScript checker reports errors. |
 | [unlisted-items](unlisted-items/README.md) | Blocks the stop when named work is not on the task list. |
