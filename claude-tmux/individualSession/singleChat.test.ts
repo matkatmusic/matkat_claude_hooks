@@ -8,7 +8,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText } = await import("./singleChat.ts");
-const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane } = await import("./singleChat.ts");
+// const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane } = await import("./singleChat.ts");
+const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane, resetTrackerAfterFailedSwap } = await import("./singleChat.ts");
 const { buildDirectorPaneCommand } = await import("../teamSession/teamCommand.ts");
 
 test("test_parseSingleChatArguments_returns_the_given_name", () => {
@@ -254,6 +255,42 @@ test("test_updateTrackerWithNextChatNumber_writes_and_returns_the_next_number", 
   // Step 3: check that the file holds {"bed helper": 2}.
   assert.deepEqual(JSON.parse(readFileSync(trackerPath, "utf8")), { "bed helper": 2 });
   // Step 4: check that the lock folder is gone.
+  assert.equal(existsSync(`${trackerPath}.lock`), false);
+});
+
+test("test_resetTrackerAfterFailedSwap_gives_back_the_number_of_the_failed_chat", () => {
+  // Scenario: a tracker file holds {"bed": 3, "bed helper": 2} and the swap of "bed 3" failed.
+  // Step 1: make the temp folder and the tracker file.
+  const trackerFolder = mkdtempSync(join(tmpdir(), "claude-tmux-tracker-"));
+  const trackerPath = join(trackerFolder, "tracker.json");
+  writeFileSync(trackerPath, JSON.stringify({ "bed": 3, "bed helper": 2 }));
+  // Step 2: reset the tracker for counter "bed" and failed chat "bed 3".
+  resetTrackerAfterFailedSwap(trackerPath, "bed", "bed 3");
+  // Step 3: check that the file holds {"bed": 2, "bed helper": 2}.
+  assert.deepEqual(JSON.parse(readFileSync(trackerPath, "utf8")), { "bed": 2, "bed helper": 2 });
+});
+
+test("test_resetTrackerAfterFailedSwap_keeps_a_higher_number_of_a_later_chat", () => {
+  // Scenario: a tracker file holds {"bed helper": 4} and the swap of "bed helper 3" failed after a later chat took 4.
+  // Step 1: make the temp folder and the tracker file.
+  const trackerFolder = mkdtempSync(join(tmpdir(), "claude-tmux-tracker-"));
+  const trackerPath = join(trackerFolder, "tracker.json");
+  writeFileSync(trackerPath, JSON.stringify({ "bed helper": 4 }));
+  // Step 2: reset the tracker for counter "bed helper" and failed chat "bed helper 3".
+  resetTrackerAfterFailedSwap(trackerPath, "bed helper", "bed helper 3");
+  // Step 3: check that the file still holds {"bed helper": 4}.
+  assert.deepEqual(JSON.parse(readFileSync(trackerPath, "utf8")), { "bed helper": 4 });
+});
+
+test("test_resetTrackerAfterFailedSwap_removes_its_lock", () => {
+  // Scenario: a tracker file holds {"bed": 3} and the swap of "bed 3" failed.
+  // Step 1: make the temp folder and the tracker file.
+  const trackerFolder = mkdtempSync(join(tmpdir(), "claude-tmux-tracker-"));
+  const trackerPath = join(trackerFolder, "tracker.json");
+  writeFileSync(trackerPath, JSON.stringify({ "bed": 3 }));
+  // Step 2: reset the tracker for counter "bed" and failed chat "bed 3".
+  resetTrackerAfterFailedSwap(trackerPath, "bed", "bed 3");
+  // Step 3: check that the lock folder is gone.
   assert.equal(existsSync(`${trackerPath}.lock`), false);
 });
 

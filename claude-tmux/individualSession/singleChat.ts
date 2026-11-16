@@ -112,6 +112,19 @@ export function updateTrackerWithNextChatNumber(trackerPath: string, counterName
   return nextChatNumber;
 }
 
+export function resetTrackerAfterFailedSwap(trackerPath: string, counterName: string, failedChatName: string): void {
+  const failedChatNumber = Number(failedChatName.slice(counterName.length + 1));
+  lockTeamFile(trackerPath);
+  const lastChatNumbers: Record<string, number> = JSON.parse(readFileSync(trackerPath, "utf8"));
+  // a later chat that took a higher number keeps it, so no chat name repeats
+  const isFailedChatNumberLast = lastChatNumbers[counterName] === failedChatNumber;
+  if (isFailedChatNumberLast) {
+    lastChatNumbers[counterName] = failedChatNumber - 1;
+    writeFileSync(trackerPath, JSON.stringify(lastChatNumbers, null, 2) + "\n");
+  }
+  unlockTeamFile(trackerPath);
+}
+
 function readTmuxOutput(tmuxArguments: string[]): string {
   return execFileSync("tmux", tmuxArguments, { encoding: "utf8" }).trim();
 }
