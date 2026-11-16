@@ -28,7 +28,8 @@ export const REPLY_CHECKS: ReplyCheck[] = [
     correction: 'Your last message has at least one question or choice for the user. Use AskUserQuestion to have the user make a decision for each question or choice item in the message.',
     did: 'Asked the user a question or gave a choice',
     do: 'Use AskUserQuestion for each question or choice.',
-    footnote: 'a status sentence about who decides, or when a helper or another chat does queued work (for example "You decide when it does the work."), does not count when it asks nothing.',
+    // footnote: 'a status sentence about who decides, or when a helper or another chat does queued work (for example "You decide when it does the work."), does not count when it asks nothing.',
+    footnote: 'a list under a heading such as "Decisions for you" or "Choices for you", in any letter case, counts as a choice for the user, even with no question mark. A status sentence about who decides, or when a helper or another chat does queued work (for example "You decide when it does the work."), does not count when it asks nothing.',
   },
   // { question: 'incomplete or unstarted work', result: UNFINISHED_WORK_TEXT, skipsListedTasks: true },
   {
@@ -147,7 +148,7 @@ function buildQuestionLine(check: ReplyCheck): string {
   return questionLine;
 }
 
-function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[], earlierAnswers: EarlierAnswer[]): string {
+export function buildPrompt(check: ReplyCheck, answer: string, openTasks: OpenTask[], earlierAnswers: EarlierAnswer[]): string {
   const questionLine = buildQuestionLine(check);
   let prompt = `${questionLine}\n\n${ANSWER_FORMAT_LINE}\n\n`;
 

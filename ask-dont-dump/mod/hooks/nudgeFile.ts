@@ -4,8 +4,10 @@ export type FlaggedCheck = { did: string; do: string; proof: string };
 
 const NUDGE_FOLDER = '.claude_hooks/ask-dont-dump';
 const YES_PATTERN = /^yes/i;
-const LEADING_FILLER_PATTERN = /^[:,\s]+/;
+// const LEADING_FILLER_PATTERN = /^[:,\s]+/;
+const LEADING_FILLER_PATTERN = /^[.:,\s]+/;
 const SURROUNDING_QUOTES_PATTERN = /^["'`“”‘’]+|["'`“”‘’]+$/g;
+const FIRST_QUOTED_TEXT_PATTERN = /["“”]([^"“”]+)["“”]/;
 
 export function buildNudgePath(root: string, sessionId: string): string {
   return `${root}/${NUDGE_FOLDER}/${sessionId}.json`;
@@ -17,6 +19,13 @@ export function parseYesPhrase(replyText: string, answer: string): string {
   if (isYes == false)
     return '';
   const afterYes = trimmedText.slice('yes'.length);
+  const quotedMatch = afterYes.match(FIRST_QUOTED_TEXT_PATTERN);
+  if (quotedMatch !== null) {
+    const quotedText = (quotedMatch[1] ?? '').trim();
+    const isQuotedTextInAnswer = answer.includes(quotedText);
+    if (isQuotedTextInAnswer)
+      return quotedText;
+  }
   const withoutFiller = afterYes.replace(LEADING_FILLER_PATTERN, '');
   const unquoted = withoutFiller.replace(SURROUNDING_QUOTES_PATTERN, '').trim();
   const isInAnswer = answer.includes(unquoted);
