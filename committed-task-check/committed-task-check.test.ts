@@ -3,9 +3,15 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 
 const TASK_LIST_ID = "committed-task-check-test";
 const OPEN_TASK_NUMBER = 7;
+const OTHER_OPEN_TASK_NUMBER = 8;
+const teamValues = getValues(readSettings(DISPATCHER_DIR), "claude-team");
+const TEAM_LEADER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"];
+const DIRECTOR_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
+const HELPER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_JOBS"].split(",")[0];
 
 type Fixture = {
     repo: string;
@@ -20,10 +26,10 @@ function runGit(folder: string, args: string[]): string {
     return execFileSync("git", ["-C", folder, ...identity, ...args], { encoding: "utf8" }).trim();
 }
 
-function makeCommit(folder: string, fileName: string): string {
+function makeCommit(folder: string, fileName: string, message: string = `title of ${fileName}`): string {
     writeFileSync(`${folder}/${fileName}`, fileName);
     runGit(folder, ["add", fileName]);
-    runGit(folder, ["commit", "-q", "-m", `title of ${fileName}`]);
+    runGit(folder, ["commit", "-q", "-m", message]);
     return runGit(folder, ["rev-parse", "--short", "HEAD"]);
 }
 
@@ -55,7 +61,7 @@ function sleepPastNextSecond(): void {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1100);
 }
 
-function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | null = TASK_LIST_ID): string {
+function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | null = TASK_LIST_ID, teamJob: string | undefined = undefined): string {
     const payload = {
         cwd: fixture.repo,
         session_id: fixture.sessionId,
@@ -64,7 +70,7 @@ function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | 
         settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: fixture.stateDir },
         ...overrides,
     };
-    const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: taskListId ?? undefined };
+    const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: taskListId ?? undefined, CLAUDE_TEAM_JOB: teamJob };
     const result = spawnSync("node", [`${import.meta.dirname}/committed-task-check.ts`], {
         input: JSON.stringify(payload),
         encoding: "utf8",
@@ -196,4 +202,87 @@ test("test_reason_holds_no_script_path_when_roadmap_is_missing", () => {
     assert.equal(decision.decision, "block");
     // The reason holds no roadmap script path.
     assert.ok(!decision.reason.includes("markRoadmapTaskCompleted"));
+});
+
+test("test_team_leader_reason_lists_only_tasks_named_in_commit_messages", () => {
+    // Scenario: two tasks are open, and a commit message names only one of them.
+    const fixture = setUpFixture("pending");
+    writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
+    writeTranscript(fixture);
+    const commitHash = makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    // The TeamLeader stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason holds the commit and the named task, and not the other task.
+    assert.ok(decision.reason.includes(commitHash));
+    assert.ok(decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
+    assert.ok(!decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
+});
+
+test("test_director_reason_lists_only_tasks_named_in_commit_messages", () => {
+    // Scenario: two tasks are open, and a commit message names only one of them.
+    const fixture = setUpFixture("pending");
+    writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
+    writeTranscript(fixture);
+    const commitHash = makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    // The Director stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, DIRECTOR_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason holds the commit and the named task, and not the other task.
+    assert.ok(decision.reason.includes(commitHash));
+    assert.ok(decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
+    assert.ok(!decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
+});
+
+test("test_team_leader_reason_holds_no_changed_file_names", () => {
+    // Scenario: a commit changes second.txt, and its message names the open task.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    // The TeamLeader stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason does not name the changed file.
+    assert.ok(!decision.reason.includes("second.txt"));
+});
+
+test("test_task_number_in_commit_body_counts_for_team_leader", () => {
+    // Scenario: two tasks are open, and the commit body names only one of them.
+    const fixture = setUpFixture("pending");
+    writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", `work\n\nCloses #${OPEN_TASK_NUMBER}`);
+    // The TeamLeader stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason holds the named task, and not the other task.
+    assert.ok(decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
+    assert.ok(!decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
+});
+
+test("test_longer_number_does_not_match_shorter_task_for_team_leader", () => {
+    // Scenario: the commit message names a task number that starts with the open task number.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}0`);
+    // The TeamLeader stop prints nothing.
+    assert.equal(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB), "");
+});
+
+test("test_team_leader_passes_when_no_commit_names_a_task", () => {
+    // Scenario: a commit exists and a task is open, but the commit message names no task.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", "work");
+    // The TeamLeader stop prints nothing.
+    assert.equal(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB), "");
+});
+
+test("test_helper_chat_of_team_gets_no_commit_check", () => {
+    // Scenario: a helper chat of a team makes a commit that names the open task.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    // The helper stop prints nothing.
+    assert.equal(runHook(fixture, {}, TASK_LIST_ID, HELPER_JOB), "");
 });
