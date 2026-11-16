@@ -1,11 +1,13 @@
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
-import { hasOpenDialog, inputBoxHoldsMessage } from "./teamFile.ts";
+import { hasBackgroundWorkDialog, hasOpenDialog, inputBoxHoldsMessage } from "./teamFile.ts";
 
 // const SUBMIT_PASSES = 5;
 const SUBMIT_PASSES = 6;
 const SUBMIT_WAIT_SECONDS = 10;
 const APPEAR_POLL_SECONDS = 0.25;
-const APPEAR_POLLS = 20;
+// const APPEAR_POLLS = 20;
+const APPEAR_POLLS = 240;
+const EXIT_RETRY_SECONDS = 10;
 
 export function sendTextToChat(pane: string, chatName: string, text: string, dialogWaitSeconds: number): void {
   let dialogIsOpen = true;
@@ -55,4 +57,51 @@ export function sendTextToChat(pane: string, chatName: string, text: string, dia
     }
   }
   throw new Error(`the message to "${chatName}" was not submitted`);
+}
+
+export function sendExitToChat(pane: string, chatName: string, helperWaitSeconds: number, closeWaitSeconds: number): void {
+  const startedAt = Date.now();
+  let mustSendExit = true;
+  let isPaneOpen = true;
+  while (isPaneOpen) {
+    const elapsedSeconds = (Date.now() - startedAt) / 1000;
+    if (elapsedSeconds > helperWaitSeconds + closeWaitSeconds)
+      throw new Error(`"${chatName}" did not close`);
+    const paneListResult = tmux_lib.run(["tmux", "list-panes", "-a", "-F", "#{pane_id}"], { capture_output: true, text: true, check: true });
+    isPaneOpen = paneListResult.stdout.split("\n").includes(pane);
+    if (isPaneOpen) {
+      const captureResult = tmux_lib.run(["tmux", "capture-pane", "-p", "-t", pane], { capture_output: true, text: true, check: false });
+      const screen = captureResult.stdout;
+      const isDialogOpen = hasBackgroundWorkDialog(screen);
+      if (isDialogOpen) {
+        const isHelperWaitOver = elapsedSeconds >= helperWaitSeconds;
+        if (isHelperWaitOver) {
+          tmux_lib.tmux_sendEnter(pane);
+          tmux_lib.sleep(1);
+        }
+        else {
+          tmux_lib.run(["tmux", "send-keys", "-t", pane, "Escape"], { capture_output: true, text: true, check: false });
+          tmux_lib.sleep(EXIT_RETRY_SECONDS);
+          mustSendExit = true;
+        }
+      }
+      else {
+        if (mustSendExit) {
+          const bufferName = `claude-team-${process.pid}`;
+          tmux_lib.run(["tmux", "set-buffer", "-b", bufferName, "--", "/exit"], { capture_output: true, text: true, check: true });
+          tmux_lib.run(["tmux", "paste-buffer", "-p", "-d", "-b", bufferName, "-t", pane], { capture_output: true, text: true, check: false });
+          tmux_lib.sleep(1);
+          tmux_lib.tmux_sendEnter(pane);
+          mustSendExit = false;
+          tmux_lib.sleep(1);
+        }
+        else {
+          const isExitStillInInputBox = inputBoxHoldsMessage(screen, "/exit");
+          if (isExitStillInInputBox)
+            tmux_lib.tmux_sendEnter(pane);
+          tmux_lib.sleep(1);
+        }
+      }
+    }
+  }
 }

@@ -1,8 +1,8 @@
 import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
-import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, listNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
-import { sendTextToChat } from "./teamSend.ts";
+import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { sendExitToChat, sendTextToChat } from "./teamSend.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 1)
@@ -22,6 +22,7 @@ const values = getValues(readSettings(DISPATCHER_DIR), "claude-team");
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], teamName);
 const dialogWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIALOG_WAIT_SECONDS"]);
 const closeWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_CLOSE_WAIT_SECONDS"]);
+const handoffWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDOFF_WAIT_SECONDS"]);
 
 lockTeamFile(teamFilePath);
 const team = readTeamFile(teamFilePath);
@@ -50,19 +51,35 @@ if (oldChat.isTeamLeader === true) {
   }
 }
 
-sendTextToChat(oldChat.pane, oldChat.chatName, "/exit", dialogWaitSeconds);
-
-// tmux_paneExists answers true for a missing pane, so list the panes instead
-const closeStartedAt = Date.now();
-let isPaneOpen = true;
-while (isPaneOpen) {
-  if (Date.now() - closeStartedAt > closeWaitSeconds * 1000)
-    throw new Error(`"${oldChat.chatName}" did not close`);
-  const paneListResult = tmux_lib.run(["tmux", "list-panes", "-a", "-F", "#{pane_id}"], { capture_output: true, text: true, check: true });
-  isPaneOpen = paneListResult.stdout.split("\n").includes(oldChat.pane);
-  if (isPaneOpen)
+const readyWaitStartedAt = Date.now();
+let isOldChatReadyForExit = false;
+while (!isOldChatReadyForExit) {
+  if (Date.now() - readyWaitStartedAt > handoffWaitSeconds * 1000)
+    throw new Error(`"${oldChat.chatName}" is not ready for /exit: it is busy or its input box holds text`);
+  const oldChatScreen = tmux_lib.tmux_capturePane(oldChat.pane);
+  const isExitDialogOpen = hasBackgroundWorkDialog(oldChatScreen);
+  if (isExitDialogOpen)
+    tmux_lib.run(["tmux", "send-keys", "-t", oldChat.pane, "Escape"], { capture_output: true, text: true, check: true });
+  const isOldChatBusy = isChatBusy(oldChatScreen);
+  if (!isOldChatBusy)
+    isOldChatReadyForExit = isInputBoxEmpty(oldChatScreen);
+  if (!isOldChatReadyForExit)
     tmux_lib.sleep(1);
 }
+sendExitToChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds, closeWaitSeconds);
+// sendTextToChat(oldChat.pane, oldChat.chatName, "/exit", dialogWaitSeconds);
+
+// // tmux_paneExists answers true for a missing pane, so list the panes instead
+// const closeStartedAt = Date.now();
+// let isPaneOpen = true;
+// while (isPaneOpen) {
+//   if (Date.now() - closeStartedAt > closeWaitSeconds * 1000)
+//     throw new Error(`"${oldChat.chatName}" did not close`);
+//   const paneListResult = tmux_lib.run(["tmux", "list-panes", "-a", "-F", "#{pane_id}"], { capture_output: true, text: true, check: true });
+//   isPaneOpen = paneListResult.stdout.split("\n").includes(oldChat.pane);
+//   if (isPaneOpen)
+//     tmux_lib.sleep(1);
+// }
 
 lockTeamFile(teamFilePath);
 const teamToShrink = readTeamFile(teamFilePath);

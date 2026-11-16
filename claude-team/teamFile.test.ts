@@ -12,6 +12,8 @@ const {
   fillTemplate,
   buildJobValueKey,
   hasOpenDialog,
+  isChatBusy,
+  isInputBoxEmpty,
   buildPaneEnvironmentFlags,
   readTeamFile,
   writeTeamFile,
@@ -33,6 +35,12 @@ const {
   buildHandleList,
   countLiveJobTeams,
   listIdleStateDirectories,
+  findDirectorChatOfJobTeam,
+  hasBackgroundWorkDialog,
+  getReplacementChatModel,
+  buildTranscriptDirectory,
+  findSessionIdOfChat,
+  listChatsInSwap,
 } = await import("./teamFile.ts");
 
 const sampleTeam = {
@@ -131,6 +139,54 @@ test("test_hasOpenDialog_false_without_dialog_text", () => {
   // Scenario: a plain screen.
   // Step: check a screen without the text. Check for false.
   assert.equal(hasOpenDialog("❯ hello"), false);
+});
+
+test("test_isChatBusy_true_for_busy_line_with_seconds", () => {
+  // Scenario: the chat is in a turn and the busy line shows seconds.
+  // Step: check a screen with the busy line and an empty box below it. Check for true.
+  const screen = "✽ Waiting for the build to finish before testing… (23s · thinking)\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(isChatBusy(screen), true);
+});
+
+test("test_isChatBusy_true_for_busy_line_with_minutes", () => {
+  // Scenario: the chat is in a turn and the busy line shows minutes.
+  // Step: check a screen with the minutes busy line and an empty box below it. Check for true.
+  const screen = "✶ Waiting for the build to finish before testing… (9m 23s)\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(isChatBusy(screen), true);
+});
+
+test("test_isChatBusy_false_for_finished_turn_line", () => {
+  // Scenario: the turn is over and the screen shows the done line.
+  // Step: check a screen with the done line and an empty box. Check for false.
+  const screen = "✻ Crunched for 1m 41s · done 12:36 AM\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(isChatBusy(screen), false);
+});
+
+test("test_isInputBoxEmpty_true_for_empty_box", () => {
+  // Scenario: the last ❯ line holds no text.
+  // Step: check a screen with an empty box, a rule line and a status line. Check for true.
+  const screen = "some output\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(isInputBoxEmpty(screen), true);
+});
+
+test("test_isInputBoxEmpty_false_for_box_with_text", () => {
+  // Scenario: the last ❯ line holds typed text that wraps over more lines.
+  // Step: check a screen whose box holds the text. Check for false.
+  const screen = "some output\n\n──────────\n❯ @\"run jfred roadmap 2 page Planner 2\" replaces you, because you are\n  going to do the work\n──────────\n  ? for shortcuts";
+  assert.equal(isInputBoxEmpty(screen), false);
+});
+
+test("test_isInputBoxEmpty_true_when_only_an_older_prompt_holds_text", () => {
+  // Scenario: an older submitted prompt sits higher on the screen and the box is empty.
+  // Step: check a screen with an old ❯ line and an empty last ❯ line. Check for true.
+  const screen = "❯ some old prompt\n\n● done\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(isInputBoxEmpty(screen), true);
+});
+
+test("test_isInputBoxEmpty_false_for_screen_with_no_box", () => {
+  // Scenario: the screen has no ❯ line.
+  // Step: check a screen with plain output only. Check for false.
+  assert.equal(isInputBoxEmpty("some output\nmore output"), false);
 });
 
 test("test_buildPaneEnvironmentFlags_returns_three_pairs", () => {
@@ -553,4 +609,196 @@ test("test_countLiveJobTeams_does_not_count_own_team_without_team_leader", () =>
   // Scenario: no job runs in the own session.
   // Step: count with no child teams. Check 0.
   assert.equal(countLiveJobTeams(sampleTeam, [], ["feature X"]), 0);
+});
+
+test("test_findDirectorChatOfJobTeam_undefined_when_team_has_no_team_leader", () => {
+  // Scenario: the team has no team leader.
+  // Step: find the Director chat for the sample team. Check for undefined.
+  assert.equal(findDirectorChatOfJobTeam(sampleTeam, undefined, "TeamLeader", "Director", "planner"), undefined);
+});
+
+test("test_findDirectorChatOfJobTeam_undefined_when_the_director_leads_the_team", () => {
+  // Scenario: the Director is the team leader, so no other Director exists.
+  // Step: find the Director chat for a team led by its Director. Check for undefined.
+  const team: Team = { teamName: "T", workDirectory: "/w", chats: [{ job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%1", model: "fable", status: "active", isTeamLeader: true }] };
+  assert.equal(findDirectorChatOfJobTeam(team, undefined, "TeamLeader", "Director", "Planner"), undefined);
+});
+
+test("test_findDirectorChatOfJobTeam_undefined_when_the_director_is_replaced", () => {
+  // Scenario: the Director is replaced, so the old Director is leaving and the new Director is starting.
+  // Step: find the Director chat with the swapped job Director. Check for undefined and no throw.
+  const team: Team = {
+    teamName: "T",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "T TeamLeader 1", pane: "%1", model: "sonnet", status: "active", isTeamLeader: true },
+      { job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%2", model: "fable", status: "leaving" },
+      { job: "Director", chatNumber: 2, chatName: "T Director 2", pane: "", model: "fable", status: "starting" },
+    ],
+  };
+  assert.equal(findDirectorChatOfJobTeam(team, undefined, "TeamLeader", "Director", "Director"), undefined);
+});
+
+test("test_findDirectorChatOfJobTeam_returns_active_director_of_own_team", () => {
+  // Scenario: the team has a team leader and an active Director, and no parent team.
+  // Step: find the Director chat with the swapped job Planner. Check that the Director chat of the team comes back.
+  const team: Team = {
+    teamName: "T",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "T TeamLeader 1", pane: "%1", model: "sonnet", status: "active", isTeamLeader: true },
+      { job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%2", model: "fable", status: "active" },
+    ],
+  };
+  assert.equal(findDirectorChatOfJobTeam(team, undefined, "TeamLeader", "Director", "Planner"), team.chats[1]);
+});
+
+test("test_findDirectorChatOfJobTeam_returns_active_director_of_parent_team", () => {
+  // Scenario: the team has a team leader and no Director, and the parent team has an active Director.
+  // Step: find the Director chat with the swapped job Planner. Check that the Director chat of the parent team comes back.
+  const team: Team = {
+    teamName: "T jobB",
+    workDirectory: "/w",
+    parentTeam: "T",
+    chats: [{ job: "TeamLeader", chatNumber: 1, chatName: "T jobB TeamLeader 1", pane: "%1", model: "sonnet", status: "active", isTeamLeader: true }],
+  };
+  const parentTeam: Team = {
+    teamName: "T",
+    workDirectory: "/w",
+    chats: [{ job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%2", model: "fable", status: "active" }],
+  };
+  assert.equal(findDirectorChatOfJobTeam(team, parentTeam, "TeamLeader", "Director", "Planner"), parentTeam.chats[0]);
+});
+
+test("test_findDirectorChatOfJobTeam_throws_when_no_active_director", () => {
+  // Scenario: the team has a team leader and no Director anywhere.
+  // Step: find the Director chat with the swapped job Planner. Check that it throws.
+  const team: Team = {
+    teamName: "T",
+    workDirectory: "/w",
+    chats: [{ job: "TeamLeader", chatNumber: 1, chatName: "T TeamLeader 1", pane: "%1", model: "sonnet", status: "active", isTeamLeader: true }],
+  };
+  assert.throws(() => findDirectorChatOfJobTeam(team, undefined, "TeamLeader", "Director", "Planner"));
+});
+
+test("test_hasBackgroundWorkDialog_true_for_dialog_screen", () => {
+  // Scenario: the chat shows the exit dialog for running background work.
+  // Step: check a screen with the dialog. Check for true.
+  const screen = " Background work is running\n The following will stop when you exit:\n\n subagent · Apply blocked handoff steps\n\n ❯ 1. Exit and stop tasks\n 2. Move to background and exit\n 3. Stay\n\n Enter to confirm · Esc to cancel";
+  assert.equal(hasBackgroundWorkDialog(screen), true);
+});
+
+test("test_hasBackgroundWorkDialog_false_for_idle_chat_screen", () => {
+  // Scenario: the chat is idle with an empty input box.
+  // Step: check a screen with output, a rule line and an empty box. Check for false.
+  const screen = "some output\n\n──────────\n❯ \n──────────\n  ? for shortcuts";
+  assert.equal(hasBackgroundWorkDialog(screen), false);
+});
+
+test("test_hasBackgroundWorkDialog_false_for_other_dialog", () => {
+  // Scenario: the chat shows a dialog that is not the background work dialog.
+  // Step: check a screen with another dialog. Check for false.
+  assert.equal(hasBackgroundWorkDialog("Pick one\n  Enter to select · Esc to cancel"), false);
+});
+
+const replacementModelValues = {
+  CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_MODEL: "opus",
+  CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_MODEL: "haiku",
+  CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL: "haiku",
+};
+
+test("test_getReplacementChatModel_reads_the_setting_for_a_teamleader", () => {
+  // Scenario: the old chat is the TeamLeader and its model differs from the setting.
+  // Step: get the replacement model for the old TeamLeader chat. Check that the TeamLeader setting comes back.
+  const oldChat = { job: "TeamLeader", chatNumber: 1, chatName: "T TeamLeader 1", pane: "%1", model: "fable", status: "leaving" as const, isTeamLeader: true };
+  assert.equal(getReplacementChatModel(oldChat, "TeamLeader", replacementModelValues), "opus");
+});
+
+test("test_getReplacementChatModel_keeps_the_old_model_for_another_job", () => {
+  // Scenario: the old chat is a Planner and its model differs from the Planner setting.
+  // Step: get the replacement model for the old Planner chat. Check that the old model comes back.
+  const oldChat = { job: "Planner", chatNumber: 1, chatName: "T Planner 1", pane: "%1", model: "sonnet", status: "leaving" as const };
+  assert.equal(getReplacementChatModel(oldChat, "TeamLeader", replacementModelValues), "sonnet");
+});
+
+test("test_getReplacementChatModel_keeps_the_old_model_for_a_director_that_leads_the_team", () => {
+  // Scenario: the old chat is a Director that leads the team and its model differs from the Director setting.
+  // Step: get the replacement model for the old Director chat. Check that the old model comes back.
+  const oldChat = { job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%1", model: "fable", status: "leaving" as const, isTeamLeader: true };
+  assert.equal(getReplacementChatModel(oldChat, "TeamLeader", replacementModelValues), "fable");
+});
+
+test("test_buildTranscriptDirectory_replaces_every_other_character_with_a_dash", () => {
+  // Scenario: the chat records of a work folder sit in a folder named after the work folder path.
+  // Step: build the folder for a work folder path with spaces, dots and slashes. Check that every character that is not a letter or a digit is a dash.
+  assert.equal(
+    buildTranscriptDirectory("/home/u/.claude/projects", "/Users/u/Desktop/claude code src/RevEng/.claude/worktrees/run-jfred-roadmap-2-page"),
+    "/home/u/.claude/projects/-Users-u-Desktop-claude-code-src-RevEng--claude-worktrees-run-jfred-roadmap-2-page",
+  );
+});
+
+test("test_findSessionIdOfChat_returns_the_session_id_of_the_matching_file", () => {
+  // Scenario: two chat record files hold two different chat names.
+  // Step: ask for the session id of "T page TeamLeader 1". Check that the id of the file with that name comes back.
+  const directory = mkdtempSync(join(tmpdir(), "transcripts-"));
+  writeFileSync(join(directory, "aaa.jsonl"), '{"type":"custom-title","customTitle":"T page TeamLeader 1","sessionId":"aaa"}\n');
+  writeFileSync(join(directory, "bbb.jsonl"), '{"type":"custom-title","customTitle":"T page Planner 1","sessionId":"bbb"}\n');
+  assert.equal(findSessionIdOfChat(directory, "T page TeamLeader 1"), "aaa");
+});
+
+test("test_findSessionIdOfChat_does_not_match_a_longer_chat_name", () => {
+  // Scenario: the only file holds the chat name "T page TeamLeader 10".
+  // Step: ask for "T page TeamLeader 1". Check for undefined.
+  const directory = mkdtempSync(join(tmpdir(), "transcripts-"));
+  writeFileSync(join(directory, "ccc.jsonl"), '{"type":"custom-title","customTitle":"T page TeamLeader 10","sessionId":"ccc"}\n');
+  assert.equal(findSessionIdOfChat(directory, "T page TeamLeader 1"), undefined);
+});
+
+test("test_findSessionIdOfChat_returns_the_file_that_changed_last", () => {
+  // Scenario: two files hold the same chat name and one file is one hour newer.
+  // Steps: write both files. Set the change times. Ask for the name. Check that the id of the newer file comes back.
+  const directory = mkdtempSync(join(tmpdir(), "transcripts-"));
+  writeFileSync(join(directory, "new.jsonl"), '{"type":"custom-title","customTitle":"T page TeamLeader 1","sessionId":"new"}\n');
+  writeFileSync(join(directory, "old.jsonl"), '{"type":"custom-title","customTitle":"T page TeamLeader 1","sessionId":"old"}\n');
+  const nowSeconds = Date.now() / 1000;
+  utimesSync(join(directory, "old.jsonl"), nowSeconds - 7200, nowSeconds - 7200);
+  utimesSync(join(directory, "new.jsonl"), nowSeconds - 3600, nowSeconds - 3600);
+  assert.equal(findSessionIdOfChat(directory, "T page TeamLeader 1"), "new");
+});
+
+test("test_findSessionIdOfChat_undefined_when_no_file_matches", () => {
+  // Scenario: the only file holds another chat name.
+  // Step: ask for "T page TeamLeader 1". Check for undefined.
+  const directory = mkdtempSync(join(tmpdir(), "transcripts-"));
+  writeFileSync(join(directory, "eee.jsonl"), '{"type":"custom-title","customTitle":"T page Planner 1","sessionId":"eee"}\n');
+  assert.equal(findSessionIdOfChat(directory, "T page TeamLeader 1"), undefined);
+});
+
+test("test_findSessionIdOfChat_ignores_files_that_are_not_jsonl", () => {
+  // Scenario: the only file holds the chat name but its name ends with .json.
+  // Step: ask for "T page TeamLeader 1". Check for undefined.
+  const directory = mkdtempSync(join(tmpdir(), "transcripts-"));
+  writeFileSync(join(directory, "ddd.json"), '{"type":"custom-title","customTitle":"T page TeamLeader 1","sessionId":"ddd"}\n');
+  assert.equal(findSessionIdOfChat(directory, "T page TeamLeader 1"), undefined);
+});
+
+test("test_listChatsInSwap_empty_when_all_chats_are_active", () => {
+  // Scenario: no chat swap is in progress.
+  // Step: list the chats in a swap for the sample team. Check for an empty list.
+  assert.deepEqual(listChatsInSwap(sampleTeam), []);
+});
+
+test("test_listChatsInSwap_returns_leaving_and_starting_chats", () => {
+  // Scenario: the team has one active chat, one leaving chat and one starting chat.
+  // Step: list the chats in a swap. Check that the leaving chat and the starting chat come back, in team order.
+  const team: Team = {
+    teamName: "T",
+    workDirectory: "/w",
+    chats: [
+      { job: "Director", chatNumber: 1, chatName: "T Director 1", pane: "%1", model: "fable", status: "active" },
+      { job: "Planner", chatNumber: 1, chatName: "T Planner 1", pane: "%2", model: "sonnet", status: "leaving" },
+      { job: "Planner", chatNumber: 2, chatName: "T Planner 2", pane: "", model: "sonnet", status: "starting" },
+    ],
+  };
+  assert.deepEqual(listChatsInSwap(team).map((chat) => chat.chatName), ["T Planner 1", "T Planner 2"]);
 });

@@ -9,6 +9,7 @@ export type Team = { teamName: string; workDirectory: string; parentTeam?: strin
 const LOCK_STALE_SECONDS = 30;
 const LOCK_GIVE_UP_SECONDS = 60;
 const LOCK_RETRY_SECONDS = 0.2;
+const CHAT_BUSY_PATTERN = /…\s*\(\d+[ms]/;
 
 export function buildTeamFilePath(stateDirectory: string, teamName: string): string {
   return `${stateDirectory}/claude-team/${encodeURIComponent(teamName)}.json`;
@@ -265,4 +266,88 @@ export function inputBoxHoldsMessage(screen: string, text: string): boolean {
     }
   }
   return false;
+}
+
+export function isChatBusy(screen: string): boolean {
+  const screenShowsBusyLine = CHAT_BUSY_PATTERN.test(screen);
+  return screenShowsBusyLine;
+}
+
+export function isInputBoxEmpty(screen: string): boolean {
+  const lines = screen.split("\n");
+  for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
+    const line = lines[lineIndex];
+    if (line.trimStart().startsWith("❯")) {
+      const textAfterPrompt = line.trimStart().slice(1);
+      const inputBoxHoldsNothing = textAfterPrompt.trim() === "";
+      return inputBoxHoldsNothing;
+    }
+  }
+  return false;
+}
+
+export function findDirectorChatOfJobTeam(team: Team, parentTeam: Team | undefined, teamLeaderJob: string, directorJob: string, swappedJob: string): TeamChat | undefined {
+  const teamLeader = findTeamLeader(team);
+  if (teamLeader === undefined)
+    return undefined;
+  if (teamLeader.job !== teamLeaderJob)
+    return undefined;
+  if (swappedJob === directorJob)
+    return undefined;
+  let teamWithDirector = team;
+  if (parentTeam !== undefined)
+    teamWithDirector = parentTeam;
+  const directorChat = findChatWithStatus(teamWithDirector, directorJob, "active");
+  if (directorChat === undefined)
+    throw new Error(`the Director of team ${team.teamName} has no active chat`);
+  return directorChat;
+}
+
+export function hasBackgroundWorkDialog(screen: string): boolean {
+  const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
+  const screenShowsBackgroundWorkDialog = screenWithoutWhiteSpace.includes("Backgroundworkisrunning");
+  return screenShowsBackgroundWorkDialog;
+}
+
+export function getReplacementChatModel(oldChat: TeamChat, teamLeaderJob: string, values: Record<string, string>): string {
+  if (oldChat.job === teamLeaderJob)
+    return values[buildJobValueKey(teamLeaderJob, "MODEL")];
+  return oldChat.model;
+}
+
+export function buildTranscriptDirectory(projectsDirectory: string, workDirectory: string): string {
+  const directoryName = workDirectory.replace(/[^a-zA-Z0-9]/g, "-");
+  return `${projectsDirectory}/${directoryName}`;
+}
+
+export function findSessionIdOfChat(transcriptDirectory: string, chatName: string): string | undefined {
+  const textToFind = `"customTitle":${JSON.stringify(chatName)}`;
+  let newestFileName: string | undefined = undefined;
+  let newestModifiedMilliseconds = -1;
+  for (const fileName of readdirSync(transcriptDirectory)) {
+    if (!fileName.endsWith(".jsonl"))
+      continue;
+    const filePath = `${transcriptDirectory}/${fileName}`;
+    const fileText = readFileSync(filePath, "utf8");
+    const fileIsMatch = fileText.includes(textToFind);
+    if (fileIsMatch) {
+      const modifiedMilliseconds = statSync(filePath).mtimeMs;
+      if (modifiedMilliseconds > newestModifiedMilliseconds) {
+        newestFileName = fileName;
+        newestModifiedMilliseconds = modifiedMilliseconds;
+      }
+    }
+  }
+  if (newestFileName === undefined)
+    return undefined;
+  return newestFileName.slice(0, -".jsonl".length);
+}
+
+export function listChatsInSwap(team: Team): TeamChat[] {
+  const chatsInSwap: TeamChat[] = [];
+  for (const chat of team.chats) {
+    if (chat.status !== "active")
+      chatsInSwap.push(chat);
+  }
+  return chatsInSwap;
 }

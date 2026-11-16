@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { buildTeamFilePath, fillTemplate, lockTeamFile, readTeamFile, undoReplacementChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
@@ -19,12 +19,16 @@ const removedChat = undoReplacementChat(team, job, oldChatName);
 writeTeamFile(teamFilePath, team);
 unlockTeamFile(teamFilePath);
 
-rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, { force: true });
+// rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, { force: true });
 
 if (removedChat === undefined) {
   console.log(`swap of "${oldChatName}" failed after the new chat became active. See the log.`);
   process.exit(0);
 }
+
+rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, { force: true });
+mkdirSync(`${DISPATCHER_DIR}/swap-failed`, { recursive: true });
+writeFileSync(`${DISPATCHER_DIR}/swap-failed/${oldSessionId}`, "");
 
 if (removedChat.pane !== "") {
   // tmux_paneExists answers true for a missing pane, so list the panes instead

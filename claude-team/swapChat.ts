@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { buildDirectorPaneCommand } from "./teamCommand.ts";
-import { addReplacementChat, buildHandle, buildHandleList, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, findNewHandoffFile, findTeamLeader, listHandoffFiles, listIdleStateDirectories, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
-import type { TeamChat } from "./teamFile.ts";
+import { addReplacementChat, buildHandle, buildHandleList, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, findDirectorChatOfJobTeam, findNewHandoffFile, findTeamLeader, getReplacementChatModel, listHandoffFiles, listIdleStateDirectories, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import type { Team, TeamChat } from "./teamFile.ts";
 import { sendTextToChat } from "./teamSend.ts";
 import { startChatInNewWindow } from "./teamStart.ts";
 
@@ -25,6 +25,7 @@ if (oldChat.chatName !== oldChatName) {
   unlockTeamFile(teamFilePath);
   throw new Error(`the chat "${oldChatName}" is already replaced by "${oldChat.chatName}"`);
 }
+newChat.model = getReplacementChatModel(oldChat, values["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"], values);
 writeTeamFile(teamFilePath, team);
 unlockTeamFile(teamFilePath);
 
@@ -84,18 +85,22 @@ unlockTeamFile(teamFilePath);
 //   rolePrompt = fillTemplate(`${values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PROMPT"]}\n${startedByPrompt}`, directorTextFields);
 // }
 const teamLeaderJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"];
-let directorChatOfJobTeam: TeamChat | undefined;
+// let directorChatOfJobTeam: TeamChat | undefined;
 const teamLeader = findTeamLeader(team);
-if (teamLeader !== undefined) {
-  if (teamLeader.job === teamLeaderJob) {
-    let teamWithDirector = team;
-    if (team.parentTeam !== undefined)
-      teamWithDirector = readTeamFile(buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.parentTeam));
-    directorChatOfJobTeam = findChatWithStatus(teamWithDirector, directorJob, "active");
-    if (directorChatOfJobTeam === undefined)
-      throw new Error(`the Director of team ${teamName} has no active chat`);
-  }
-}
+// if (teamLeader !== undefined) {
+//   if (teamLeader.job === teamLeaderJob) {
+//     let teamWithDirector = team;
+//     if (team.parentTeam !== undefined)
+//       teamWithDirector = readTeamFile(buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.parentTeam));
+//     directorChatOfJobTeam = findChatWithStatus(teamWithDirector, directorJob, "active");
+//     if (directorChatOfJobTeam === undefined)
+//       throw new Error(`the Director of team ${teamName} has no active chat`);
+//   }
+// }
+let parentTeam: Team | undefined;
+if (team.parentTeam !== undefined)
+  parentTeam = readTeamFile(buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.parentTeam));
+const directorChatOfJobTeam = findDirectorChatOfJobTeam(team, parentTeam, teamLeaderJob, directorJob, job);
 
 let rolePrompt: string;
 if (oldChat.isTeamLeader === true) {
@@ -112,6 +117,7 @@ else if (job === directorJob) {
   rolePrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_START_PROMPT"], {
     leadScript: `${import.meta.dirname}/leadJobDirectly.ts`,
     jobTeamScript: `${import.meta.dirname}/startJobTeam.ts`,
+    closeTeamScript: `${import.meta.dirname}/closeJobTeam.ts`,
     maxTeams: values["CLAUDE_HOOKS_CLAUDE_TEAM_MAX_TEAMS"],
     readFindHandle: buildHandle(readFindChat.chatName),
   });

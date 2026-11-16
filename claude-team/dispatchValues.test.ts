@@ -32,6 +32,13 @@ test("test_teamValues_have_model_and_prompt_for_each_role", () => {
   }
 });
 
+test("test_dispatch_json_gives_the_teamleader_job_the_opus_model", () => {
+  // Scenario: the TeamLeader chat has its own model value and does not copy the Director.
+  // Step: read the TeamLeader job name from its value. Check that the model value of that job is opus.
+  const teamLeaderJob = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"] as string;
+  assert.equal(teamValues[buildJobValueKey(teamLeaderJob, "MODEL")], "opus");
+});
+
 test("test_teamValues_have_no_keys_of_the_old_job_names", () => {
   // Scenario: the old job names are gone.
   // Step: collect the keys that hold an old job name. The list must be empty.
@@ -63,7 +70,7 @@ test("test_texts_use_only_fields_that_the_scripts_give", () => {
   // Scenario: fillTemplate throws on a field that the scripts do not give.
   // Step 1: list the fields that the scripts give to each text.
   const fieldsOfText: Record<string, string[]> = {
-    DIRECTOR_START_PROMPT: ["leadScript", "jobTeamScript", "maxTeams", "readFindHandle"],
+    DIRECTOR_START_PROMPT: ["leadScript", "jobTeamScript", "closeTeamScript", "maxTeams", "readFindHandle"],
     TEAMLEADER_PROMPT: ["maxRounds", "userQuestionRule"],
     TEAMLEADER_QUESTION_RULE_MODE_1: [],
     TEAMLEADER_QUESTION_RULE_MODE_2: ["directorHandle"],
@@ -100,6 +107,13 @@ test("test_directorStartPrompt_names_both_scripts_and_the_team_limit", () => {
   assert.ok(directorStartPrompt.includes('bun {jobTeamScript} "JOB-NAME" "JOB-TEXT"'));
   assert.ok(directorStartPrompt.includes("{maxTeams}"));
   assert.ok(directorStartPrompt.includes("{readFindHandle}"));
+});
+
+test("test_director_start_prompt_holds_the_close_team_command", () => {
+  // Scenario: the Director closes a job team with an exact command.
+  // Step: read the text. Check the close command.
+  const directorStartPrompt = joinValue("CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_START_PROMPT");
+  assert.ok(directorStartPrompt.includes('bun {closeTeamScript} "JOB-NAME"'));
 });
 
 test("test_teamValues_name_the_read_find_job", () => {

@@ -23,6 +23,7 @@ const readFindJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_JOB"];
 const directorStartPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_START_PROMPT"], {
   leadScript: `${import.meta.dirname}/leadJobDirectly.ts`,
   jobTeamScript: `${import.meta.dirname}/startJobTeam.ts`,
+  closeTeamScript: `${import.meta.dirname}/closeJobTeam.ts`,
   maxTeams: values["CLAUDE_HOOKS_CLAUDE_TEAM_MAX_TEAMS"],
   readFindHandle: buildHandle(buildChatName(team.name, readFindJob, 1)),
 });

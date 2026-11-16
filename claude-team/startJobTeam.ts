@@ -65,7 +65,8 @@ const worktreeSection = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_WORKTREE_T
 
 const jobTeamFilePath = buildTeamFilePath(stateDirectory, jobTeamName);
 const teamLeaderChatName = buildChatName(jobTeamName, teamLeaderJob, 1);
-const teamLeaderChat: TeamChat = { job: teamLeaderJob, chatNumber: 1, chatName: teamLeaderChatName, pane: "", model: directorChat.model, status: "starting", needsRoleText: true, isTeamLeader: true };
+// const teamLeaderChat: TeamChat = { job: teamLeaderJob, chatNumber: 1, chatName: teamLeaderChatName, pane: "", model: directorChat.model, status: "starting", needsRoleText: true, isTeamLeader: true };
+const teamLeaderChat: TeamChat = { job: teamLeaderJob, chatNumber: 1, chatName: teamLeaderChatName, pane: "", model: values[buildJobValueKey(teamLeaderJob, "MODEL")], status: "starting", needsRoleText: true, isTeamLeader: true };
 const teamLeaderEnvironmentFlags = buildPaneEnvironmentFlags(jobTeamName, teamLeaderJob, teamLeaderChatName);
 const teamLeaderPaneCommand = buildDirectorPaneCommand(teamLeaderChatName, teamLeaderChat.model, "");
 

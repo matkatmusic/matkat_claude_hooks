@@ -144,7 +144,19 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   const usage = await $.session.usage();
   const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
   const backgroundTaskCount = (e.background_tasks ?? []).length;
-  const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
+  // const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
+  const sessionId = await $.session.id();
+  const { value: storedIsSwapStarted = false } = await $.state.get(isSwapStartedRef);
+  let isSwapStarted = storedIsSwapStarted;
+  if (isSwapStarted) {
+    const swapFailedMarkerPath = `${$.plugin.root}/${DISPATCHER_DIR}/swap-failed/${sessionId}`;
+    const isSwapFailed = await $.fs.exists(swapFailedMarkerPath);
+    if (isSwapFailed) {
+      await $.process.run(['rm', swapFailedMarkerPath]);
+      await $.state.set(isSwapStartedRef, false);
+      isSwapStarted = false;
+    }
+  }
   const isDue = isSwapDue({ teamName, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
   if (!isDue)
     return next(e);
@@ -152,7 +164,7 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   const scriptFolder = `${$.plugin.root}/../../claude-team`;
   const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-team-swap.log`;
   const swapArguments = `${wrapShellWord(teamName!)} ${wrapShellWord(job!)} ${wrapShellWord(chatName!)}`;
-  const sessionId = await $.session.id();
+  // const sessionId = await $.session.id();
   const swapCommand = `bun ${scriptFolder}/swapChat.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;
   const failedCommand = `bun ${scriptFolder}/swapFailed.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;
   const result = await $.process.run(['tmux', 'run-shell', '-b', `${swapCommand} || ${failedCommand}`]);

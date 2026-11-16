@@ -91,6 +91,29 @@ function watchSwap($: any, on: any, teamName: string | undefined) {
   return { swapCommands }
 }
 
+function watchSwapWithFailedMarker($: any, on: any, teamName: string) {
+  const runCommands: string[][] = []
+  const swapFailedMarker = { exists: false }
+  on('classic.Stop', () => ({}))
+  on('fs.exists', (_$: any, e: any) => {
+    if (e.path.includes('/swap-failed/'))
+      return { value: swapFailedMarker.exists }
+    return { value: false }
+  })
+  on('fs.read', () => ({ value: DISPATCH_WITH_SWAP }))
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 35, window: 200000 } } }))
+  on('env.get', (_$: any, e: any) => {
+    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    return { value: values[e.name] }
+  })
+  on('process.run', (_$: any, e: any) => {
+    runCommands.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  return { runCommands, swapFailedMarker }
+}
+
 test('a Stop above the swap percent in a team chat starts the swap script once', async ($, on) => {
   const { swapCommands } = watchSwap($, on, 'team a')
   await $.classic.Stop(STOP_EVENT)
@@ -111,6 +134,27 @@ test('a second Stop above the swap percent starts no second swap', async ($, on)
   await $.classic.Stop(STOP_EVENT)
   await $.classic.Stop(STOP_EVENT)
   expect(swapCommands).toHaveLength(1)
+})
+
+test('a Stop after a failed swap starts the swap script again', async ($, on) => {
+  const { runCommands, swapFailedMarker } = watchSwapWithFailedMarker($, on, 'team a')
+  await $.classic.Stop(STOP_EVENT)
+  const swapCommands = () => runCommands.filter(command => command[0] === 'tmux')
+  expect(swapCommands()).toHaveLength(1)
+  swapFailedMarker.exists = true
+  await $.classic.Stop(STOP_EVENT)
+  expect(swapCommands()).toHaveLength(2)
+})
+
+test('a Stop after a failed swap removes the swap-failed marker', async ($, on) => {
+  const { runCommands, swapFailedMarker } = watchSwapWithFailedMarker($, on, 'team a')
+  await $.classic.Stop(STOP_EVENT)
+  swapFailedMarker.exists = true
+  await $.classic.Stop(STOP_EVENT)
+  const removeCommands = runCommands.filter(command => command[0] === 'rm')
+  expect(removeCommands).toHaveLength(1)
+  expect(removeCommands[0]![1]).toContain('/swap-failed/')
+  expect(removeCommands[0]![1]!.endsWith('/swap-failed/sess-9')).toBe(true)
 })
 
 test('a Stop with no team name starts no swap', async ($, on) => {

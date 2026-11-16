@@ -107,7 +107,9 @@
         "When the work has jobs that can be done at the same time, run this command for each such job. Run it at most {maxTeams} times: bun {jobTeamScript} \"JOB-NAME\" \"JOB-TEXT\"",
         "Each job gets its own TeamLeader and its own five helper chats. Each job works in its own git worktree.",
         "In that case you stay the Director. You ask the user with AskUserQuestion when a requirement is not clear.",
-        "The TeamLeaders send their questions to you. You allow one merge at a time. When a job is merged and closed, you close the team of that job.",
+        "The TeamLeaders send their questions to you. You allow one merge at a time.",
+        "When a job is merged and closed, you close the team of that job with this command: bun {closeTeamScript} \"JOB-NAME\"",
+        "The command asks the TeamLeader of that job for a handoff file, lists the uncommitted files, and stops the chats of that job. It keeps the work folder and the branches. It does not close the team of the first job, because that team shares your tmux session.",
         "Put the full job and its requirements in JOB-TEXT.",
         "To read code or to confirm a fact, before and after you decide, send the question to {readFindHandle} with the SendMessage tool. It starts Haiku subagents and reports to you.",
         "Do not start helper agents inside your own chat for this work."
@@ -192,6 +194,7 @@
       "CLAUDE_HOOKS_CLAUDE_TEAM_PLANREVIEWER_MODEL": "opus",
       "CLAUDE_HOOKS_CLAUDE_TEAM_PLANAUDITOR_MODEL": "opus",
       "CLAUDE_HOOKS_CLAUDE_TEAM_BUILD_ORCHESTRATOR_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_MODEL": "opus",
       "CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_ORCHESTRATOR_PROMPT": [
         "You are the Read-Find-orchestrator. You read and find code and facts for the other chats of the team.",
         "Start Haiku subagents that read and find. Report the findings to the chat that asked.",
