@@ -50,26 +50,65 @@ function buildNewCommitsText(repoFolder: string, sinceSeconds: number): string {
     return sections.join("\n\n");
 }
 
-function listNewCommitLines(folder: string, sinceSeconds: number): string {
-    return execFileSync("git", ["-C", folder, "log", "--all", `--since=@${sinceSeconds}`, "--format=commit %h %s"], { encoding: "utf8" }).trim();
+// function listNewCommitLines(folder: string, sinceSeconds: number): string {
+//     return execFileSync("git", ["-C", folder, "log", "--all", `--since=@${sinceSeconds}`, "--format=commit %h %s"], { encoding: "utf8" }).trim();
+// }
+
+type CommitEntry = { hash: string; message: string };
+
+function listNewCommitEntries(folder: string, sinceSeconds: number): CommitEntry[] {
+    const output = execFileSync("git", ["-C", folder, "log", "--all", `--since=@${sinceSeconds}`, "-z", "--format=%h%n%B"], { encoding: "utf8" });
+    const entries: CommitEntry[] = [];
+    for (const rawEntry of output.split("\0")) {
+        const entry = rawEntry.replace(/^\n+/, "");
+        if (entry === "")
+            continue;
+        const firstNewlineIndex = entry.indexOf("\n");
+        if (firstNewlineIndex === -1) {
+            entries.push({ hash: entry, message: "" });
+            continue;
+        }
+        entries.push({ hash: entry.slice(0, firstNewlineIndex), message: entry.slice(firstNewlineIndex + 1) });
+    }
+    return entries;
+}
+
+function readTaskNumbersOfCommitMessage(message: string): number[] {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage.startsWith("{"))
+        return [];
+    const parsedMessage = JSON.parse(trimmedMessage);
+    return parsedMessage.tasks;
+}
+
+function readSubjectOfCommitMessage(message: string): string {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage.startsWith("{"))
+        return trimmedMessage.split("\n")[0];
+    const parsedMessage = JSON.parse(trimmedMessage);
+    return parsedMessage.subject;
 }
 
 function buildNewCommitLinesText(repoFolder: string, sinceSeconds: number): string {
     const sections: string[] = [];
-    const repoCommits = listNewCommitLines(repoFolder, sinceSeconds);
-    if (repoCommits !== "")
-        sections.push(repoCommits);
+    const repoLines: string[] = [];
+    for (const entry of listNewCommitEntries(repoFolder, sinceSeconds))
+        repoLines.push(`commit ${entry.hash} ${readSubjectOfCommitMessage(entry.message)}`);
+    if (repoLines.length > 0)
+        sections.push(repoLines.join("\n"));
     for (const submodulePath of listSubmodulePaths(repoFolder)) {
-        const submoduleCommits = listNewCommitLines(`${repoFolder}/${submodulePath}`, sinceSeconds);
-        if (submoduleCommits !== "")
-            sections.push(`Submodule ${submodulePath}:\n${submoduleCommits}`);
+        const submoduleLines: string[] = [];
+        for (const entry of listNewCommitEntries(`${repoFolder}/${submodulePath}`, sinceSeconds))
+            submoduleLines.push(`commit ${entry.hash} ${readSubjectOfCommitMessage(entry.message)}`);
+        if (submoduleLines.length > 0)
+            sections.push(`Submodule ${submodulePath}:\n${submoduleLines.join("\n")}`);
     }
     return sections.join("\n\n");
 }
 
-function listNewCommitMessages(folder: string, sinceSeconds: number): string {
-    return execFileSync("git", ["-C", folder, "log", "--all", `--since=@${sinceSeconds}`, "--format=%B"], { encoding: "utf8" });
-}
+// function listNewCommitMessages(folder: string, sinceSeconds: number): string {
+//     return execFileSync("git", ["-C", folder, "log", "--all", `--since=@${sinceSeconds}`, "--format=%B"], { encoding: "utf8" });
+// }
 
 function listTaskNumbersInCommitMessages(repoFolder: string, sinceSeconds: number): Set<number> {
     const taskNumbers = new Set<number>();
@@ -77,9 +116,13 @@ function listTaskNumbersInCommitMessages(repoFolder: string, sinceSeconds: numbe
     for (const submodulePath of listSubmodulePaths(repoFolder))
         folders.push(`${repoFolder}/${submodulePath}`);
     for (const folder of folders) {
-        const messages = listNewCommitMessages(folder, sinceSeconds);
-        for (const match of messages.matchAll(/#(\d+)/g))
-            taskNumbers.add(Number(match[1]));
+        // const messages = listNewCommitMessages(folder, sinceSeconds);
+        // for (const match of messages.matchAll(/#(\d+)/g))
+        //     taskNumbers.add(Number(match[1]));
+        for (const entry of listNewCommitEntries(folder, sinceSeconds)) {
+            for (const taskNumber of readTaskNumbersOfCommitMessage(entry.message))
+                taskNumbers.add(taskNumber);
+        }
     }
     return taskNumbers;
 }

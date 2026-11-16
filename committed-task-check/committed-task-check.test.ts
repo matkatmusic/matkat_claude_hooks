@@ -80,6 +80,23 @@ function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | 
     return result.stdout.trim();
 }
 
+function runHookAndGetExitStatus(fixture: Fixture, teamJob: string | undefined): number | null {
+    const payload = {
+        cwd: fixture.repo,
+        session_id: fixture.sessionId,
+        transcript_path: fixture.transcriptPath,
+        stop_hook_active: false,
+        settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: fixture.stateDir },
+    };
+    const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: TASK_LIST_ID, CLAUDE_TMUX_TEAM_JOB: teamJob };
+    const result = spawnSync("node", [`${import.meta.dirname}/committed-task-check.ts`], {
+        input: JSON.stringify(payload),
+        encoding: "utf8",
+        env: environment,
+    });
+    return result.status;
+}
+
 function assertBlocksWithCommitAndTask(output: string, commitHash: string): void {
     const decision = JSON.parse(output);
     assert.equal(decision.decision, "block");
@@ -209,7 +226,7 @@ test("test_team_leader_reason_lists_only_tasks_named_in_commit_messages", () => 
     const fixture = setUpFixture("pending");
     writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
     writeTranscript(fixture);
-    const commitHash = makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    const commitHash = makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "work", tasks: [OPEN_TASK_NUMBER] }));
     // The TeamLeader stop is blocked.
     const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
     assert.equal(decision.decision, "block");
@@ -224,7 +241,7 @@ test("test_director_reason_lists_only_tasks_named_in_commit_messages", () => {
     const fixture = setUpFixture("pending");
     writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
     writeTranscript(fixture);
-    const commitHash = makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    const commitHash = makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "work", tasks: [OPEN_TASK_NUMBER] }));
     // The Director stop is blocked.
     const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, DIRECTOR_JOB));
     assert.equal(decision.decision, "block");
@@ -238,7 +255,7 @@ test("test_team_leader_reason_holds_no_changed_file_names", () => {
     // Scenario: a commit changes second.txt, and its message names the open task.
     const fixture = setUpFixture("pending");
     writeTranscript(fixture);
-    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "work", tasks: [OPEN_TASK_NUMBER] }));
     // The TeamLeader stop is blocked.
     const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
     assert.equal(decision.decision, "block");
@@ -246,28 +263,28 @@ test("test_team_leader_reason_holds_no_changed_file_names", () => {
     assert.ok(!decision.reason.includes("second.txt"));
 });
 
-test("test_task_number_in_commit_body_counts_for_team_leader", () => {
-    // Scenario: two tasks are open, and the commit body names only one of them.
-    const fixture = setUpFixture("pending");
-    writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
-    writeTranscript(fixture);
-    makeCommit(fixture.repo, "second.txt", `work\n\nCloses #${OPEN_TASK_NUMBER}`);
-    // The TeamLeader stop is blocked.
-    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
-    assert.equal(decision.decision, "block");
-    // The reason holds the named task, and not the other task.
-    assert.ok(decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
-    assert.ok(!decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
-});
+// test("test_task_number_in_commit_body_counts_for_team_leader", () => {
+//     // Scenario: two tasks are open, and the commit body names only one of them.
+//     const fixture = setUpFixture("pending");
+//     writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
+//     writeTranscript(fixture);
+//     makeCommit(fixture.repo, "second.txt", `work\n\nCloses #${OPEN_TASK_NUMBER}`);
+//     // The TeamLeader stop is blocked.
+//     const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+//     assert.equal(decision.decision, "block");
+//     // The reason holds the named task, and not the other task.
+//     assert.ok(decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
+//     assert.ok(!decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
+// });
 
-test("test_longer_number_does_not_match_shorter_task_for_team_leader", () => {
-    // Scenario: the commit message names a task number that starts with the open task number.
-    const fixture = setUpFixture("pending");
-    writeTranscript(fixture);
-    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}0`);
-    // The TeamLeader stop prints nothing.
-    assert.equal(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB), "");
-});
+// test("test_longer_number_does_not_match_shorter_task_for_team_leader", () => {
+//     // Scenario: the commit message names a task number that starts with the open task number.
+//     const fixture = setUpFixture("pending");
+//     writeTranscript(fixture);
+//     makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}0`);
+//     // The TeamLeader stop prints nothing.
+//     assert.equal(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB), "");
+// });
 
 test("test_team_leader_passes_when_no_commit_names_a_task", () => {
     // Scenario: a commit exists and a task is open, but the commit message names no task.
@@ -282,7 +299,68 @@ test("test_helper_chat_of_team_gets_no_commit_check", () => {
     // Scenario: a helper chat of a team makes a commit that names the open task.
     const fixture = setUpFixture("pending");
     writeTranscript(fixture);
-    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "work", tasks: [OPEN_TASK_NUMBER] }));
     // The helper stop prints nothing.
     assert.equal(runHook(fixture, {}, TASK_LIST_ID, HELPER_JOB), "");
+});
+
+test("test_hash_text_no_longer_names_a_task_for_team_leader", () => {
+    // Scenario: a commit message holds #N text for the open task, and no JSON.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", `work for #${OPEN_TASK_NUMBER}`);
+    // The TeamLeader stop prints nothing.
+    assert.equal(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB), "");
+});
+
+test("test_reason_shows_json_subject_value_for_team_leader", () => {
+    // Scenario: a commit message is JSON that names the open task.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    const commitHash = makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "fix swap retry", tasks: [OPEN_TASK_NUMBER] }));
+    // The TeamLeader stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+    assert.equal(decision.decision, "block");
+    // The commit line holds the hash and the subject value.
+    assert.ok(decision.reason.includes(`commit ${commitHash} fix swap retry`));
+    // The reason does not hold the raw JSON.
+    assert.ok(!decision.reason.includes("\"tasks\""));
+});
+
+test("test_reason_shows_normal_subject_of_non_json_commit_for_team_leader", () => {
+    // Scenario: a plain user commit comes first, then a JSON commit that names the open task.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    const userHash = makeCommit(fixture.repo, "first-user.txt", "user work");
+    const jsonHash = makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "json work", tasks: [OPEN_TASK_NUMBER] }));
+    // The TeamLeader stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, TEAM_LEADER_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason holds the plain subject line of the user commit.
+    assert.ok(decision.reason.includes(`commit ${userHash} user work`));
+    // The reason holds the JSON commit.
+    assert.ok(decision.reason.includes(jsonHash));
+});
+
+test("test_bad_json_commit_message_fails_the_hook_for_team_leader", () => {
+    // Scenario: a commit message starts with { but is not valid JSON.
+    const fixture = setUpFixture("pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", "{not json");
+    // The hook exits with a non-zero status.
+    assert.notEqual(runHookAndGetExitStatus(fixture, TEAM_LEADER_JOB), 0);
+});
+
+test("test_director_gets_tasks_from_json_commit_message", () => {
+    // Scenario: two tasks are open, and a JSON commit message names only the second one.
+    const fixture = setUpFixture("pending");
+    writeTask(fixture.home, OTHER_OPEN_TASK_NUMBER, "pending");
+    writeTranscript(fixture);
+    makeCommit(fixture.repo, "second.txt", JSON.stringify({ subject: "work", tasks: [OTHER_OPEN_TASK_NUMBER] }));
+    // The Director stop is blocked.
+    const decision = JSON.parse(runHook(fixture, {}, TASK_LIST_ID, DIRECTOR_JOB));
+    assert.equal(decision.decision, "block");
+    // The reason holds the named task, and not the other task.
+    assert.ok(decision.reason.includes(`subject ${OTHER_OPEN_TASK_NUMBER}`));
+    assert.ok(!decision.reason.includes(`subject ${OPEN_TASK_NUMBER}`));
 });
