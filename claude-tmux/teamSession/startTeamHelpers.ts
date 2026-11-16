@@ -1,18 +1,18 @@
-import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 import { buildDetachedSizeFlags } from "./teamCommand.ts";
 import { buildTeamFilePath, findChatWithStatus, readTeamFile } from "./teamFile.ts";
 import { startHelperChats } from "./teamStart.ts";
 
-const teamName = process.env.CLAUDE_TEAM_NAME;
-const job = process.env.CLAUDE_TEAM_JOB;
+const teamName = process.env.CLAUDE_TMUX_TEAM_NAME;
+const job = process.env.CLAUDE_TMUX_TEAM_JOB;
 if (teamName === undefined)
-  throw new Error("startTeamHelpers.ts must run inside a claude-team chat");
+  throw new Error("startTeamHelpers.ts must run inside a claude-tmux team chat");
 if (job === undefined)
-  throw new Error("startTeamHelpers.ts must run inside a claude-team chat");
+  throw new Error("startTeamHelpers.ts must run inside a claude-tmux team chat");
 
-const values = getValues(readSettings(DISPATCHER_DIR), "claude-team");
-const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
+const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+const directorJob = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"];
 if (job !== directorJob)
   throw new Error("only the Director can start the helper chats");
 

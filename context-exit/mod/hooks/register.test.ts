@@ -1,10 +1,14 @@
 import { test, expect } from 'claude-code/testing'
-import { isSwapDue } from './register'
+import { isSwapDue, getSwapMode, getSwapPercent } from './register'
 
-const SWAP_DUE_INPUT = { teamName: 'team a', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false }
+// const SWAP_DUE_INPUT = { teamName: 'team a', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false }
+const SWAP_DUE_INPUT = { swapMode: 'team', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false } as const
 
-test('isSwapDue is false with no team name', () => {
-  expect(isSwapDue({ ...SWAP_DUE_INPUT, teamName: undefined })).toBe(false)
+// test('isSwapDue is false with no team name', () => {
+//   expect(isSwapDue({ ...SWAP_DUE_INPUT, teamName: undefined })).toBe(false)
+// })
+test('isSwapDue is false with no swap mode', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, swapMode: undefined })).toBe(false)
 })
 
 test('isSwapDue is false when the percent is undefined', () => {
@@ -59,6 +63,7 @@ function watchStopHooksOffMarker(on: any) {
   const markerWrites: string[] = []
   const removeCommands: string[][] = []
   on('session.id', () => ({ value: 'sess-9' }))
+  on('env.get', () => ({ value: undefined }))
   on('prompt.submit', (_$: any, e: any) => ({ text: e.text }))
   on('fs.write', (_$: any, e: any) => { markerWrites.push(e.path); return { value: undefined } })
   on('process.run', (_$: any, e: any) => {
@@ -81,7 +86,7 @@ function watchSwap($: any, on: any, teamName: string | undefined) {
   on('env.get', (_$: any, e: any) => {
     if (teamName === undefined)
       return { value: undefined }
-    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    const values: Record<string, string> = { CLAUDE_TMUX_TEAM_NAME: teamName, CLAUDE_TMUX_TEAM_JOB: 'orchestrator', CLAUDE_TMUX_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
     return { value: values[e.name] }
   })
   on('process.run', (_$: any, e: any) => {
@@ -104,7 +109,7 @@ function watchSwapWithFailedMarker($: any, on: any, teamName: string) {
   on('session.id', () => ({ value: 'sess-9' }))
   on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 35, window: 200000 } } }))
   on('env.get', (_$: any, e: any) => {
-    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    const values: Record<string, string> = { CLAUDE_TMUX_TEAM_NAME: teamName, CLAUDE_TMUX_TEAM_JOB: 'orchestrator', CLAUDE_TMUX_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
     return { value: values[e.name] }
   })
   on('process.run', (_$: any, e: any) => {
@@ -274,4 +279,174 @@ test('a new session warns again at the first level', async ($, on) => {
   const { toasts } = watchContext($, on, 31)
   await $.turn.complete(ANSWER)
   expect(toasts).toHaveLength(1)
+})
+
+const SINGLE_CHAT_SWAP_TOAST_TEXT = 'single chat swap toast text'
+const SINGLE_CHAT_PROMPT_DROP_REASON_TEXT = 'single chat prompt drop reason text'
+const DISPATCH_WITH_SINGLE_CHAT_SWAP = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true, "classic.Stop": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80", "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "' + SINGLE_CHAT_SWAP_TOAST_TEXT + '", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "' + SINGLE_CHAT_PROMPT_DROP_REASON_TEXT + '" } } }'
+const SINGLE_CHAT_ENVIRONMENT: Record<string, string> = { CLAUDE_TMUX_NAME: 'bed', CLAUDE_TMUX_CHAT_NUMBER: '1', CLAUDE_TMUX_MODEL: 'haiku', CLAUDE_TMUX_WORK_DIRECTORY: '/work/bed', TMUX_PANE: '%7' }
+
+function watchSingleChatSwap($: any, on: any, environmentValues: Record<string, string>, runShellExitCode: number) {
+  const runCommands: string[][] = []
+  const toasts: string[] = []
+  const submittedTexts: string[] = []
+  const swapFailedMarker = { exists: false }
+  on('classic.Stop', () => ({}))
+  on('fs.exists', (_$: any, e: any) => {
+    if (e.path.includes('/swap-failed/'))
+      return { value: swapFailedMarker.exists }
+    return { value: false }
+  })
+  on('fs.read', () => ({ value: DISPATCH_WITH_SINGLE_CHAT_SWAP }))
+  on('fs.write', () => ({ value: undefined }))
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('session.root', () => ({ value: '/work/p' }))
+  on('clock.now', () => ({ value: Date.UTC(2026, 0, 2, 3, 4, 5) }))
+  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 35, window: 200000 } } }))
+  on('env.get', (_$: any, e: any) => ({ value: environmentValues[e.name] }))
+  on('process.run', (_$: any, e: any) => {
+    runCommands.push(e.argv)
+    const exitCode = e.argv[0] === 'tmux' ? runShellExitCode : 0
+    return { value: { exitCode, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('ui.toast', (_$: any, e: any) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.status', () => ({ value: undefined }))
+  on('prompt.submit', (_$: any, e: any) => {
+    submittedTexts.push(e.text)
+    return { text: e.text }
+  })
+  return { runCommands, toasts, submittedTexts, swapFailedMarker }
+}
+
+async function submitPromptForResult($: any, text: string) {
+  return await $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
+}
+
+test('test_getSwapMode_returns_team_when_the_team_name_is_set', () => {
+  expect(getSwapMode('team a', 'bed')).toBe('team')
+})
+
+test('test_getSwapMode_returns_single_when_only_the_claude_tmux_name_is_set', () => {
+  expect(getSwapMode(undefined, 'bed')).toBe('single')
+})
+
+test('test_getSwapMode_returns_undefined_without_both_names', () => {
+  expect(getSwapMode(undefined, undefined)).toBe(undefined)
+})
+
+test('test_getSwapPercent_uses_the_environment_value_in_single_mode', () => {
+  expect(getSwapPercent('single', '5', 30)).toBe(5)
+})
+
+test('test_getSwapPercent_uses_the_dispatch_value_without_an_environment_value', () => {
+  expect(getSwapPercent('single', undefined, 30)).toBe(30)
+})
+
+test('test_getSwapPercent_ignores_the_environment_value_in_team_mode', () => {
+  expect(getSwapPercent('team', '5', 30)).toBe(30)
+})
+
+test('test_getSwapPercent_throws_for_a_value_that_is_not_a_whole_number', () => {
+  expect(() => getSwapPercent('single', 'abc', 30)).toThrow(/CLAUDE_TMUX_SWAP_PERCENT/)
+})
+
+test('test_a_Stop_below_the_environment_swap_percent_in_a_claude_tmux_chat_starts_no_swap', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, { ...SINGLE_CHAT_ENVIRONMENT, CLAUDE_TMUX_SWAP_PERCENT: '40' }, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(0)
+})
+
+test('test_the_single_chat_swap_command_passes_the_environment_swap_percent_as_the_seventh_argument', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, { ...SINGLE_CHAT_ENVIRONMENT, CLAUDE_TMUX_SWAP_PERCENT: '5' }, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' '5'")
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChatFailed.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' '5'")
+})
+
+test('test_the_single_chat_swap_command_passes_an_empty_seventh_argument_without_an_environment_value', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' ''")
+})
+
+test('test_a_Stop_above_the_swap_percent_in_a_claude_tmux_chat_starts_swapSingleChat_with_six_arguments', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(1)
+  expect(tmuxCommands[0]!.slice(0, 3)).toEqual(['tmux', 'run-shell', '-b'])
+  expect(tmuxCommands[0]![3]).toContain("claude-tmux/individualSession/swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9'")
+})
+
+test('test_the_single_chat_swap_command_runs_swapSingleChatFailed_with_the_same_arguments', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands[0]![3]).toContain('|| bun')
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChatFailed.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9'")
+})
+
+test('test_a_Stop_above_the_swap_percent_in_a_claude_tmux_chat_shows_the_swap_toast', async ($, on) => {
+  const { toasts } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  expect(toasts).toEqual([SINGLE_CHAT_SWAP_TOAST_TEXT])
+})
+
+test('test_a_failed_run_shell_in_a_claude_tmux_chat_lets_the_next_Stop_try_again', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 1)
+  await $.classic.Stop(STOP_EVENT)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(2)
+})
+
+test('test_a_Stop_in_a_claude_tmux_chat_without_a_pane_value_starts_no_swap', async ($, on) => {
+  const { TMUX_PANE: _unusedPane, ...environmentWithoutPane } = SINGLE_CHAT_ENVIRONMENT
+  const { runCommands } = watchSingleChatSwap($, on, environmentWithoutPane, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(0)
+})
+
+test('test_a_user_prompt_after_the_swap_started_in_a_claude_tmux_chat_is_dropped', async ($, on) => {
+  const { submittedTexts } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const result = await submitPromptForResult($, 'fix the bug')
+  expect(result.drop).toBe(SINGLE_CHAT_PROMPT_DROP_REASON_TEXT)
+  expect(submittedTexts).toEqual([])
+})
+
+test('test_a_slash_command_after_the_swap_started_in_a_claude_tmux_chat_passes', async ($, on) => {
+  watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const result = await submitPromptForResult($, '/exit')
+  expect(result.drop).toBe(undefined)
+})
+
+test('test_a_user_prompt_after_a_failed_swap_in_a_claude_tmux_chat_passes', async ($, on) => {
+  const { swapFailedMarker } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  swapFailedMarker.exists = true
+  const result = await submitPromptForResult($, '[claude-tmux] The swap failed')
+  expect(result.drop).toBe(undefined)
+})
+
+test('test_a_user_prompt_before_the_swap_starts_in_a_claude_tmux_chat_passes', async ($, on) => {
+  watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  const result = await submitPromptForResult($, 'fix the bug')
+  expect(result.drop).toBe(undefined)
+})
+
+test('test_a_user_prompt_after_the_swap_started_in_a_team_chat_passes',async ($, on) => {
+  watchSwap($, on, 'team a')
+  on('prompt.submit', (_$: any, e: any) => ({ text: e.text }))
+  await $.classic.Stop(STOP_EVENT)
+  const result = await submitPromptForResult($, 'fix the bug')
+  expect(result.drop).toBe(undefined)
 })

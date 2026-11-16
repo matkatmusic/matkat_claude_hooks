@@ -4,31 +4,32 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Team } from "./teamFile.ts";
+import type { Team, TeamChat } from "./teamFile.ts";
 
 const {
   buildTeamFilePath,
   findChatWithStatus,
-  fillTemplate,
+  // fillTemplate,
   buildJobValueKey,
-  hasOpenDialog,
-  isChatBusy,
-  isInputBoxEmpty,
+  // hasOpenDialog,
+  // isChatBusy,
+  // isInputBoxEmpty,
   buildPaneEnvironmentFlags,
   readTeamFile,
   writeTeamFile,
   lockTeamFile,
   unlockTeamFile,
-  inputBoxHoldsMessage,
+  // inputBoxHoldsMessage,
   addReplacementChat,
   undoReplacementChat,
-  listHandoffFiles,
-  findNewHandoffFile,
+  // listHandoffFiles,
+  // findNewHandoffFile,
   parseSendTarget,
   removeChat,
   buildJobChatFields,
   buildMessageWithRoleText,
   listNoticeChats,
+  listReplacedNoticeChats,
   buildHandle,
   findTeamLeader,
   markDirectorAsTeamLeader,
@@ -36,12 +37,17 @@ const {
   countLiveJobTeams,
   listIdleStateDirectories,
   findDirectorChatOfJobTeam,
-  hasBackgroundWorkDialog,
+  // hasBackgroundWorkDialog,
   getReplacementChatModel,
   buildTranscriptDirectory,
   findSessionIdOfChat,
   listChatsInSwap,
+  findPlanAuditorToWaitFor,
 } = await import("./teamFile.ts");
+
+const { hasOpenDialog, inputBoxHoldsMessage, isChatBusy, isInputBoxEmpty, hasBackgroundWorkDialog } = await import("../shared/chatScreen.ts");
+
+const { fillTemplate, listHandoffFiles, findNewHandoffFile } = await import("../shared/chatSwap.ts");
 
 const sampleTeam = {
   teamName: "feature X",
@@ -52,7 +58,7 @@ const sampleTeam = {
 test("test_buildTeamFilePath_encodes_team_name", () => {
   // Scenario: the team name becomes a safe file name.
   // Step: build the path for "feature X/1". Check the exact path.
-  assert.equal(buildTeamFilePath("/s", "feature X/1"), "/s/claude-team/feature%20X%2F1.json");
+  assert.equal(buildTeamFilePath("/s", "feature X/1"), "/s/claude-tmux-team/feature%20X%2F1.json");
 });
 
 test("test_findChatWithStatus_returns_matching_chat", () => {
@@ -108,19 +114,19 @@ test("test_listIdleStateDirectories_gives_one_folder_when_the_worktree_is_the_pr
 test("test_buildJobValueKey_uses_capitals", () => {
   // Scenario: the job name goes into a settings key.
   // Step: build the model key for planner. Check the key.
-  assert.equal(buildJobValueKey("planner", "MODEL"), "CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_MODEL");
+  assert.equal(buildJobValueKey("planner", "MODEL"), "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANNER_MODEL");
 });
 
 test("test_buildJobValueKey_turns_hyphen_into_underscore", () => {
   // Scenario: the role name has a hyphen, which is not valid in a settings key.
   // Step: build the model key for Read-Find-orchestrator. Check that the hyphens are underscores.
-  assert.equal(buildJobValueKey("Read-Find-orchestrator", "MODEL"), "CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_ORCHESTRATOR_MODEL");
+  assert.equal(buildJobValueKey("Read-Find-orchestrator", "MODEL"), "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_READ_FIND_ORCHESTRATOR_MODEL");
 });
 
 test("test_buildJobValueKey_keeps_capital_names_in_one_word", () => {
   // Scenario: the role name has capitals in the middle and no hyphen.
   // Step: build the prompt key for PlanReviewer. Check that no underscore is added.
-  assert.equal(buildJobValueKey("PlanReviewer", "PROMPT"), "CLAUDE_HOOKS_CLAUDE_TEAM_PLANREVIEWER_PROMPT");
+  assert.equal(buildJobValueKey("PlanReviewer", "PROMPT"), "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANREVIEWER_PROMPT");
 });
 
 test("test_hasOpenDialog_true_for_dialog_text", () => {
@@ -193,9 +199,9 @@ test("test_buildPaneEnvironmentFlags_returns_three_pairs", () => {
   // Scenario: each pane gets three variables.
   // Step: build the flags. Check the exact array.
   assert.deepEqual(buildPaneEnvironmentFlags("feature X", "planner", "feature X planner 1"), [
-    "-e", "CLAUDE_TEAM_NAME=feature X",
-    "-e", "CLAUDE_TEAM_JOB=planner",
-    "-e", "CLAUDE_TEAM_CHAT_NAME=feature X planner 1",
+    "-e", "CLAUDE_TMUX_TEAM_NAME=feature X",
+    "-e", "CLAUDE_TMUX_TEAM_JOB=planner",
+    "-e", "CLAUDE_TMUX_TEAM_CHAT_NAME=feature X planner 1",
   ]);
 });
 
@@ -264,7 +270,7 @@ test("test_inputBoxHoldsMessage_true_when_last_prompt_line_shows_pasted_text_mar
 test("test_inputBoxHoldsMessage_true_when_box_is_scrolled_to_the_end_of_a_long_text", () => {
   // Scenario: a long text scrolls in the input box, so the first ❯ line shows a middle part of the text and the next line holds the end.
   // Step: check a screen whose last ❯ line holds a middle part and whose next line wraps the end of the text. Check for true.
-  const text = "[claude-team] From planner\nplease send the finished plan to the orchestrator job with the send command followed by your message in quotes.";
+  const text = "[claude-tmux-team] From planner\nplease send the finished plan to the orchestrator job with the send command followed by your message in quotes.";
   assert.equal(inputBoxHoldsMessage("output\n❯ the orchestrator job with the send command\n  followed by your message in\n  quotes.\n-----\n  status line\n", text), true);
 });
 
@@ -511,11 +517,173 @@ test("test_listNoticeChats_leaves_out_leaving_chat", () => {
   assert.ok(!listNoticeChatNames().includes("T Director 1"));
 });
 
+function buildReplacedChat(teamName: string, job: string, chatNumber: number, extraFields: Partial<TeamChat> = {}): TeamChat {
+  return { job, chatNumber, chatName: `${teamName} ${job} ${chatNumber}`, pane: "%1", model: "sonnet", status: "active" as const, needsRoleText: false, ...extraFields };
+}
+
+function buildReplacedTeam(teamName: string, chats: TeamChat[]): Team {
+  return { teamName, workDirectory: "/w", chats };
+}
+
+function listReplacedNoticeChatNames(team: Team, oldChat: TeamChat, newChatName: string, parentTeam: Team | undefined, childTeams: Team[], liveSessionNames: string[]): string[] {
+  const chatNames: string[] = [];
+  for (const chat of listReplacedNoticeChats(team, oldChat, newChatName, parentTeam, childTeams, liveSessionNames, "Director", "Read-Find-orchestrator"))
+    chatNames.push(chat.chatName);
+  return chatNames.sort();
+}
+
+test("test_listReplacedNoticeChats_helper_replaced_notifies_only_team_leader", () => {
+  // Scenario: a helper (Planner) is replaced. The team has a Director, a TeamLeader and another helper.
+  // Step: list the replaced notice chats. Check that only the TeamLeader is in the list.
+  const oldChat = buildReplacedChat("T", "Planner", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+    oldChat,
+    buildReplacedChat("T", "Planner", 2),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Planner 2", undefined, [], []), ["T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_helper_replaced_without_team_leader_gives_empty_list", () => {
+  // Scenario: a helper (Planner) is replaced in a team that has no TeamLeader.
+  // Step: list the replaced notice chats. Check that the list is empty.
+  const oldChat = buildReplacedChat("T", "Planner", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    oldChat,
+    buildReplacedChat("T", "Planner", 2),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Planner 2", undefined, [], []), []);
+});
+
+test("test_listReplacedNoticeChats_read_find_replaced_notifies_team_leader_and_same_team_director", () => {
+  // Scenario: the Read-Find-orchestrator of the Director's own team is replaced. The Director talks to that chat too.
+  // Step: list the replaced notice chats. Check that the TeamLeader and the Director are in the list.
+  const oldChat = buildReplacedChat("T", "Read-Find-orchestrator", 1, { status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+    oldChat,
+    buildReplacedChat("T", "Read-Find-orchestrator", 2),
+    buildReplacedChat("T", "Planner", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Read-Find-orchestrator 2", undefined, [], []), ["T Director 1", "T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_team_leader_replaced_in_first_team_notifies_helpers_and_director", () => {
+  // Scenario: the TeamLeader of the first job team is replaced. There is no parent team.
+  // Step: list the replaced notice chats. Check that the Director and the helpers are in the list.
+  const oldChat = buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    buildReplacedChat("T", "Director", 1),
+    oldChat,
+    buildReplacedChat("T", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T TeamLeader 2", undefined, [], []), ["T Director 1", "T PlanAuditor 1", "T Planner 1"]);
+});
+
+test("test_listReplacedNoticeChats_team_leader_replaced_in_child_team_notifies_helpers_and_parent_director", () => {
+  // Scenario: the TeamLeader of a child team is replaced. The parent team has a Director and a Read-Find-orchestrator.
+  // Step: list the replaced notice chats. Check that the child helpers and the parent Director are in the list.
+  // Step: check that the parent Read-Find-orchestrator is not in the list.
+  const oldChat = buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("C", [
+    oldChat,
+    buildReplacedChat("C", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("C", "Planner", 1),
+    buildReplacedChat("C", "PlanAuditor", 1),
+  ]);
+  const parentTeam = buildReplacedTeam("P", [
+    buildReplacedChat("P", "Director", 1),
+    buildReplacedChat("P", "Read-Find-orchestrator", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "C TeamLeader 2", parentTeam, [], []), ["C PlanAuditor 1", "C Planner 1", "P Director 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_that_leads_directly_replaced_notifies_helpers", () => {
+  // Scenario: a Director that is also the TeamLeader (isTeamLeader true) is replaced.
+  // Step: list the replaced notice chats. Check that both helpers are in the list.
+  const oldChat = buildReplacedChat("T", "Director", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "Director", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Director 2", undefined, [], []), ["T PlanAuditor 1", "T Planner 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_that_leads_directly_replaced_notifies_child_team_leader", () => {
+  // Scenario: a Director that is also the TeamLeader (isTeamLeader true) is replaced. Its child team "C" is live and has a TeamLeader and a Planner.
+  // Step: list the replaced notice chats. Check that the own helpers and the child TeamLeader are in the list.
+  // Step: check that the Planner of the child team is not in the list.
+  const oldChat = buildReplacedChat("T", "Director", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "Director", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "PlanAuditor", 1),
+  ]);
+  const childTeam = buildReplacedTeam("C", [
+    buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true }),
+    buildReplacedChat("C", "Planner", 1),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T Director 2", undefined, [childTeam], ["C"]), ["C TeamLeader 1", "T PlanAuditor 1", "T Planner 1"]);
+});
+
+const replacedDirectorOldChat = buildReplacedChat("T", "Director", 1, { status: "leaving" });
+const replacedDirectorTeam = buildReplacedTeam("T", [
+  replacedDirectorOldChat,
+  buildReplacedChat("T", "Director", 2),
+  buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true }),
+  buildReplacedChat("T", "Read-Find-orchestrator", 1),
+  buildReplacedChat("T", "Planner", 1),
+]);
+const replacedDirectorChildTeam = buildReplacedTeam("C", [
+  buildReplacedChat("C", "TeamLeader", 1, { isTeamLeader: true }),
+  buildReplacedChat("C", "Planner", 1),
+]);
+
+test("test_listReplacedNoticeChats_director_replaced_notifies_read_find_and_team_leaders", () => {
+  // Scenario: a Director (not the TeamLeader) is replaced. Its child team is live.
+  // Step: list the replaced notice chats. Check that the Read-Find-orchestrator, the own TeamLeader and the child TeamLeader are in the list.
+  // Step: check that the Planner of the own team and the Planner of the child team are not in the list.
+  const chatNames = listReplacedNoticeChatNames(replacedDirectorTeam, replacedDirectorOldChat, "T Director 2", undefined, [replacedDirectorChildTeam], ["C"]);
+  assert.deepEqual(chatNames, ["C TeamLeader 1", "T Read-Find-orchestrator 1", "T TeamLeader 1"]);
+});
+
+test("test_listReplacedNoticeChats_director_replaced_leaves_out_team_leader_of_child_team_that_is_not_live", () => {
+  // Scenario: a Director (not the TeamLeader) is replaced. Its child team "C" is not in the live session names.
+  // Step: list the replaced notice chats. Check that "C TeamLeader 1" is not in the list.
+  const chatNames = listReplacedNoticeChatNames(replacedDirectorTeam, replacedDirectorOldChat, "T Director 2", undefined, [replacedDirectorChildTeam], []);
+  assert.ok(!chatNames.includes("C TeamLeader 1"));
+});
+
+test("test_listReplacedNoticeChats_leaves_out_leaving_starting_new_and_idle_chats", () => {
+  // Scenario: a TeamLeader is replaced. The team also has a leaving chat, a starting chat, an idle chat (needsRoleText true) and the new chat.
+  // Step: list the replaced notice chats. Check that only the active Planner that has worked is in the list.
+  const oldChat = buildReplacedChat("T", "TeamLeader", 1, { isTeamLeader: true, status: "leaving" });
+  const team = buildReplacedTeam("T", [
+    oldChat,
+    buildReplacedChat("T", "TeamLeader", 2, { isTeamLeader: true }),
+    buildReplacedChat("T", "Planner", 1),
+    buildReplacedChat("T", "Planner", 2, { status: "leaving" }),
+    buildReplacedChat("T", "Planner", 3, { status: "starting" }),
+    buildReplacedChat("T", "PlanAuditor", 1, { needsRoleText: true }),
+  ]);
+  assert.deepEqual(listReplacedNoticeChatNames(team, oldChat, "T TeamLeader 2", undefined, [], []), ["T Planner 1"]);
+});
+
 const handleValues = {
-  CLAUDE_HOOKS_CLAUDE_TEAM_JOBS: "Planner,PlanAuditor",
-  CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB: "Director",
-  CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB: "TeamLeader",
-  CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LINE: '- @"{chatName}": {role}',
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS: "Planner,PlanAuditor",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB: "Director",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_JOB: "TeamLeader",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LINE: '- @"{chatName}": {role}',
 };
 
 function buildLeaderTeam(): Team {
@@ -702,9 +870,9 @@ test("test_hasBackgroundWorkDialog_false_for_other_dialog", () => {
 });
 
 const replacementModelValues = {
-  CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_MODEL: "opus",
-  CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_MODEL: "haiku",
-  CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL: "haiku",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_MODEL: "opus",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANNER_MODEL: "haiku",
+  CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_MODEL: "haiku",
 };
 
 test("test_getReplacementChatModel_reads_the_setting_for_a_teamleader", () => {
@@ -801,4 +969,47 @@ test("test_listChatsInSwap_returns_leaving_and_starting_chats", () => {
     ],
   };
   assert.deepEqual(listChatsInSwap(team).map((chat) => chat.chatName), ["T Planner 1", "T Planner 2"]);
+});
+
+test("test_findPlanAuditorToWaitFor_gives_the_active_plan_auditor", () => {
+  // Scenario: the team has an active TeamLeader, an active Planner and an active PlanAuditor.
+  // Step: ask for the plan auditor to wait for. Check that the PlanAuditor chat comes back.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "Planner", chatNumber: 1, chatName: "J Planner 1", pane: "%2", model: "sonnet", status: "active" },
+      { job: "PlanAuditor", chatNumber: 1, chatName: "J PlanAuditor 1", pane: "%3", model: "sonnet", status: "active" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor")?.chatName, "J PlanAuditor 1");
+});
+
+test("test_findPlanAuditorToWaitFor_gives_nothing_without_a_plan_auditor", () => {
+  // Scenario: the team has only a TeamLeader and a Planner.
+  // Step: ask for the plan auditor to wait for. Check for undefined.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "Planner", chatNumber: 1, chatName: "J Planner 1", pane: "%2", model: "sonnet", status: "active" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor"), undefined);
+});
+
+test("test_findPlanAuditorToWaitFor_skips_a_plan_auditor_that_is_not_active", () => {
+  // Scenario: the only PlanAuditor chat has status "leaving".
+  // Step: ask for the plan auditor to wait for. Check for undefined.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "PlanAuditor", chatNumber: 1, chatName: "J PlanAuditor 1", pane: "%3", model: "sonnet", status: "leaving" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor"), undefined);
 });

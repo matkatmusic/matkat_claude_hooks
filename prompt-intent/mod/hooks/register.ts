@@ -99,11 +99,11 @@ async function getChangeRequestContext($: EngineInterface, e: PromptSubmitInput)
 }
 
 async function isHelperChatOfTeam($: EngineInterface): Promise<boolean> {
-  const teamJob = await $.env.get('CLAUDE_TEAM_JOB');
+  const teamJob = await $.env.get('CLAUDE_TMUX_TEAM_JOB');
   if (teamJob === undefined)
     return false;
   const defaults = await parseDefaultFile($);
-  const directorJob = defaults.values?.['claude-team']?.['CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB'];
+  const directorJob = defaults.values?.['claude-tmux-team']?.['CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB'];
   return teamJob !== directorJob;
 }
 

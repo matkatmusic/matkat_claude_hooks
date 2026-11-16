@@ -57,7 +57,7 @@ function startFakeChat(t: TestContext, delayText: string, enterClearDelayText: s
 }
 
 function sendToFakeChat(pane: string, text: string) {
-  const sendCode = `import { sendTextToChat } from "./claude-team/teamSend.ts"; sendTextToChat(${JSON.stringify(pane)}, "test chat", ${JSON.stringify(text)}, 1);`;
+  const sendCode = `import { sendTextToChat } from "./shared/chatSend.ts"; sendTextToChat(${JSON.stringify(pane)}, "test chat", ${JSON.stringify(text)}, 1);`;
   return spawnSync("bun", ["-e", sendCode], { encoding: "utf8", env: { ...process.env, BUN_JSC_useTailCalls: "0" }, cwd: join(import.meta.dirname, "..") });
 }
 
@@ -213,7 +213,7 @@ function startFakeExitChat(t: TestContext, helperDoneText: string, ignoresExit: 
 }
 
 function sendExitToFakeChat(pane: string, helperWaitSeconds: number, closeWaitSeconds: number) {
-  const sendCode = `import { sendExitToChat } from "./claude-team/teamSend.ts"; sendExitToChat(${JSON.stringify(pane)}, "test chat", ${helperWaitSeconds}, ${closeWaitSeconds});`;
+  const sendCode = `import { sendExitToChat } from "./shared/chatSend.ts"; sendExitToChat(${JSON.stringify(pane)}, "test chat", ${helperWaitSeconds}, ${closeWaitSeconds});`;
   return spawnSync("bun", ["-e", sendCode], { encoding: "utf8", env: { ...process.env, BUN_JSC_useTailCalls: "0" }, cwd: join(import.meta.dirname, "..") });
 }
 

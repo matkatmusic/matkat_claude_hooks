@@ -14,7 +14,7 @@ test("test_startHelperChats_throws_when_a_helper_chat_exists", () => {
   const teamFilePath = join(mkdtempSync(join(tmpdir(), "team-start-")), "team.json");
   writeTeamFile(teamFilePath, { teamName: "t", workDirectory: "/w", chats: [{ job: "Planner", chatNumber: 1, chatName: "t Planner 1", pane: "%1", model: "sonnet", status: "active" }] });
   // Step 2: start the helper chats. Check that it throws before any pane starts.
-  assert.throws(() => startHelperChats(teamFilePath, "%0", { CLAUDE_HOOKS_CLAUDE_TEAM_JOBS: "Read-Find-orchestrator,Planner" }), /the helper chats already exist/);
+  assert.throws(() => startHelperChats(teamFilePath, "%0", { CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS: "Read-Find-orchestrator,Planner" }), /the helper chats already exist/);
 });
 
 // findWindowWithFreeSlot is no longer used: fixed window groups replace it.
@@ -45,17 +45,17 @@ test("test_startHelperChats_throws_when_a_helper_chat_exists", () => {
 test("test_listHelperWindowJobs_returns_the_roles_of_each_window", () => {
   // Scenario: the settings value has two lines, one for each window.
   // Step: list the window jobs. Check that each line gives one array of role names.
-  assert.deepEqual(listHelperWindowJobs({ CLAUDE_HOOKS_CLAUDE_TEAM_HELPER_WINDOWS: "Read-Find-orchestrator,Planner,PlanReviewer\nPlanAuditor,Build-orchestrator" }), [["Read-Find-orchestrator", "Planner", "PlanReviewer"], ["PlanAuditor", "Build-orchestrator"]]);
+  assert.deepEqual(listHelperWindowJobs({ CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HELPER_WINDOWS: "Read-Find-orchestrator,Planner,PlanReviewer\nPlanAuditor,Build-orchestrator" }), [["Read-Find-orchestrator", "Planner", "PlanReviewer"], ["PlanAuditor", "Build-orchestrator"]]);
 });
 
 test("test_listHelperWindowJobs_returns_one_window_for_one_line", () => {
   // Scenario: the settings value has one line with one role.
   // Step: list the window jobs. Check that the answer is one window with that role.
-  assert.deepEqual(listHelperWindowJobs({ CLAUDE_HOOKS_CLAUDE_TEAM_HELPER_WINDOWS: "Planner" }), [["Planner"]]);
+  assert.deepEqual(listHelperWindowJobs({ CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HELPER_WINDOWS: "Planner" }), [["Planner"]]);
 });
 
 function runScriptAs(scriptName: string, scriptArguments: string[], job: string) {
-  return spawnSync("node", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", env: { ...process.env, CLAUDE_TEAM_NAME: "t", CLAUDE_TEAM_JOB: job, CLAUDE_TEAM_CHAT_NAME: `t ${job} 1` } });
+  return spawnSync("node", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: job, CLAUDE_TMUX_TEAM_CHAT_NAME: `t ${job} 1` } });
 }
 
 test("test_leadJobDirectly_throws_for_a_chat_that_is_not_the_director", () => {
@@ -93,7 +93,7 @@ test("test_startJobTeam_throws_without_exactly_two_arguments", () => {
 test("test_startTeamHelpers_throws_for_a_chat_that_is_not_the_director", () => {
   // Scenario: only the Director starts the helper chats.
   // Step 1: run the script as a Planner chat.
-  const result = spawnSync("node", [`${import.meta.dirname}/startTeamHelpers.ts`], { encoding: "utf8", env: { ...process.env, CLAUDE_TEAM_NAME: "t", CLAUDE_TEAM_JOB: "Planner" } });
+  const result = spawnSync("node", [`${import.meta.dirname}/startTeamHelpers.ts`], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: "Planner" } });
   // Step 2: check that it fails with the message.
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /only the Director can start the helper chats/);

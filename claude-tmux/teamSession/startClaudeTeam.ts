@@ -1,15 +1,16 @@
 import { existsSync } from "node:fs";
-import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 import { buildChatName, buildDetachedSizeFlags, buildDirectorPaneCommand, parseTeamArguments } from "./teamCommand.ts";
-import { buildHandle, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { buildHandle, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, findChatWithStatus, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { Team } from "./teamFile.ts";
-import { sendTextToChat } from "./teamSend.ts";
+import { sendTextToChat } from "../shared/chatSend.ts";
+import { fillTemplate } from "../shared/chatSwap.ts";
 import { startHelperChats } from "./teamStart.ts";
 
-const values = getValues(readSettings(DISPATCHER_DIR), "claude-team");
-const team = parseTeamArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL"]);
-const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
+const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+const team = parseTeamArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_MODEL"]);
+const directorJob = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"];
 const directorChatName = buildChatName(team.name, directorJob, 1);
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.name);
 
@@ -19,12 +20,12 @@ if (existsSync(teamFilePath)) {
     throw new Error(`team ${team.name} already exists: ${teamFilePath}`);
 }
 
-const readFindJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_JOB"];
-const directorStartPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_START_PROMPT"], {
+const readFindJob = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_READ_FIND_JOB"];
+const directorStartPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_START_PROMPT"], {
   leadScript: `${import.meta.dirname}/leadJobDirectly.ts`,
   jobTeamScript: `${import.meta.dirname}/startJobTeam.ts`,
   closeTeamScript: `${import.meta.dirname}/closeJobTeam.ts`,
-  maxTeams: values["CLAUDE_HOOKS_CLAUDE_TEAM_MAX_TEAMS"],
+  maxTeams: values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MAX_TEAMS"],
   readFindHandle: buildHandle(buildChatName(team.name, readFindJob, 1)),
 });
 
@@ -85,10 +86,10 @@ const teamWithHelpers = readTeamFile(teamFilePath);
 const readFindChat = findChatWithStatus(teamWithHelpers, readFindJob, "active");
 if (readFindChat === undefined)
   throw new Error(`job ${readFindJob} has no active chat`);
-const directorHandleLine = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LINE"], { chatName: directorChatName, role: directorJob });
-const handleSection = `${values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LIST_HEADER"]}\n${directorHandleLine}`;
+const directorHandleLine = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LINE"], { chatName: directorChatName, role: directorJob });
+const handleSection = `${values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LIST_HEADER"]}\n${directorHandleLine}`;
 const readFindText = [values[buildJobValueKey(readFindJob, "PROMPT")], handleSection].join("\n\n");
-sendTextToChat(readFindChat.pane, readFindChat.chatName, readFindText, Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIALOG_WAIT_SECONDS"]));
+sendTextToChat(readFindChat.pane, readFindChat.chatName, readFindText, Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIALOG_WAIT_SECONDS"]));
 lockTeamFile(teamFilePath);
 const teamWithRoleTextSent = readTeamFile(teamFilePath);
 findChatWithStatus(teamWithRoleTextSent, readFindJob, "active")!.needsRoleText = false;

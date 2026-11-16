@@ -2,12 +2,13 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
 
-const { parseTeamArguments, buildChatName, wrapShellWord, buildDirectorPaneCommand, buildDetachedSizeFlags } = await import("./teamCommand.ts");
+const { parseTeamArguments, buildChatName, buildDirectorPaneCommand, buildDetachedSizeFlags } = await import("./teamCommand.ts");
+const { wrapShellWord } = await import("../shared/chatSwap.ts");
 
 test("test_buildDetachedSizeFlags_returns_columns_and_rows_flags", () => {
   // Scenario: the tmux size flags come from the two dispatch values.
   // Step: build the flags from columns 240 and rows 70. Check the list.
-  const flags = buildDetachedSizeFlags({ CLAUDE_HOOKS_CLAUDE_TEAM_DETACHED_COLUMNS: "240", CLAUDE_HOOKS_CLAUDE_TEAM_DETACHED_ROWS: "70" });
+  const flags = buildDetachedSizeFlags({ CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DETACHED_COLUMNS: "240", CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DETACHED_ROWS: "70" });
   assert.deepEqual(flags, ["-x", "240", "-y", "70"]);
 });
 
@@ -46,6 +47,12 @@ test("test_parseTeamArguments_rejects_the_parent_flag", () => {
   // Scenario: startJobTeam.ts replaces --parent.
   // Step: parse --parent. Check that it throws.
   assert.throws(() => parseTeamArguments(["--name", "feature X", "--parent", "other"], "fable"));
+});
+
+test("test_parseTeamArguments_accepts_the_team_flag", () => {
+  // Scenario: `claude-tmux --team --name X` passes its arguments, --team included, to the team start script.
+  // Step: parse --team, --name and a name. Check the result holds the name and the default model.
+  assert.deepEqual(parseTeamArguments(["--team", "--name", "feature X"], "fable"), { name: "feature X", model: "fable" });
 });
 
 test("test_buildChatName_joins_name_job_and_number", () => {

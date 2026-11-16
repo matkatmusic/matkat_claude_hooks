@@ -7,6 +7,9 @@ const TOAST_MS = 60000;
 const DISPATCHER_DIR = '../../dispatcher';
 
 const SWAP_PERCENT_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT';
+const SINGLE_CHAT_SWAP_TOAST_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST';
+const SINGLE_CHAT_PROMPT_DROP_REASON_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON';
+// const SINGLE_CHAT_ENVIRONMENT_NAMES = ['CLAUDE_TMUX_NAME', 'CLAUDE_TMUX_CHAT_NUMBER', 'CLAUDE_TMUX_MODEL', 'CLAUDE_TMUX_WORK_DIRECTORY', 'TMUX_PANE'];
 
 const warnedPercentRef = { plugin: 'context-exit', key: 'warnedPercent' } as const;
 const isSwapStartedRef = { plugin: 'context-exit', key: 'isSwapStarted' } as const;
@@ -67,8 +70,29 @@ async function readValue($: EngineInterface, section: string, key: string): Prom
   return defaultValue;
 }
 
-export function isSwapDue(input: { teamName: string | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
-  if (input.teamName === undefined)
+export function getSwapMode(teamName: string | undefined, singleChatName: string | undefined): 'team' | 'single' | undefined {
+  if (teamName !== undefined)
+    return 'team';
+  if (singleChatName !== undefined)
+    return 'single';
+  return undefined;
+}
+
+export function getSwapPercent(swapMode: 'team' | 'single' | undefined, environmentSwapPercent: string | undefined, dispatchSwapPercent: number): number {
+  if (swapMode !== 'single')
+    return dispatchSwapPercent;
+  if (environmentSwapPercent === undefined)
+    return dispatchSwapPercent;
+  const isWholeNumber = /^\d+$/.test(environmentSwapPercent);
+  if (!isWholeNumber)
+    throw new Error(`CLAUDE_TMUX_SWAP_PERCENT must be a whole number, not "${environmentSwapPercent}"`);
+  return Number(environmentSwapPercent);
+}
+
+// export function isSwapDue(input: { teamName: string | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
+export function isSwapDue(input: { swapMode: 'team' | 'single' | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
+  // if (input.teamName === undefined)
+  if (input.swapMode === undefined)
     return false;
   if (input.percent === undefined)
     return false;
@@ -134,15 +158,55 @@ function wrapShellWord(text: string): string {
   return "'" + text.replaceAll("'", "'\\''") + "'";
 }
 
+function wrapRequiredEnvironmentValue(environmentName: string, environmentValue: string | undefined): string {
+  if (environmentValue === undefined)
+    throw new Error(`the claude-tmux chat has no ${environmentName} value`);
+  return wrapShellWord(environmentValue);
+}
+
+async function listSingleChatSwapArguments($: EngineInterface, sessionId: string): Promise<string> {
+  // $.env.get needs literal names, so the loop over SINGLE_CHAT_ENVIRONMENT_NAMES is spelled out
+  const swapArgumentWords: string[] = [];
+  swapArgumentWords.push(wrapRequiredEnvironmentValue('CLAUDE_TMUX_NAME', await $.env.get('CLAUDE_TMUX_NAME')));
+  swapArgumentWords.push(wrapRequiredEnvironmentValue('CLAUDE_TMUX_CHAT_NUMBER', await $.env.get('CLAUDE_TMUX_CHAT_NUMBER')));
+  swapArgumentWords.push(wrapRequiredEnvironmentValue('CLAUDE_TMUX_MODEL', await $.env.get('CLAUDE_TMUX_MODEL')));
+  swapArgumentWords.push(wrapRequiredEnvironmentValue('CLAUDE_TMUX_WORK_DIRECTORY', await $.env.get('CLAUDE_TMUX_WORK_DIRECTORY')));
+  swapArgumentWords.push(wrapRequiredEnvironmentValue('TMUX_PANE', await $.env.get('TMUX_PANE')));
+  swapArgumentWords.push(wrapShellWord(sessionId));
+  const swapPercentArgument = await $.env.get('CLAUDE_TMUX_SWAP_PERCENT');
+  swapArgumentWords.push(wrapShellWord(swapPercentArgument ?? ''));
+  return swapArgumentWords.join(' ');
+}
+
+async function launchSingleChatSwap($: EngineInterface, sessionId: string): Promise<void> {
+  const swapArguments = await listSingleChatSwapArguments($, sessionId);
+  const scriptFolder = `${$.plugin.root}/../../claude-tmux/individualSession`;
+  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-tmux-swap.log`;
+  const swapCommand = `bun ${scriptFolder}/swapSingleChat.ts ${swapArguments} >> ${logPath} 2>&1`;
+  const failedCommand = `bun ${scriptFolder}/swapSingleChatFailed.ts ${swapArguments} >> ${logPath} 2>&1`;
+  const result = await $.process.run(['tmux', 'run-shell', '-b', `${swapCommand} || ${failedCommand}`]);
+  if (result.exitCode !== 0)
+    throw new Error(`tmux run-shell failed: ${result.stderr}`);
+  await $.state.set(isSwapStartedRef, true);
+  const toastText = String(await readValue($, PLUGIN_NAME, SINGLE_CHAT_SWAP_TOAST_KEY));
+  $.ui.toast(toastText, { timeoutMs: TOAST_MS });
+  $.ui.status(toastText);
+}
+
 const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'classic.Stop');
   if (!enabled)
     return next(e);
-  const teamName = await $.env.get('CLAUDE_TEAM_NAME');
-  const job = await $.env.get('CLAUDE_TEAM_JOB');
-  const chatName = await $.env.get('CLAUDE_TEAM_CHAT_NAME');
+  const teamName = await $.env.get('CLAUDE_TMUX_TEAM_NAME');
+  const job = await $.env.get('CLAUDE_TMUX_TEAM_JOB');
+  const chatName = await $.env.get('CLAUDE_TMUX_TEAM_CHAT_NAME');
+  const singleChatName = await $.env.get('CLAUDE_TMUX_NAME');
+  const swapMode = getSwapMode(teamName, singleChatName);
   const usage = await $.session.usage();
-  const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  // const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  const dispatchSwapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  const environmentSwapPercent = await $.env.get('CLAUDE_TMUX_SWAP_PERCENT');
+  const swapPercent = getSwapPercent(swapMode, environmentSwapPercent, dispatchSwapPercent);
   const backgroundTaskCount = (e.background_tasks ?? []).length;
   // const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
   const sessionId = await $.session.id();
@@ -157,12 +221,17 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
       isSwapStarted = false;
     }
   }
-  const isDue = isSwapDue({ teamName, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
+  // const isDue = isSwapDue({ teamName, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
+  const isDue = isSwapDue({ swapMode, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
   if (!isDue)
     return next(e);
+  if (swapMode === 'single') {
+    await launchSingleChatSwap($, sessionId);
+    return next(e);
+  }
   await $.state.set(isSwapStartedRef, true);
-  const scriptFolder = `${$.plugin.root}/../../claude-team`;
-  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-team-swap.log`;
+  const scriptFolder = `${$.plugin.root}/../../claude-tmux/teamSession`;
+  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-tmux-team-swap.log`;
   const swapArguments = `${wrapShellWord(teamName!)} ${wrapShellWord(job!)} ${wrapShellWord(chatName!)}`;
   // const sessionId = await $.session.id();
   const swapCommand = `bun ${scriptFolder}/swapChat.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;
@@ -180,12 +249,43 @@ const startSwapOnStopWithDebugLog: Hook<'classic.Stop'> = async ($, e, next) => 
   return returned;
 };
 
+async function isSingleChatPromptBlocked($: EngineInterface, text: string): Promise<boolean> {
+  const singleChatName = await $.env.get('CLAUDE_TMUX_NAME');
+  if (singleChatName === undefined)
+    return false;
+  const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
+  if (!isSwapStarted)
+    return false;
+  const isSlashCommand = text.startsWith('/');
+  if (isSlashCommand)
+    return false;
+  const swapFailedMarkerPath = `${$.plugin.root}/${DISPATCHER_DIR}/swap-failed/${await $.session.id()}`;
+  const isSwapFailed = await $.fs.exists(swapFailedMarkerPath);
+  return !isSwapFailed;
+}
+
+const blockUserPromptDuringSingleChatSwap: Hook<'prompt.submit'> = async ($, e, next) => {
+  const isBlocked = await isSingleChatPromptBlocked($, e.text);
+  if (!isBlocked)
+    return turnOffStopHooksOnHandoffPrompt($, e, next);
+  return { drop: String(await readValue($, PLUGIN_NAME, SINGLE_CHAT_PROMPT_DROP_REASON_KEY)) };
+};
+
 const logTurnOffStopHooksOnHandoffPrompt: Hook<'prompt.submit'> = async ($, e, next) => {
-  const debugLog = await wrapNextForDebugLog($, 'turnOffStopHooksOnHandoffPrompt', 'prompt.submit', e, next);
-  const returned = await turnOffStopHooksOnHandoffPrompt($, e, debugLog.next);
+  // const debugLog = await wrapNextForDebugLog($, 'turnOffStopHooksOnHandoffPrompt', 'prompt.submit', e, next);
+  // const returned = await turnOffStopHooksOnHandoffPrompt($, e, debugLog.next);
+  const debugLog = await wrapNextForDebugLog($, 'blockUserPromptDuringSingleChatSwap', 'prompt.submit', e, next);
+  const returned = await blockUserPromptDuringSingleChatSwap($, e, debugLog.next);
   await debugLog.finish(returned);
   return returned;
 };
+
+// const logBlockUserPromptDuringSingleChatSwap: Hook<'prompt.submit'> = async ($, e, next) => {
+//   const debugLog = await wrapNextForDebugLog($, 'blockUserPromptDuringSingleChatSwap', 'prompt.submit', e, next);
+//   const returned = await blockUserPromptDuringSingleChatSwap($, e, debugLog.next);
+//   await debugLog.finish(returned);
+//   return returned;
+// };
 
 const reportContextUsageOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'reportContextUsageOnTurnComplete', 'turn.complete', e, next);
@@ -196,6 +296,7 @@ const reportContextUsageOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = asyn
 
 export const register: Register = on => {
   on('prompt.submit', logTurnOffStopHooksOnHandoffPrompt).catch(logAndRethrowHookFailure);
+  // on('prompt.submit', logBlockUserPromptDuringSingleChatSwap).catch(logAndRethrowHookFailure);
   on('turn.complete', reportContextUsageOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
   on('classic.Stop', startSwapOnStopWithDebugLog).catch(logAndRethrowHookFailure);
 };

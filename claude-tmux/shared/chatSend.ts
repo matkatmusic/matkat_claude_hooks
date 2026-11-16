@@ -1,5 +1,7 @@
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
-import { hasBackgroundWorkDialog, hasOpenDialog, inputBoxHoldsMessage } from "./teamFile.ts";
+// import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+// import { hasBackgroundWorkDialog, hasOpenDialog, inputBoxHoldsMessage } from "./teamFile.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
+import { hasBackgroundWorkDialog, hasOpenDialog, inputBoxHoldsMessage } from "./chatScreen.ts";
 
 // const SUBMIT_PASSES = 5;
 const SUBMIT_PASSES = 6;
@@ -20,7 +22,8 @@ export function sendTextToChat(pane: string, chatName: string, text: string, dia
   if (dialogIsOpen)
     throw new Error(`the chat "${chatName}" has an open dialog`);
 
-  const bufferName = `claude-team-${process.pid}`;
+  // const bufferName = `claude-team-${process.pid}`;
+  const bufferName = `claude-tmux-${process.pid}`;
   tmux_lib.run(["tmux", "set-buffer", "-b", bufferName, "--", text], { capture_output: true, text: true, check: true });
   tmux_lib.run(["tmux", "paste-buffer", "-p", "-d", "-b", bufferName, "-t", pane], { capture_output: true, text: true, check: true });
 
@@ -87,7 +90,8 @@ export function sendExitToChat(pane: string, chatName: string, helperWaitSeconds
       }
       else {
         if (mustSendExit) {
-          const bufferName = `claude-team-${process.pid}`;
+          // const bufferName = `claude-team-${process.pid}`;
+          const bufferName = `claude-tmux-${process.pid}`;
           tmux_lib.run(["tmux", "set-buffer", "-b", bufferName, "--", "/exit"], { capture_output: true, text: true, check: true });
           tmux_lib.run(["tmux", "paste-buffer", "-p", "-d", "-b", bufferName, "-t", pane], { capture_output: true, text: true, check: false });
           tmux_lib.sleep(1);

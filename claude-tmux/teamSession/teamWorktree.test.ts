@@ -34,8 +34,8 @@ test("test_addJobWorktree_makes_the_worktree_from_the_checked_out_branch", () =>
   // Step 2: check that the worktree holds the file of the checked-out branch, that the base branch is work and that the new branch has the safe name.
   assert.equal(existsSync(join(result.worktreePath, "only-on-work.txt")), true);
   assert.equal(result.baseBranch, "work");
-  assert.equal(result.branch, "claude-team/plan-check/jobA");
-  assert.equal(runGit(result.worktreePath, ["rev-parse", "--abbrev-ref", "HEAD"]), "claude-team/plan-check/jobA");
+  assert.equal(result.branch, "claude-tmux-team/plan-check/jobA");
+  assert.equal(runGit(result.worktreePath, ["rev-parse", "--abbrev-ref", "HEAD"]), "claude-tmux-team/plan-check/jobA");
 });
 
 test("test_addJobWorktree_puts_the_worktree_in_the_worktree_directory_of_the_repository_root", () => {

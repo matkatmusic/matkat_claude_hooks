@@ -1,4 +1,5 @@
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
+import { startChatInNewWindow } from "../shared/chatSwap.ts";
 import { buildChatName, buildDirectorPaneCommand } from "./teamCommand.ts";
 import { buildJobValueKey, buildPaneEnvironmentFlags, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { TeamChat } from "./teamFile.ts";
@@ -31,30 +32,30 @@ import type { TeamChat } from "./teamFile.ts";
 
 export function listHelperWindowJobs(values: Record<string, string>): string[][] {
   const helperWindowJobs: string[][] = [];
-  for (const windowLine of values["CLAUDE_HOOKS_CLAUDE_TEAM_HELPER_WINDOWS"].split("\n"))
+  for (const windowLine of values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HELPER_WINDOWS"].split("\n"))
     helperWindowJobs.push(windowLine.split(","));
   return helperWindowJobs;
 }
 
-export function startChatInNewWindow(anchorPane: string, workDirectory: string, environmentFlags: string[], paneCommand: string): string {
-  // tmux new-window -a rejects a pane id as target: use the window id of the anchor pane
-  const anchorWindowResult = tmux_lib.run(["tmux", "display-message", "-p", "-t", anchorPane, "#{window_id}"], { capture_output: true, text: true, check: true });
-  const anchorWindow = anchorWindowResult.stdout.trim();
-  const newWindowCommand = ["tmux", "new-window", "-d", "-a", "-t", anchorWindow, "-c", workDirectory, "-P", "-F", "#{pane_id}", ...environmentFlags, paneCommand];
-  const newWindowResult = tmux_lib.run(newWindowCommand, { capture_output: true, text: true, check: true });
-  return newWindowResult.stdout.trim();
-}
+// export function startChatInNewWindow(anchorPane: string, workDirectory: string, environmentFlags: string[], paneCommand: string): string {
+//   // tmux new-window -a rejects a pane id as target: use the window id of the anchor pane
+//   const anchorWindowResult = tmux_lib.run(["tmux", "display-message", "-p", "-t", anchorPane, "#{window_id}"], { capture_output: true, text: true, check: true });
+//   const anchorWindow = anchorWindowResult.stdout.trim();
+//   const newWindowCommand = ["tmux", "new-window", "-d", "-a", "-t", anchorWindow, "-c", workDirectory, "-P", "-F", "#{pane_id}", ...environmentFlags, paneCommand];
+//   const newWindowResult = tmux_lib.run(newWindowCommand, { capture_output: true, text: true, check: true });
+//   return newWindowResult.stdout.trim();
+// }
 
 export function startChatInSameWindow(anchorPane: string, workDirectory: string, environmentFlags: string[], paneCommand: string, values: Record<string, string>): string {
   const splitCommand = ["tmux", "split-window", "-d", "-h", "-t", anchorPane, "-c", workDirectory, "-P", "-F", "#{pane_id}", ...environmentFlags, paneCommand];
   const splitResult = tmux_lib.run(splitCommand, { capture_output: true, text: true, check: true });
   const newPane = splitResult.stdout.trim();
-  tmux_lib.tmux_selectLayout(newPane, values["CLAUDE_HOOKS_CLAUDE_TEAM_WINDOW_LAYOUT"]);
+  tmux_lib.tmux_selectLayout(newPane, values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WINDOW_LAYOUT"]);
   return newPane;
 }
 
 export function startHelperChats(teamFilePath: string, directorPane: string, values: Record<string, string>): string[] {
-  const jobs = values["CLAUDE_HOOKS_CLAUDE_TEAM_JOBS"].split(",");
+  const jobs = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS"].split(",");
 
   lockTeamFile(teamFilePath);
   const team = readTeamFile(teamFilePath);

@@ -6,7 +6,7 @@ const ALL_OFF = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": 
 const ASK_SENTENCE = "if anything I'm asking for is unclear, use AskUserQuestion to gain clarity and alignment before starting to build my request.";
 const TYPED = { text: 'the save button does nothing', wait: false, origin: { kind: 'composer' } } as const;
 const FROM_PLUGIN = { text: 'the save button does nothing', wait: false, origin: { kind: 'plugin', name: 'other-mod' } } as const;
-const ALL_ON_WITH_DIRECTOR = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": { "prompt.submit": true }, "feature-request": { "prompt.submit": true }, "change-request": { "prompt.submit": true }, "ask-if-unclear": { "prompt.submit": true } }, "values": { "claude-team": { "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB": "Director" } } }';
+const ALL_ON_WITH_DIRECTOR = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": { "prompt.submit": true }, "feature-request": { "prompt.submit": true }, "change-request": { "prompt.submit": true }, "ask-if-unclear": { "prompt.submit": true } }, "values": { "claude-tmux-team": { "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB": "Director" } } }';
 const YES = '{"yes": ["the save button does"]}';
 const NO = '{"no": []}';
 const TWO_ITEMS = '{"yes": ["the save button does", "also the load menu is"]}';
@@ -47,7 +47,7 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
     return { text: e.text, context: e.context };
   }
   function getEnvironmentValue(_$: any, e: any) {
-    const values: Record<string, string | undefined> = { CLAUDE_TEAM_JOB: teamJob };
+    const values: Record<string, string | undefined> = { CLAUDE_TMUX_TEAM_JOB: teamJob };
     return { value: values[e.name] };
   }
   on('env.get', getEnvironmentValue);

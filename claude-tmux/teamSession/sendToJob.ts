@@ -1,9 +1,14 @@
-import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+// import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
+// import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 import { buildChatName, buildDirectorPaneCommand } from "./teamCommand.ts";
-import { buildJobValueKey, buildMessageWithRoleText, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, lockTeamFile, parseSendTarget, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+// import { buildJobValueKey, buildMessageWithRoleText, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, lockTeamFile, parseSendTarget, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { buildJobValueKey, buildMessageWithRoleText, buildPaneEnvironmentFlags, buildTeamFilePath, findChatWithStatus, lockTeamFile, parseSendTarget, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { TeamChat } from "./teamFile.ts";
-import { sendTextToChat } from "./teamSend.ts";
+import { fillTemplate } from "../shared/chatSwap.ts";
+// import { sendTextToChat } from "./teamSend.ts";
+import { sendTextToChat } from "../shared/chatSend.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 2)
@@ -11,25 +16,25 @@ if (scriptArguments.length !== 2)
 const [target, text] = scriptArguments;
 const { job, isOldChat } = parseSendTarget(target);
 
-const teamName = process.env.CLAUDE_TEAM_NAME;
-const senderJob = process.env.CLAUDE_TEAM_JOB;
-const senderChatName = process.env.CLAUDE_TEAM_CHAT_NAME;
+const teamName = process.env.CLAUDE_TMUX_TEAM_NAME;
+const senderJob = process.env.CLAUDE_TMUX_TEAM_JOB;
+const senderChatName = process.env.CLAUDE_TMUX_TEAM_CHAT_NAME;
 if (teamName === undefined || senderJob === undefined || senderChatName === undefined)
-  throw new Error("sendToJob.ts must run inside a claude-team chat");
+  throw new Error("sendToJob.ts must run inside a claude-tmux team chat");
 
-const values = getValues(readSettings(DISPATCHER_DIR), "claude-team");
-const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
-const jobList = values["CLAUDE_HOOKS_CLAUDE_TEAM_JOBS"];
+const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+const directorJob = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"];
+const jobList = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS"];
 const allJobs = [directorJob, ...jobList.split(",")];
 if (!allJobs.includes(job))
   throw new Error(`unknown job ${job}. Jobs: ${allJobs.join(",")}`);
 
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], teamName);
-const startWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_START_WAIT_SECONDS"]);
-const dialogWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TEAM_DIALOG_WAIT_SECONDS"]);
+const startWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_START_WAIT_SECONDS"]);
+const dialogWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIALOG_WAIT_SECONDS"]);
 
 function fillSendInstructions(chatName: string, chatJob: string): string {
-  return fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_SEND_INSTRUCTIONS"], {
+  return fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_SEND_INSTRUCTIONS"], {
     chatName,
     teamName: teamName!,
     job: chatJob,
@@ -105,7 +110,7 @@ while (targetChat === undefined) {
   targetChat = { ...newChat, pane: newPane, status: "active" };
 }
 
-const messageHeader = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_MESSAGE_HEADER"], { senderChatName, senderJob });
+const messageHeader = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MESSAGE_HEADER"], { senderChatName, senderJob });
 const roleTextForTarget = `${values[buildJobValueKey(job, "PROMPT")]}\n${fillSendInstructions(targetChat.chatName, job)}`;
 sendTextToChat(targetChat.pane, targetChat.chatName, buildMessageWithRoleText(targetChat, roleTextForTarget, `${messageHeader}\n${text}`), dialogWaitSeconds);
 if (targetChat.needsRoleText === true) {

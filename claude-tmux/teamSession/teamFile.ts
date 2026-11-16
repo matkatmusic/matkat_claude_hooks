@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+// import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { fillTemplate } from "../shared/chatSwap.ts";
 import { buildChatName } from "./teamCommand.ts";
 
 export type TeamChat = { job: string; chatNumber: number; chatName: string; pane: string; model: string; status: "starting" | "active" | "leaving"; sessionId?: string; needsRoleText?: boolean; isTeamLeader?: boolean };
@@ -9,10 +11,10 @@ export type Team = { teamName: string; workDirectory: string; parentTeam?: strin
 const LOCK_STALE_SECONDS = 30;
 const LOCK_GIVE_UP_SECONDS = 60;
 const LOCK_RETRY_SECONDS = 0.2;
-const CHAT_BUSY_PATTERN = /…\s*\(\d+[ms]/;
+// const CHAT_BUSY_PATTERN = /…\s*\(\d+[ms]/;
 
 export function buildTeamFilePath(stateDirectory: string, teamName: string): string {
-  return `${stateDirectory}/claude-team/${encodeURIComponent(teamName)}.json`;
+  return `${stateDirectory}/claude-tmux-team/${encodeURIComponent(teamName)}.json`;
 }
 
 export function findChatWithStatus(team: Team, job: string, status: TeamChat["status"]): TeamChat | undefined {
@@ -58,6 +60,64 @@ export function listNoticeChats(team: Team, newChatName: string): TeamChat[] {
     }
   }
   return noticeChats;
+}
+
+export function listReplacedNoticeChats(team: Team, oldChat: TeamChat, newChatName: string, parentTeam: Team | undefined, childTeams: Team[], liveSessionNames: string[], directorJob: string, readFindJob: string): TeamChat[] {
+  const replacedNoticeChats: TeamChat[] = [];
+  const ownTeamNoticeChats = listNoticeChats(team, newChatName);
+  if (oldChat.isTeamLeader === true) {
+    for (const chat of ownTeamNoticeChats)
+      replacedNoticeChats.push(chat);
+    if (parentTeam !== undefined) {
+      for (const chat of listNoticeChats(parentTeam, newChatName)) {
+        if (chat.job === directorJob)
+          replacedNoticeChats.push(chat);
+      }
+    }
+    if (oldChat.job === directorJob) {
+      for (const childTeam of childTeams) {
+        const childSessionIsLive = liveSessionNames.includes(childTeam.teamName);
+        if (childSessionIsLive) {
+          for (const chat of listNoticeChats(childTeam, newChatName)) {
+            if (chat.isTeamLeader === true)
+              replacedNoticeChats.push(chat);
+          }
+        }
+      }
+    }
+    return replacedNoticeChats;
+  }
+  if (oldChat.job === directorJob) {
+    for (const chat of ownTeamNoticeChats) {
+      if (chat.job === readFindJob)
+        replacedNoticeChats.push(chat);
+      if (chat.isTeamLeader === true)
+        replacedNoticeChats.push(chat);
+    }
+    for (const childTeam of childTeams) {
+      const childSessionIsLive = liveSessionNames.includes(childTeam.teamName);
+      if (childSessionIsLive) {
+        for (const chat of listNoticeChats(childTeam, newChatName)) {
+          if (chat.isTeamLeader === true)
+            replacedNoticeChats.push(chat);
+        }
+      }
+    }
+    return replacedNoticeChats;
+  }
+  for (const chat of ownTeamNoticeChats) {
+    if (chat.isTeamLeader === true)
+      replacedNoticeChats.push(chat);
+  }
+  if (oldChat.job === readFindJob) {
+    for (const chat of ownTeamNoticeChats) {
+      if (chat.job === directorJob) {
+        if (chat.isTeamLeader !== true)
+          replacedNoticeChats.push(chat);
+      }
+    }
+  }
+  return replacedNoticeChats;
 }
 
 export function addReplacementChat(team: Team, job: string): { oldChat: TeamChat; newChat: TeamChat } {
@@ -110,14 +170,14 @@ export function buildHandleList(team: Team, values: Record<string, string>, dire
   const teamLeader = findTeamLeader(team);
   if (teamLeader === undefined)
     throw new Error("the team has no team leader");
-  const lineTemplate = values["CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LINE"];
-  const lines = [fillTemplate(lineTemplate, { chatName: teamLeader.chatName, role: values["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"] })];
-  for (const job of values["CLAUDE_HOOKS_CLAUDE_TEAM_JOBS"].split(",")) {
+  const lineTemplate = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LINE"];
+  const lines = [fillTemplate(lineTemplate, { chatName: teamLeader.chatName, role: values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_JOB"] })];
+  for (const job of values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS"].split(",")) {
     const chatName = findCurrentChatName(team, job);
     lines.push(fillTemplate(lineTemplate, { chatName, role: job }));
   }
   if (directorChat !== undefined)
-    lines.push(fillTemplate(lineTemplate, { chatName: directorChat.chatName, role: values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"] }));
+    lines.push(fillTemplate(lineTemplate, { chatName: directorChat.chatName, role: values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"] }));
   return lines.join("\n");
 }
 
@@ -161,17 +221,17 @@ export function parseSendTarget(target: string): { job: string; isOldChat: boole
   return { job: target, isOldChat: false };
 }
 
-export function listHandoffFiles(idleStateDirectory: string, sessionId: string): string[] {
-  if (!existsSync(idleStateDirectory))
-    return [];
-  const fileNameEnd = `-${sessionId.slice(0, 8)}.json`;
-  const handoffFiles: string[] = [];
-  for (const fileName of readdirSync(idleStateDirectory).sort()) {
-    if (fileName.endsWith(fileNameEnd))
-      handoffFiles.push(`${idleStateDirectory}/${fileName}`);
-  }
-  return handoffFiles;
-}
+// export function listHandoffFiles(idleStateDirectory: string, sessionId: string): string[] {
+//   if (!existsSync(idleStateDirectory))
+//     return [];
+//   const fileNameEnd = `-${sessionId.slice(0, 8)}.json`;
+//   const handoffFiles: string[] = [];
+//   for (const fileName of readdirSync(idleStateDirectory).sort()) {
+//     if (fileName.endsWith(fileNameEnd))
+//       handoffFiles.push(`${idleStateDirectory}/${fileName}`);
+//   }
+//   return handoffFiles;
+// }
 
 export function listIdleStateDirectories(team: Team, projectRoot: string): string[] {
   const projectIdleStateDirectory = `${projectRoot}/.idleState`;
@@ -184,37 +244,37 @@ export function listIdleStateDirectories(team: Team, projectRoot: string): strin
   return idleStateDirectories;
 }
 
-export function findNewHandoffFile(filesBefore: string[], filesNow: string[]): string | undefined {
-  for (const filePath of filesNow) {
-    if (!filesBefore.includes(filePath))
-      return filePath;
-  }
-  return undefined;
-}
+// export function findNewHandoffFile(filesBefore: string[], filesNow: string[]): string | undefined {
+//   for (const filePath of filesNow) {
+//     if (!filesBefore.includes(filePath))
+//       return filePath;
+//   }
+//   return undefined;
+// }
 
-export function fillTemplate(template: string, fields: Record<string, string>): string {
-  let filled = template;
-  const keysInTemplate = template.matchAll(/\{(\w+)\}/g);
-  for (const keyMatch of keysInTemplate) {
-    const key = keyMatch[1];
-    if (!(key in fields))
-      throw new Error(`template needs the field ${key}`);
-    filled = filled.replaceAll(`{${key}}`, fields[key]);
-  }
-  return filled;
-}
+// export function fillTemplate(template: string, fields: Record<string, string>): string {
+//   let filled = template;
+//   const keysInTemplate = template.matchAll(/\{(\w+)\}/g);
+//   for (const keyMatch of keysInTemplate) {
+//     const key = keyMatch[1];
+//     if (!(key in fields))
+//       throw new Error(`template needs the field ${key}`);
+//     filled = filled.replaceAll(`{${key}}`, fields[key]);
+//   }
+//   return filled;
+// }
 
 export function buildJobValueKey(job: string, suffix: "MODEL" | "PROMPT"): string {
-  return `CLAUDE_HOOKS_CLAUDE_TEAM_${job.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${suffix}`;
+  return `CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_${job.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${suffix}`;
 }
 
-export function hasOpenDialog(screen: string): boolean {
-  const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
-  return screenWithoutWhiteSpace.includes("Esctocancel");
-}
+// export function hasOpenDialog(screen: string): boolean {
+//   const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
+//   return screenWithoutWhiteSpace.includes("Esctocancel");
+// }
 
 export function buildPaneEnvironmentFlags(teamName: string, job: string, chatName: string): string[] {
-  return ["-e", `CLAUDE_TEAM_NAME=${teamName}`, "-e", `CLAUDE_TEAM_JOB=${job}`, "-e", `CLAUDE_TEAM_CHAT_NAME=${chatName}`];
+  return ["-e", `CLAUDE_TMUX_TEAM_NAME=${teamName}`, "-e", `CLAUDE_TMUX_TEAM_JOB=${job}`, "-e", `CLAUDE_TMUX_TEAM_CHAT_NAME=${chatName}`];
 }
 
 export function readTeamFile(teamFilePath: string): Team {
@@ -237,7 +297,12 @@ export function lockTeamFile(teamFilePath: string): void {
     const mkdirResult = spawnSync("mkdir", [lockPath]);
     if (mkdirResult.status === 0)
       return;
-    const lockAgeSeconds = (Date.now() - statSync(lockPath).mtimeMs) / 1000;
+    // const lockAgeSeconds = (Date.now() - statSync(lockPath).mtimeMs) / 1000;
+    const lockStat = statSync(lockPath, { throwIfNoEntry: false });
+    // the other writer removed the lock between mkdir and stat
+    if (lockStat === undefined)
+      continue;
+    const lockAgeSeconds = (Date.now() - lockStat.mtimeMs) / 1000;
     if (lockAgeSeconds > LOCK_STALE_SECONDS) {
       rmdirSync(lockPath);
       continue;
@@ -251,40 +316,40 @@ export function unlockTeamFile(teamFilePath: string): void {
   rmdirSync(`${teamFilePath}.lock`);
 }
 
-export function inputBoxHoldsMessage(screen: string, text: string): boolean {
-  const lines = screen.split("\n");
-  for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
-    const line = lines[lineIndex];
-    if (line.trimStart().startsWith("❯")) {
-      const textStart = text.split("\n")[0].slice(0, 20);
-      const lineHoldsTextStart = line.includes(textStart);
-      const lineShowsPastedTextMarker = line.includes("[Pasted text");
-      const boxWithoutWhiteSpace = lines.slice(lineIndex).join("").replace(/\s/g, "");
-      const boxHoldsTextEnd = boxWithoutWhiteSpace.includes(text.replace(/\s/g, "").slice(-20));
-      const inputBoxHoldsText = lineHoldsTextStart || lineShowsPastedTextMarker || boxHoldsTextEnd;
-      return inputBoxHoldsText;
-    }
-  }
-  return false;
-}
+// export function inputBoxHoldsMessage(screen: string, text: string): boolean {
+//   const lines = screen.split("\n");
+//   for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
+//     const line = lines[lineIndex];
+//     if (line.trimStart().startsWith("❯")) {
+//       const textStart = text.split("\n")[0].slice(0, 20);
+//       const lineHoldsTextStart = line.includes(textStart);
+//       const lineShowsPastedTextMarker = line.includes("[Pasted text");
+//       const boxWithoutWhiteSpace = lines.slice(lineIndex).join("").replace(/\s/g, "");
+//       const boxHoldsTextEnd = boxWithoutWhiteSpace.includes(text.replace(/\s/g, "").slice(-20));
+//       const inputBoxHoldsText = lineHoldsTextStart || lineShowsPastedTextMarker || boxHoldsTextEnd;
+//       return inputBoxHoldsText;
+//     }
+//   }
+//   return false;
+// }
 
-export function isChatBusy(screen: string): boolean {
-  const screenShowsBusyLine = CHAT_BUSY_PATTERN.test(screen);
-  return screenShowsBusyLine;
-}
+// export function isChatBusy(screen: string): boolean {
+//   const screenShowsBusyLine = CHAT_BUSY_PATTERN.test(screen);
+//   return screenShowsBusyLine;
+// }
 
-export function isInputBoxEmpty(screen: string): boolean {
-  const lines = screen.split("\n");
-  for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
-    const line = lines[lineIndex];
-    if (line.trimStart().startsWith("❯")) {
-      const textAfterPrompt = line.trimStart().slice(1);
-      const inputBoxHoldsNothing = textAfterPrompt.trim() === "";
-      return inputBoxHoldsNothing;
-    }
-  }
-  return false;
-}
+// export function isInputBoxEmpty(screen: string): boolean {
+//   const lines = screen.split("\n");
+//   for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex--) {
+//     const line = lines[lineIndex];
+//     if (line.trimStart().startsWith("❯")) {
+//       const textAfterPrompt = line.trimStart().slice(1);
+//       const inputBoxHoldsNothing = textAfterPrompt.trim() === "";
+//       return inputBoxHoldsNothing;
+//     }
+//   }
+//   return false;
+// }
 
 export function findDirectorChatOfJobTeam(team: Team, parentTeam: Team | undefined, teamLeaderJob: string, directorJob: string, swappedJob: string): TeamChat | undefined {
   const teamLeader = findTeamLeader(team);
@@ -303,11 +368,11 @@ export function findDirectorChatOfJobTeam(team: Team, parentTeam: Team | undefin
   return directorChat;
 }
 
-export function hasBackgroundWorkDialog(screen: string): boolean {
-  const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
-  const screenShowsBackgroundWorkDialog = screenWithoutWhiteSpace.includes("Backgroundworkisrunning");
-  return screenShowsBackgroundWorkDialog;
-}
+// export function hasBackgroundWorkDialog(screen: string): boolean {
+//   const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
+//   const screenShowsBackgroundWorkDialog = screenWithoutWhiteSpace.includes("Backgroundworkisrunning");
+//   return screenShowsBackgroundWorkDialog;
+// }
 
 export function getReplacementChatModel(oldChat: TeamChat, teamLeaderJob: string, values: Record<string, string>): string {
   if (oldChat.job === teamLeaderJob)
@@ -350,4 +415,8 @@ export function listChatsInSwap(team: Team): TeamChat[] {
       chatsInSwap.push(chat);
   }
   return chatsInSwap;
+}
+
+export function findPlanAuditorToWaitFor(team: Team, planAuditorJob: string): TeamChat | undefined {
+  return findChatWithStatus(team, planAuditorJob, "active");
 }

@@ -27,7 +27,8 @@ export function addJobWorktree(workDirectory: string, worktreeDirectory: string,
     throw new Error(`${workDirectory} has no checked-out branch`);
   const safeTeamName = buildSafeName(teamName);
   const safeJobName = buildSafeName(jobName);
-  const branch = `claude-team/${safeTeamName}/${safeJobName}`;
+  // const branch = `claude-team/${safeTeamName}/${safeJobName}`;
+  const branch = `claude-tmux-team/${safeTeamName}/${safeJobName}`;
   const worktreePath = `${repositoryRoot}/${worktreeDirectory}/${safeTeamName}-${safeJobName}`;
   // old: always created the worktree and ran the setup commands
   // executeCommand(workDirectory, "git", ["worktree", "add", "-b", branch, worktreePath, baseBranch]);

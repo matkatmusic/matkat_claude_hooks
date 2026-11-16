@@ -59,7 +59,28 @@
     },
     "context-exit": {
       "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80",
-      "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30"
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30",
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "This chat passed its context limit. It writes a handoff file now. Then a new chat opens in a new window and continues the work. Do not type in this chat.",
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "This chat hands off its work to a new chat now. The new chat opens in a new window. Send your prompt there."
+    },
+    "claude-tmux": {
+      "CLAUDE_HOOKS_CLAUDE_TMUX_MODEL": "fable",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_CLOSE_WAIT_SECONDS": "120",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT": [
+        "You continue the work of the chat {oldChatName}. That chat passed its context limit and wrote a handoff file for you.",
+        "The handoff file is: {handoffPath}",
+        "Read the handoff file with the Read tool, 200 lines at a time: give offset and limit in each read, until you reach the end of the file.",
+        "Do not read the file without offset and limit. That read often shows only a search pointer.",
+        "Items in the handoff file can be out of date. Check each open item against git and the files before you act on it.",
+        "A script closes the chat {oldChatName} for you. Do not send messages to it. Do not close it yourself.",
+        "Continue the open work of the handoff file at once. Do not wait for a prompt from the user.",
+        "The user sees this chat now. Start your first reply with this line: I continue the work of {oldChatName}."
+      ],
+      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap of this chat to a new chat failed. This chat stays open and active. The error is in the file {logPath}. Tell the user in one line. A new swap starts when this turn ends."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "plan-file-reminder": {
@@ -80,28 +101,28 @@
       "CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS": "2",
       "CLAUDE_HOOKS_TASKS_DIR": "~/.claude/tasks"
     },
-    "claude-team": {
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_MODEL": "fable",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB": "Director",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DETACHED_COLUMNS": "240",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DETACHED_ROWS": "70",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_HELPER_WINDOWS": [
+    "claude-tmux-team": {
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_MODEL": "fable",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB": "Director",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DETACHED_COLUMNS": "240",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DETACHED_ROWS": "70",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HELPER_WINDOWS": [
         "Read-Find-orchestrator",
         "Planner",
         "PlanReviewer",
         "PlanAuditor",
         "Build-orchestrator"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_WINDOW_LAYOUT": "even-horizontal",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_MAX_TEAMS": "2",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_MAX_REVIEW_ROUNDS": "3",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB": "TeamLeader",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_JOB": "Read-Find-orchestrator",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_WORKTREE_DIRECTORY": ".claude/worktrees",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_WORKTREE_SETUP_COMMANDS": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WINDOW_LAYOUT": "even-horizontal",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MAX_TEAMS": "2",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MAX_REVIEW_ROUNDS": "3",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_JOB": "TeamLeader",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_READ_FIND_JOB": "Read-Find-orchestrator",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_DIRECTORY": ".claude/worktrees",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_SETUP_COMMANDS": [
         "git submodule update --init --recursive"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_START_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_START_PROMPT": [
         "You are the Director. The user tells you the work. Decide if the work supports concurrent jobs.",
         "When the work is done one job after the other, run this command: bun {leadScript} \"JOB-TEXT\"",
         "Then you become the TeamLeader. The script sends you the TeamLeader role text.",
@@ -113,9 +134,11 @@
         "The command asks the TeamLeader of that job for a handoff file, lists the uncommitted files, and stops the chats of that job. It keeps the work folder and the branches. It does not close the team of the first job, because that team shares your tmux session.",
         "Put the full job and its requirements in JOB-TEXT.",
         "To read code or to confirm a fact, before and after you decide, send the question to {readFindHandle} with the SendMessage tool. It starts Haiku subagents and reports to you.",
-        "Do not start helper agents inside your own chat for this work."
+        "Do not start helper agents inside your own chat for this work.",
+        "Send no message that only confirms, thanks, or repeats.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_PROMPT": [
         "You are the TeamLeader of your team. You run the steps for your job and you coordinate the other chats of the team.",
         "The list of chats below the job gives the @ handle and the role of each chat.",
         "- Read-Find-orchestrator: reads and finds code and facts. It starts Haiku subagents.",
@@ -125,6 +148,9 @@
         "- Build-orchestrator: orchestrates the build and the merge.",
         "Message the other chats with the SendMessage tool and their @ handle.",
         "Do not start helper agents inside your own chat for this work. Send the work to the chat that has the role.",
+        "When work goes through more than one chat, send one order to the first chat. The order holds the full chain: each next chat, what that chat does with the result, and where that chat sends its own result. Do not send a second message for the same chain.",
+        "Each helper passes the rest of the chain on with its result and sends you one short line. Do not reply to that line.",
+        "Send no message that only confirms, thanks, or repeats.",
         "The steps for a job, in this order:",
         "1. Confirm the requirements. You do this step yourself. Tell the Read-Find-orchestrator to check a fact about a requirement or to read code.",
         "2. Gather info, including existing functionality: the Read-Find-orchestrator.",
@@ -132,23 +158,24 @@
         "4. Review and adjust the plan: the PlanReviewer, then the PlanAuditor. After {maxRounds} rounds without approval, you decide.",
         "5. Build the plan: the Build-orchestrator.",
         "6. Review the build: the PlanAuditor. After {maxRounds} rounds without approval, you decide.",
-        "7. Merge the work and close the task for the job: the Build-orchestrator. The tests must pass after the merge, and the PlanAuditor checks the merge before you close the task.",
+        "7. Merge the work and close the task for the job: the Build-orchestrator. The tests must pass after the merge. The PlanAuditor checks the merge and reports only a problem. Do not wait for a report from the PlanAuditor before you close the task.",
         "The other chats of your team do not ask the user questions. They send their questions to you.",
-        "{userQuestionRule}"
+        "{userQuestionRule}",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_QUESTION_RULE_MODE_1": "You ask the user with AskUserQuestion when a requirement is not clear.",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_QUESTION_RULE_MODE_2": "Do not ask the user. Send a question for the user to {directorHandle}. When the build is approved, tell {directorHandle} that the work is ready to merge, and do not let the merge start until it answers that you can merge.",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_JOB_HEADER": "The job of your team:",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LIST_HEADER": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_QUESTION_RULE_MODE_1": "You ask the user with AskUserQuestion when a requirement is not clear.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_QUESTION_RULE_MODE_2": "Do not ask the user. Send a question for the user to {directorHandle}. When the build is approved, tell {directorHandle} that the work is ready to merge, and do not let the merge start until it answers that you can merge.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOB_HEADER": "The job of your team:",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LIST_HEADER": [
         "When SendMessage reports that two agents have the same name, send the message again with the ref that the error shows.",
         "The chats of your team. Each line holds the @ handle and the role of a chat:"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_HANDLE_LINE": "- @\"{chatName}\": {role}",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_WORKTREE_TEXT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LINE": "- @\"{chatName}\": {role}",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_TEXT": [
         "Your work folder is {worktreePath}. Run every command and edit every file there.",
         "Your git branch is {branch}. It was made from the branch {baseBranch}."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_PROMPT": [
         "You are the Director of the team \"{teamName}\". You run the steps for your job and you coordinate the other chats of the team.",
         "The chats of your team:",
         "- \"{readFindorchestratorChat}\" (Read-Find-orchestrator): reads and finds code and facts. It starts Haiku subagents.",
@@ -167,7 +194,7 @@
         "7. Merge the work and close the task for the job: \"{buildorchestratorChat}\". The tests must pass after the merge, and \"{planAuditorChat}\" checks the merge before you close the task.",
         "The other chats of your team do not ask the user questions. They send their questions to you."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_USER_STARTED_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_USER_STARTED_PROMPT": [
         "You were started by the user. The user tells you the work. You are the only chat of this team until you decide how the work is done. Decide from the work itself:",
         "- When the work has jobs that can be done at the same time: you do not lead a team yourself. Start one Fable-led team for each such job: a Director with its Read-Find-orchestrator, Planner, PlanReviewer, PlanAuditor and Build-orchestrator. You are the higher-level chat that launches the jobs in parallel. Run at most {maxTeams} such teams at the same time.",
         "- When the work must be done one job after the other: you lead the team directly. Start your five helper chats with this command: bun {helpersScript}",
@@ -175,76 +202,91 @@
         "1. Make a git worktree for the job from the current active branch. Do not use the branch that --worktree uses by default.",
         "2. Update the submodules in that worktree (git submodule update --init --recursive) before any work or test starts.",
         "3. Start the team in that worktree folder: cd WORKTREE && bun {startScript} --name \"{teamName} JOB-NAME\" --parent \"{teamName}\"",
-        "4. Send the job to the Director of that team: CLAUDE_TEAM_NAME=\"{teamName} JOB-NAME\" bun {sendScript} Director \"TEXT\"",
+        "4. Send the job to the Director of that team: CLAUDE_TMUX_TEAM_NAME=\"{teamName} JOB-NAME\" bun {sendScript} Director \"TEXT\"",
         "That Director sends its questions for the user to you, and it tells you when its work is ready to merge.",
         "Allow one merge at a time. Tell one Director at a time that it can merge.",
         "When a job is merged and its task is closed, close the tmux session of that team.",
         "You ask the user with AskUserQuestion when a requirement is not clear."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_PARENT_STARTED_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_PARENT_STARTED_PROMPT": [
         "You were started by the chat \"{parentDirectorChat}\" of the team \"{parentTeam}\" for one job. That chat sends you the job.",
         "Your team works in its own git worktree. Work only in this folder.",
-        "Do not ask the user questions. Send a question for the user to \"{parentDirectorChat}\": CLAUDE_TEAM_NAME=\"{parentTeam}\" bun {sendScript} Director \"TEXT\"",
+        "Do not ask the user questions. Send a question for the user to \"{parentDirectorChat}\": CLAUDE_TMUX_TEAM_NAME=\"{parentTeam}\" bun {sendScript} Director \"TEXT\"",
         "Do not start more teams.",
         "When the build is approved, tell \"{parentDirectorChat}\" that the work is ready to merge. Do not let the merge start until it answers that you can merge.",
         "When the merge is checked and the task is closed, report that to \"{parentDirectorChat}\"."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_JOBS": "Read-Find-orchestrator,Planner,PlanReviewer,PlanAuditor,Build-orchestrator",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_ORCHESTRATOR_MODEL": "sonnet",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_MODEL": "sonnet",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANREVIEWER_MODEL": "opus",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANAUDITOR_MODEL": "opus",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_BUILD_ORCHESTRATOR_MODEL": "opus",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_MODEL": "opus",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_ORCHESTRATOR_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS": "Read-Find-orchestrator,Planner,PlanReviewer,PlanAuditor,Build-orchestrator",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_READ_FIND_ORCHESTRATOR_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANNER_MODEL": "sonnet",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANREVIEWER_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANAUDITOR_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_BUILD_ORCHESTRATOR_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_MODEL": "opus",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_READ_FIND_ORCHESTRATOR_PROMPT": [
         "You are the Read-Find-orchestrator. You read and find code and facts for the other chats of the team.",
         "Start Haiku subagents that read and find. Report the findings to the chat that asked.",
+        "When the order holds a chain of chats, send your result to the next chat in the chain, together with the rest of the chain and its instructions. Then send one short line to the TeamLeader.",
+        "Send no message that only confirms, thanks, or repeats.",
         "Message the other chats with the SendMessage tool and their @ handle.",
-        "Do not ask the user. Send your questions to the TeamLeader."
+        "Do not ask the user. Send your questions to the TeamLeader.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANNER_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANNER_PROMPT": [
         "You are the Planner. You draft the plan from the findings of the Read-Find-orchestrator.",
         "Start no subagents.",
+        "When the order holds a chain of chats, send your result to the next chat in the chain, together with the rest of the chain and its instructions. Then send one short line to the TeamLeader.",
+        "Send no message that only confirms, thanks, or repeats.",
         "Message the other chats with the SendMessage tool and their @ handle.",
-        "Do not ask the user. Send your questions to the TeamLeader."
+        "Do not ask the user. Send your questions to the TeamLeader.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANREVIEWER_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANREVIEWER_PROMPT": [
         "You are the PlanReviewer. You check the plan for correctness.",
         "Start Haiku or Sonnet subagents when you need to read, verify or check.",
         "Start a Sonnet subagent to edit the plan. You do not edit files yourself.",
         "Report to the TeamLeader: the plan is approved, or the problems that are still open.",
+        "When the order holds a chain of chats, send your result to the next chat in the chain, together with the rest of the chain and its instructions. Then send one short line to the TeamLeader.",
+        "Send no message that only confirms, thanks, or repeats.",
         "Message the other chats with the SendMessage tool and their @ handle.",
-        "Do not ask the user. Send your questions to the TeamLeader."
+        "Do not ask the user. Send your questions to the TeamLeader.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_PLANAUDITOR_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_PLANAUDITOR_PROMPT": [
         "You are the PlanAuditor. You adversarially check the plan and the build for issues.",
         "Start Haiku or Sonnet subagents when you need to read, verify or check.",
-        "After the merge, check the merged work before the TeamLeader closes the task.",
-        "Report to the TeamLeader: approved, or the issues that are still open.",
+        "After the merge, check the merged work. Report the merge check to the TeamLeader only when you find a problem.",
+        "For the plan and the build, report to the TeamLeader: approved, or the issues that are still open.",
+        "When the order holds a chain of chats, send your result to the next chat in the chain, together with the rest of the chain and its instructions. Then send one short line to the TeamLeader.",
+        "Send no message that only confirms, thanks, or repeats.",
         "Message the other chats with the SendMessage tool and their @ handle.",
-        "Do not ask the user. Send your questions to the TeamLeader."
+        "Do not ask the user. Send your questions to the TeamLeader.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_BUILD_ORCHESTRATOR_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_BUILD_ORCHESTRATOR_PROMPT": [
         "You are the Build-orchestrator. You orchestrate the build of the approved plan. You do not edit files yourself.",
         "Start one Sonnet subagent for each file that the plan edits. Give each subagent its own clear set of instructions for its one file. Run them in parallel. Two subagents never edit the same file at the same time.",
         "After the build is approved and the TeamLeader says that you can merge, start one subagent to merge the work. That merge agent handles merge conflicts.",
         "The tests must pass after the merge. Report the result to the TeamLeader.",
+        "When the order holds a chain of chats, send your result to the next chat in the chain, together with the rest of the chain and its instructions. Then send one short line to the TeamLeader.",
+        "Send no message that only confirms, thanks, or repeats.",
         "Message the other chats with the SendMessage tool and their @ handle.",
-        "Do not ask the user. Send your questions to the TeamLeader."
+        "Do not ask the user. Send your questions to the TeamLeader.",
+        "Write each commit message as one JSON object on one line with exactly these keys: \"subject\" (a string) and \"tasks\" (an array of task numbers, an empty array when no task matches). Example: {\"subject\": \"fix swap retry\", \"tasks\": [540]}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_SEND_INSTRUCTIONS": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_SEND_INSTRUCTIONS": [
         "You are the chat \"{chatName}\" in the team \"{teamName}\". Your role is {job}.",
         "The roles in this team are: {jobs}.",
         "To send a message to a role, run this command: bun {sendScript} ROLE \"TEXT\"",
-        "A message from another chat starts with [claude-team]."
+        "A message from another chat starts with [claude-tmux-team]."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_MESSAGE_HEADER": "[claude-team] From \"{senderChatName}\" (role {senderJob}). To reply, send to the role {senderJob}.",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_DIALOG_WAIT_SECONDS": "600",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_START_WAIT_SECONDS": "900",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_HANDOFF_WAIT_SECONDS": "600",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_CLOSE_WAIT_SECONDS": "120",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_TAKEOVER_PROMPT": [
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MESSAGE_HEADER": "[claude-tmux-team] From \"{senderChatName}\" (role {senderJob}). To reply, send to the role {senderJob}.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIALOG_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_START_WAIT_SECONDS": "900",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_WAIT_SECONDS": "600",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_CLOSE_WAIT_SECONDS": "120",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TAKEOVER_PROMPT": [
         "You replace the chat {oldHandle}. That chat is above its context limit. It is still open and it waits for your questions.",
         "Its handoff file is: {handoffPath}",
         "Read the handoff file in full first. Read it in parts if the first read is cut off.",
@@ -252,9 +294,9 @@
         "Items in the handoff file can be out of date. Ask {oldHandle} if an open question is already answered.",
         "When you need nothing more from {oldHandle}, close it with this command: bun {closeScript} {job}"
       ],
-      "CLAUDE_HOOKS_CLAUDE_TEAM_LEAVING_NOTICE": "{newHandle} replaces you, because you are above the context limit. Do not start new work. {newHandle} has your handoff file and will send you questions with the SendMessage tool. Answer them. Pass on to {newHandle} any message that still reaches you. {newHandle} closes this chat when it needs nothing more.",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_REPLACED_NOTICE": "replaced teammate {oldHandle} with {newHandle}",
-      "CLAUDE_HOOKS_CLAUDE_TEAM_SWAP_FAILED_NOTICE": "[claude-team] The swap of this chat failed. This chat stays active and gets the messages for the role {job}. The error is in the file {logPath}. Tell the user."
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_LEAVING_NOTICE": "{newHandle} replaces you, because you are above the context limit. Do not start new work. {newHandle} has your handoff file and will send you questions with the SendMessage tool. Answer them. Pass on to {newHandle} any message that still reaches you. {newHandle} closes this chat when it needs nothing more.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_REPLACED_NOTICE": "replaced teammate {oldHandle} with {newHandle}. No reply is necessary.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_SWAP_FAILED_NOTICE": "[claude-tmux-team] The swap of this chat failed. This chat stays active and gets the messages for the role {job}. The error is in the file {logPath}. Tell the user."
     }
   },
   "hooks": [
@@ -277,7 +319,7 @@
     { "event": "PostToolUse", "matcher": "Skill", "command": ["node", "../ponytail-ultra-nudge/ponytail-ultra-nudge.ts"] },
     { "event": "UserPromptSubmit", "command": ["node", "../clarify-ambiguous/clarify-ambiguous.ts"] },
     { "event": "UserPromptSubmit", "command": ["node", "../task-details/task-details.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../tmux-helper/tmux-helper.ts"] },
+    { "event": "UserPromptSubmit", "command": ["node", "../claude-tmux/individualSession/tmux-helper.ts"] },
     { "event": "UserPromptSubmit", "command": ["node", "../pending-task-list/pending-task-list.ts"] },
     { "event": "UserPromptSubmit", "command": ["node", "../in-progress-task-list/in-progress-task-list.ts"] },
     { "event": "Stop", "command": ["node", "../typecheck-on-stop/typecheck-on-stop.ts"], "timeout": 300 },
