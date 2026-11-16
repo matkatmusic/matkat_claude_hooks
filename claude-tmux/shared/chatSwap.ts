@@ -125,6 +125,12 @@ function closeExitDialogIfOpen(pane: string, screen: string): void {
     tmux_lib.run(["tmux", "send-keys", "-t", pane, "Escape"], { capture_output: true, text: true, check: true });
 }
 
+function assertPaneIsOpen(pane: string, chatName: string): void {
+  const isOpen = isPaneOpen(pane);
+  if (!isOpen)
+    throw new Error(`"${chatName}" is gone: the tmux pane ${pane} does not exist`);
+}
+
 export function waitForIdleChat(pane: string, chatName: string, waitSeconds: number): void {
   const waitStartedAt = Date.now();
   let isIdle = false;
@@ -132,8 +138,29 @@ export function waitForIdleChat(pane: string, chatName: string, waitSeconds: num
     const waitedSeconds = (Date.now() - waitStartedAt) / 1000;
     if (waitedSeconds > waitSeconds)
       throw new Error(`"${chatName}" is not idle: it is busy or its input box holds text`);
+    assertPaneIsOpen(pane, chatName);
     const screen = tmux_lib.tmux_capturePane(pane);
     closeExitDialogIfOpen(pane, screen);
+    isIdle = isChatIdle(screen);
+    if (!isIdle)
+      tmux_lib.sleep(1);
+  }
+}
+
+export function waitForIdleChatAndClearInputBox(pane: string, chatName: string, waitSeconds: number): void {
+  const waitStartedAt = Date.now();
+  let isIdle = false;
+  while (!isIdle) {
+    const waitedSeconds = (Date.now() - waitStartedAt) / 1000;
+    if (waitedSeconds > waitSeconds)
+      throw new Error(`"${chatName}" is not idle: it is busy or its input box holds text`);
+    assertPaneIsOpen(pane, chatName);
+    const screen = tmux_lib.tmux_capturePane(pane);
+    closeExitDialogIfOpen(pane, screen);
+    const isBoxEmpty = isInputBoxEmpty(screen);
+    // Claude Code docs: Ctrl-U deletes to the line start, and repeated it clears across lines; Ctrl-E first takes the text after the cursor
+    if (!isBoxEmpty)
+      tmux_lib.run(["tmux", "send-keys", "-t", pane, "C-e", "C-u"], { capture_output: true, text: true, check: true });
     isIdle = isChatIdle(screen);
     if (!isIdle)
       tmux_lib.sleep(1);

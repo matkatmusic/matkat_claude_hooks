@@ -2,7 +2,8 @@ import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { fillTemplate, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
-import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+// import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, waitForIdleChatAndClearInputBox, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord } from "./singleChat.ts";
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, buildSwapRecordPath, openTrackerOfPane, updateTrackerWithNextChatNumber, writeSwapRecord } from "./singleChat.ts";
 
@@ -48,7 +49,9 @@ writeSwapRecord(swapRecordPath, { newChatName, newPane, isNewChatReady: true });
 if (isOldWindowActive)
   selectWindowOfPane(newPane);
 
-waitForIdleChat(oldPane, oldChatName, handoffWaitSeconds);
+// waitForIdleChat(oldPane, oldChatName, handoffWaitSeconds);
+// text typed into the old chat during the swap stays in its input box; clear it so /exit can go in
+waitForIdleChatAndClearInputBox(oldPane, oldChatName, handoffWaitSeconds);
 sendExitToChat(oldPane, oldChatName, handoffWaitSeconds, closeWaitSeconds);
 removeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 rmSync(swapRecordPath);
