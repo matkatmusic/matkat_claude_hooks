@@ -6,10 +6,10 @@ import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.t
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { buildTeamFilePath, buildTranscriptDirectory, fillTemplate, findNewHandoffFile, findSessionIdOfChat, findTeamLeader, listChatsInSwap, listHandoffFiles, listIdleStateDirectories, readTeamFile } from "./teamFile.ts";
 // import { buildTeamFilePath, buildTranscriptDirectory, fillTemplate, findSessionIdOfChat, findTeamLeader, listChatsInSwap, listIdleStateDirectories, readTeamFile } from "./teamFile.ts";
-import { buildTeamFilePath, buildTranscriptDirectory, findSessionIdOfChat, findTeamLeader, listChatsInSwap, listIdleStateDirectories, readTeamFile } from "./teamFile.ts";
+import { buildTeamFilePath, buildTranscriptDirectory, findPlanAuditorToWaitFor, findSessionIdOfChat, findTeamLeader, listChatsInSwap, listIdleStateDirectories, readTeamFile } from "./teamFile.ts";
 // import { sendTextToChat } from "./teamSend.ts";
 // import { sendHandoffCommandAndWaitForFile } from "../chat-swap/chatSwap.ts";
-import { fillTemplate, sendHandoffCommandAndWaitForFile } from "../shared/chatSwap.ts";
+import { fillTemplate, sendHandoffCommandAndWaitForFile, waitForIdleChat } from "../shared/chatSwap.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 1)
@@ -49,6 +49,12 @@ if (chatsInSwap.length > 0)
 const teamLeader = findTeamLeader(jobTeam);
 if (teamLeader === undefined)
   throw new Error(`team ${jobTeamName} has no team leader`);
+
+const planAuditorChat = findPlanAuditorToWaitFor(jobTeam, "PlanAuditor");
+if (planAuditorChat !== undefined) {
+  console.log(`waiting for "${planAuditorChat.chatName}" to finish its work`);
+  waitForIdleChat(planAuditorChat.pane, planAuditorChat.chatName, Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_WAIT_SECONDS"]));
+}
 
 const transcriptDirectory = buildTranscriptDirectory(`${homedir()}/.claude/projects`, jobTeam.workDirectory);
 const teamLeaderSessionId = findSessionIdOfChat(transcriptDirectory, teamLeader.chatName);

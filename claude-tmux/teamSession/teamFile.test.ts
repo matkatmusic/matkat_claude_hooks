@@ -42,6 +42,7 @@ const {
   buildTranscriptDirectory,
   findSessionIdOfChat,
   listChatsInSwap,
+  findPlanAuditorToWaitFor,
 } = await import("./teamFile.ts");
 
 const { hasOpenDialog, inputBoxHoldsMessage, isChatBusy, isInputBoxEmpty, hasBackgroundWorkDialog } = await import("../shared/chatScreen.ts");
@@ -968,4 +969,47 @@ test("test_listChatsInSwap_returns_leaving_and_starting_chats", () => {
     ],
   };
   assert.deepEqual(listChatsInSwap(team).map((chat) => chat.chatName), ["T Planner 1", "T Planner 2"]);
+});
+
+test("test_findPlanAuditorToWaitFor_gives_the_active_plan_auditor", () => {
+  // Scenario: the team has an active TeamLeader, an active Planner and an active PlanAuditor.
+  // Step: ask for the plan auditor to wait for. Check that the PlanAuditor chat comes back.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "Planner", chatNumber: 1, chatName: "J Planner 1", pane: "%2", model: "sonnet", status: "active" },
+      { job: "PlanAuditor", chatNumber: 1, chatName: "J PlanAuditor 1", pane: "%3", model: "sonnet", status: "active" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor")?.chatName, "J PlanAuditor 1");
+});
+
+test("test_findPlanAuditorToWaitFor_gives_nothing_without_a_plan_auditor", () => {
+  // Scenario: the team has only a TeamLeader and a Planner.
+  // Step: ask for the plan auditor to wait for. Check for undefined.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "Planner", chatNumber: 1, chatName: "J Planner 1", pane: "%2", model: "sonnet", status: "active" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor"), undefined);
+});
+
+test("test_findPlanAuditorToWaitFor_skips_a_plan_auditor_that_is_not_active", () => {
+  // Scenario: the only PlanAuditor chat has status "leaving".
+  // Step: ask for the plan auditor to wait for. Check for undefined.
+  const team: Team = {
+    teamName: "J",
+    workDirectory: "/w",
+    chats: [
+      { job: "TeamLeader", chatNumber: 1, chatName: "J TeamLeader 1", pane: "%1", model: "fable", status: "active" },
+      { job: "PlanAuditor", chatNumber: 1, chatName: "J PlanAuditor 1", pane: "%3", model: "sonnet", status: "leaving" },
+    ],
+  };
+  assert.equal(findPlanAuditorToWaitFor(team, "PlanAuditor"), undefined);
 });

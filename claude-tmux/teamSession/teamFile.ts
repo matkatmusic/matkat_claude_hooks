@@ -411,3 +411,7 @@ export function listChatsInSwap(team: Team): TeamChat[] {
   }
   return chatsInSwap;
 }
+
+export function findPlanAuditorToWaitFor(team: Team, planAuditorJob: string): TeamChat | undefined {
+  return findChatWithStatus(team, planAuditorJob, "active");
+}
