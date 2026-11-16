@@ -107,7 +107,7 @@ ${TRUTH_SOURCES}
 4. To close: load the tools with ToolSearch query "select:TaskGet,TaskUpdate". Call TaskGet for "${proposal.id}" to read its latest state. If it is no longer "pending", do not change it; return action="left-open" with a note. Otherwise call TaskUpdate with taskId "${proposal.id}", status "completed", and metadata {"closedReason": "<one plain sentence>", "closedEvidence": "<hashes / file:line / task ids / quoted decision>", "closedBy": "${closedBy}"}. Do not use status "deleted". Do not change the subject or description.
 5. Check: \`jq -r .status ${taskFolder}/${proposal.id}.json\` and put the printed value in fileStatusAfter. If TaskUpdate is not available or the file status is not "completed" after the update, set action="failed" and explain in note.
 
-Rules: read-only for everything except this one task. Do not edit files, do not commit, do not run tests or builds, do not touch any other task.
+Rules: read-only for everything except this one task. Do not edit files, do not commit, do not run tests or builds, do not touch any other task. Other agents close other tasks at the same time: do not report the status of any other task in any field.
 Return the structured result.`
 }
 
