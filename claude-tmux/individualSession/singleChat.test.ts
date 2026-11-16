@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -114,4 +115,42 @@ test("test_getSwapFailedAction_keeps_the_new_chat_when_it_is_ready", () => {
   // Scenario: the new chat is ready.
   // Step: ask for the action. Check that the new chat is kept.
   assert.equal(getSwapFailedAction({ newChatName: "bed 2", newPane: "%5", isNewChatReady: true }), "keepNewChat");
+});
+
+// isTmuxSessionNameTaken reaches tmux_lib.run, which needs Bun, so it runs in a child process.
+function runIsTmuxSessionNameTaken(sessionName: string) {
+  const code = `const { isTmuxSessionNameTaken } = await import("./claude-tmux/individualSession/singleChat.ts"); console.log(JSON.stringify(isTmuxSessionNameTaken(${JSON.stringify(sessionName)})));`;
+  return spawnSync("bun", ["-e", code], { encoding: "utf8", env: { ...process.env, BUN_JSC_useTailCalls: "0" }, cwd: join(import.meta.dirname, "..", "..") });
+}
+
+test("test_isTmuxSessionNameTaken_false_when_only_a_longer_name_exists", (t) => {
+  // Scenario: only the session "singleChat-test-PID-2" exists. The name "singleChat-test-PID" is a prefix of it.
+  // Step 1: start the session with the longer name. Kill it after the test.
+  const longerName = `singleChat-test-${process.pid}-2`;
+  const newSession = spawnSync("tmux", ["new-session", "-d", "-s", longerName, "sleep", "60"], { encoding: "utf8" });
+  assert.equal(newSession.status, 0, newSession.stderr);
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", `=${longerName}`]);
+  });
+  // Step 2: ask if the shorter name is taken, in a Bun child process.
+  const child = runIsTmuxSessionNameTaken(`singleChat-test-${process.pid}`);
+  // Step 3: check that the child worked and printed false.
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stdout.trim(), "false");
+});
+
+test("test_isTmuxSessionNameTaken_true_for_the_exact_name", (t) => {
+  // Scenario: the session "singleChat-test-PID-exact" exists.
+  // Step 1: start the session. Kill it after the test.
+  const exactName = `singleChat-test-${process.pid}-exact`;
+  const newSession = spawnSync("tmux", ["new-session", "-d", "-s", exactName, "sleep", "60"], { encoding: "utf8" });
+  assert.equal(newSession.status, 0, newSession.stderr);
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", `=${exactName}`]);
+  });
+  // Step 2: ask if the exact name is taken, in a Bun child process.
+  const child = runIsTmuxSessionNameTaken(exactName);
+  // Step 3: check that the child worked and printed true.
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stdout.trim(), "true");
 });

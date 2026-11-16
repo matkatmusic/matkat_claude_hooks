@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { wrapShellWord } from "../shared/chatSwap.ts";
+import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 
 export type SingleChatSwapRecord = { newChatName: string; newPane: string; isNewChatReady: boolean };
 
@@ -37,6 +38,12 @@ export function buildSingleChatPaneCommand(chatName: string, model: string, star
   if (startingText !== "")
     claudeCommand += ` -- ${wrapShellWord(startingText)}`;
   return `zsh -ic ${wrapShellWord(claudeCommand)}`;
+}
+
+export function isTmuxSessionNameTaken(sessionName: string): boolean {
+  // tmux has-session -t NAME also matches a name prefix; "=" asks for the exact name
+  const hasSessionResult = tmux_lib.run(["tmux", "has-session", "-t", `=${sessionName}`], { capture_output: true, text: true, check: false });
+  return hasSessionResult.returncode === 0;
 }
 
 export function buildSwapRecordPath(stateDirectory: string, oldSessionId: string): string {
