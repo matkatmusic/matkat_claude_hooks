@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyReflowToFile, formatReflows, isRewriteNeeded, applyReflowToSource } from "./reflowComments.ts";
+import { applyReflowToFile, formatReflows, isRewriteNeeded, applyReflowToSource, listOverCapLines } from "./reflowComments.ts";
 import { REWRITE_NOT_NEEDED } from "./resultCodes.ts";
 
 const WRAPPED = [
@@ -105,6 +105,12 @@ test("an already-flat comment over the cap is reported but not rewritten", () =>
   assert.deepEqual(payload.files, [
     { path: "/tmp/a.ts", lines: [1], show: "nl -ba '/tmp/a.ts' | sed -n '1p'" },
   ]);
+});
+
+test("test_listOverCapLines_returns_line_of_comment_with_20_or_more_words", () => {
+  const flat = `// ${Array.from({ length: 25 }, (_, n) => `word${n}`).join(" ")}`;
+  const { runs } = applyReflowToSource([flat, "const x = 1;"].join("\n"));
+  assert.deepEqual(listOverCapLines({ path: "/tmp/a.ts", runs }), { path: "/tmp/a.ts", lines: [1] });
 });
 
 test("a ---- divider ---- is passed through and ends the run above it", () => {
