@@ -83,6 +83,41 @@ function startFakeHandoffChat(t: TestContext, handoffFilePath: string): { pane: 
   return { pane, receivedFile };
 }
 
+const fakeTwoLineInputChatProgram = `
+const fs = require("node:fs");
+const [receivedFile] = process.argv.slice(2);
+process.stdin.setRawMode(true);
+const inputLines = ["hello", "world"];
+let received = "";
+fs.writeFileSync(receivedFile, received);
+function redrawScreen() {
+  const screenLines = inputLines.map((line, index) => (index === 0 ? "❯ " : "  ") + line);
+  process.stdout.write("\\x1b[2J\\x1b[H" + screenLines.join("\\r\\n"));
+}
+redrawScreen();
+process.stdin.on("data", (chunk) => {
+  const text = chunk.toString();
+  received += text;
+  fs.writeFileSync(receivedFile, received);
+  // if (text === "\\x15") {
+  //   if (inputLines[inputLines.length - 1] !== "")
+  //     inputLines[inputLines.length - 1] = "";
+  //   else if (inputLines.length > 1)
+  //     inputLines.pop();
+  //   redrawScreen();
+  // }
+  for (const character of text) {
+    if (character === "\\x15") {
+      if (inputLines[inputLines.length - 1] !== "")
+        inputLines[inputLines.length - 1] = "";
+      else if (inputLines.length > 1)
+        inputLines.pop();
+    }
+  }
+  redrawScreen();
+});
+`;
+
 test("test_listHandoffFilesInDirectories_returns_the_files_of_the_session_from_each_folder", () => {
   // Scenario: the files of the session are listed from every folder, first folder first. Files of other sessions are left out.
   // Step 1: make two folders. Each holds a file of session abcdefgh and a file of another session.
@@ -311,4 +346,60 @@ test("test_isWindowOfPaneActive_is_false_for_the_pane_of_a_background_window", (
   // Step 4: the call succeeds and the answer is false.
   assert.equal(check.status, 0, check.stderr);
   assert.equal(JSON.parse(check.stdout.trim()), false);
+});
+
+test("test_waitForIdleChat_throws_at_once_for_a_missing_pane", (t) => {
+  // Scenario: a pane that does not exist makes the wait fail at once, not after the wait time.
+  // Step 1: start a session, so that the tmux server runs.
+  startPane(t, "idleMissing", ["sleep", "60"]);
+  // Step 2: wait for idle on the pane %999999 with 600 seconds, in a child process. Measure the time.
+  const code = `import { waitForIdleChat } from "./shared/chatSwap.ts"; waitForIdleChat("%999999", "gone chat", 600);`;
+  const startTime = Date.now();
+  const wait = runInBun(code);
+  const elapsedMilliseconds = Date.now() - startTime;
+  // Step 3: the call fails with the does not exist error, in less than 10 seconds.
+  assert.notEqual(wait.status, 0);
+  assert.match(wait.stderr, /does not exist/);
+  assert.ok(elapsedMilliseconds < 10000, `took ${elapsedMilliseconds} ms`);
+});
+
+test("test_waitForIdleChatAndClearInputBox_clears_a_two_line_input_box", (t) => {
+  // Scenario: the wait sends Ctrl-E and Ctrl-U until the input box is empty, then returns.
+  // Step 1: start a fake chat whose input box holds two lines, and wait until it runs.
+  const testFolder = makeTemporaryFolder();
+  const receivedFile = join(testFolder, "received.txt");
+  const programFile = join(testFolder, "fakeTwoLineInputChat.cjs");
+  writeFileSync(programFile, fakeTwoLineInputChatProgram);
+  const { pane } = startPane(t, "clear-box", ["node", programFile, receivedFile]);
+  for (let waited = 0; waited < 50 && !existsSync(receivedFile); waited++)
+    spawnSync("sleep", ["0.1"]);
+  assert.equal(existsSync(receivedFile), true);
+  spawnSync("sleep", ["0.5"]);
+  // Step 2: wait for idle and clear the input box with 30 seconds, in a child process.
+  const code = `import { waitForIdleChatAndClearInputBox } from "./shared/chatSwap.ts"; waitForIdleChatAndClearInputBox(${JSON.stringify(pane)}, "fake chat", 30);`;
+  const wait = runInBun(code);
+  assert.equal(wait.status, 0, wait.stderr);
+  // Step 3: the line that starts with the prompt holds nothing after the prompt.
+  const capture = spawnSync("tmux", ["capture-pane", "-p", "-t", pane], { encoding: "utf8" });
+  assert.equal(capture.status, 0, capture.stderr);
+  const promptLine = capture.stdout.split("\n").find((line) => line.startsWith("❯"));
+  assert.notEqual(promptLine, undefined);
+  assert.equal(promptLine!.slice("❯".length).trim(), "");
+  // Step 4: the fake chat received the Ctrl-U byte.
+  assert.ok(readFileSync(receivedFile, "utf8").includes("\x15"));
+});
+
+test("test_waitForIdleChatAndClearInputBox_throws_at_once_for_a_missing_pane", (t) => {
+  // Scenario: a pane that does not exist makes the wait fail at once, not after the wait time.
+  // Step 1: start a session, so that the tmux server runs.
+  startPane(t, "clearMissing", ["sleep", "60"]);
+  // Step 2: wait on the pane %999999 with 600 seconds, in a child process. Measure the time.
+  const code = `import { waitForIdleChatAndClearInputBox } from "./shared/chatSwap.ts"; waitForIdleChatAndClearInputBox("%999999", "gone chat", 600);`;
+  const startTime = Date.now();
+  const wait = runInBun(code);
+  const elapsedMilliseconds = Date.now() - startTime;
+  // Step 3: the call fails with the does not exist error, in less than 10 seconds.
+  assert.notEqual(wait.status, 0);
+  assert.match(wait.stderr, /does not exist/);
+  assert.ok(elapsedMilliseconds < 10000, `took ${elapsedMilliseconds} ms`);
 });
