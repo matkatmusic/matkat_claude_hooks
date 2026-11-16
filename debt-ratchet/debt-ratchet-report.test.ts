@@ -63,6 +63,31 @@ test("test_report_writes_repo_debt_log_with_eslint_lines", () => {
   rmSync(logPath);
 });
 
+test("test_report_logs_new_file_that_git_does_not_track_yet", () => {
+  // Steps: a repo has one committed clean file and a new flagged .ts file that was never git added.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/untracked.ts`, "const a = 1; const b = 2;\n");
+  const untrackedPath = realpathSync(`${repo}/untracked.ts`);
+  // The log counts debt for the untracked file.
+  const { logPath, log } = readDebtLog(runReport(repo));
+  assert.ok(log.files[untrackedPath] > 0);
+  rmSync(logPath);
+});
+
+test("test_report_skips_file_that_gitignore_lists", () => {
+  // Steps: a repo commits only a .gitignore that lists ignored.ts, and ignored.ts has a flagged line.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/.gitignore`, "ignored.ts\n");
+  writeFileSync(`${repo}/ignored.ts`, "const a = 1; const b = 2;\n");
+  spawnSync("git", ["add", ".gitignore"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add gitignore"], { cwd: repo });
+  const ignoredPath = realpathSync(`${repo}/ignored.ts`);
+  // The log has no entry for the ignored file.
+  const { logPath, log } = readDebtLog(runReport(repo));
+  assert.equal(log.files[ignoredPath], undefined);
+  rmSync(logPath);
+});
+
 test("test_report_logs_line_of_comment_with_20_or_more_words", () => {
   // Steps: a repo has a .ts file with a 25 word comment on line 1 and clean code after it.
   const longComment = `// ${"word ".repeat(25).trim()}\n`;

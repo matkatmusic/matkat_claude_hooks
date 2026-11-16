@@ -4,6 +4,9 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
+import { isLongFileWithEnoughDebt } from "../../debt-ratchet/debt-compute.ts";
+
+const SPLIT_MIN_FILE_DEBT = 0;
 
 export type DebtLog = {
   files: { [path: string]: number };
@@ -18,7 +21,7 @@ export function orderDebtFixes(log: DebtLog, maxFileLines: number): { splitFiles
   const fixFiles: string[] = [];
   const paths = Object.keys(log.files);
   for (const path of paths) {
-    const isOverLineLimit = log.details[path].lineCount > maxFileLines;
+    const isOverLineLimit = isLongFileWithEnoughDebt(log.details[path].lineCount, log.files[path], maxFileLines, SPLIT_MIN_FILE_DEBT);
     if (isOverLineLimit) {
       splitFiles.push(path);
       continue;

@@ -9,7 +9,19 @@ import { randomUUID } from "node:crypto";
 import type { FileDebt } from "./debt-compute.ts";
 import { ARRAY_DEBT_DIR, DEBT_LIMITS, STYLISTIC_ESLINT_CONFIG, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-const { computeDebt, blockReason, buildLedger } = await import("./debt-compute.ts");
+const { computeDebt, blockReason, buildLedger, isLongFileWithEnoughDebt } = await import("./debt-compute.ts");
+
+test("test_long_file_check_flags_file_over_limit_with_debt_at_minimum", () => {
+  assert.equal(isLongFileWithEnoughDebt(151, 10, 150, 10), true);
+});
+
+test("test_long_file_check_skips_file_over_limit_with_debt_below_minimum", () => {
+  assert.equal(isLongFileWithEnoughDebt(151, 9, 150, 10), false);
+});
+
+test("test_long_file_check_flags_file_over_limit_with_zero_debt_when_minimum_is_0", () => {
+  assert.equal(isLongFileWithEnoughDebt(151, 0, 150, 0), true);
+});
 
 test("test_buildLedger_sums_file_counts_into_total", () => {
   const ledger = buildLedger({ "/a.ts": 2, "/b.ts": 3 });

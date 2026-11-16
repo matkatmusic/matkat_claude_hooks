@@ -64,6 +64,16 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   return { file: filePath, current, lines: result.lines, reformatted, lineCount, missingTest };
 }
 
+export function isLongFileWithEnoughDebt(lineCount: number, fileDebt: number, maxFileLines: number, minFileDebt: number): boolean {
+  const isOversized = lineCount > maxFileLines;
+  if (isOversized) {
+    const isFileDebtHigh = fileDebt >= minFileDebt;
+    if (isFileDebtHigh)
+      return true;
+  }
+  return false;
+}
+
 export function blockReason(
   debts: FileDebt[],
   newTotal: number,
@@ -74,9 +84,7 @@ export function blockReason(
   const { maxFileLines, debtTarget, fixBatchSize, minFileDebt } = limits;
   const oversizedFiles: string[] = [];
   for (let i = 0; i < debts.length; i++) {
-    const isOversized = debts[i].lineCount > maxFileLines;
-    const isFileDebtHigh = debts[i].current >= minFileDebt;
-    const shouldFlagOversized = isOversized && isFileDebtHigh;
+    const shouldFlagOversized = isLongFileWithEnoughDebt(debts[i].lineCount, debts[i].current, maxFileLines, minFileDebt);
     if (shouldFlagOversized)
       oversizedFiles.push(`${debts[i].file} (${debts[i].lineCount} lines)`);
   }

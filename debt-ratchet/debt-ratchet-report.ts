@@ -14,7 +14,7 @@ if (import.meta.main) {
     throw gitRoot.error;
   const repoRoot = gitRoot.stdout.trim();
 
-  const lsFiles = spawnSync("git", ["ls-files", "*.ts", "*.html", "*.css"], { cwd: repoRoot, encoding: "utf8" });
+  const lsFiles = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "*.ts", "*.html", "*.css"], { cwd: repoRoot, encoding: "utf8" });
   if (lsFiles.error)
     throw lsFiles.error;
   const lines = lsFiles.stdout.split("\n");

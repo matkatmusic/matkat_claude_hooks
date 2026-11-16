@@ -42,6 +42,16 @@ function skipsShortFileWithZeroDebt() {
   assert.deepEqual(result.fixFiles, []);
 }
 
+function putsFileOverLineLimitWithZeroDebtInSplitFiles() {
+  // The file has 101 lines (over the limit of 100) and 0 debt items.
+  const log = buildLog(MAX_FILE_LINES + 1, 0);
+  const result = orderDebtFixes(log, MAX_FILE_LINES);
+  // The file must be in splitFiles and must not be in fixFiles.
+  assert.deepEqual(result.splitFiles, ["a.ts"]);
+  assert.deepEqual(result.fixFiles, []);
+}
+
 test("test_orderDebtFixes_puts_file_over_line_limit_in_splitFiles_only", putsFileOverLineLimitInSplitFilesOnly);
+test("test_orderDebtFixes_puts_file_over_line_limit_with_zero_debt_in_splitFiles", putsFileOverLineLimitWithZeroDebtInSplitFiles);
 test("test_orderDebtFixes_puts_short_file_with_debt_in_fixFiles", putsShortFileWithDebtInFixFiles);
 test("test_orderDebtFixes_skips_short_file_with_zero_debt", skipsShortFileWithZeroDebt);
