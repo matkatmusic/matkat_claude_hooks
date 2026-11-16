@@ -4,7 +4,7 @@ import { dirname, join, basename } from "node:path";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";
 import { filterUniqueDebtCheckedFiles } from "../shared/debt-files.ts";
 import { getSetting } from "../shared/settings.ts";
-import { computeDebt, blockReason, type FileDebt } from "./debt-compute.ts";
+import { computeDebt, blockReason, buildLedger, type FileDebt } from "./debt-compute.ts";
 import { removeOldLedgers } from "./debt-ratchet-ledger-cleanup.ts";
 // Stop hook: blocks the turn if its edits raised eslint violation counts above the HEAD baseline.
 
@@ -123,11 +123,8 @@ if (import.meta.main) {
       measuredFiles[savedPath] = freshDebt.current;
   }
   ledgerFiles = measuredFiles;
-  let newTotal = 0;
-  const ledgerFilePaths = Object.keys(ledgerFiles);
-  for (let i = 0; i < ledgerFilePaths.length; i++) {
-    newTotal += ledgerFiles[ledgerFilePaths[i]];
-  }
+  const ledger = buildLedger(ledgerFiles);
+  const newTotal = ledger.total;
   const reformattedFiles: string[] = [];
   for (let i = 0; i < debts.length; i++) {
     const debt = debts[i];
@@ -139,7 +136,7 @@ if (import.meta.main) {
   const hasDebt = newTotal > 0;
   const shouldSaveLedger = hasDebt || ledgerExists;
   if (shouldSaveLedger)
-    writeFileSync(ledgerPath, JSON.stringify({ files: ledgerFiles, total: newTotal }));
+    writeFileSync(ledgerPath, JSON.stringify(ledger));
   if (reason) {
     writeFileSync(blocksPath, String(chainBlocks + 1));
     console.log(JSON.stringify({ decision: "block", reason }));

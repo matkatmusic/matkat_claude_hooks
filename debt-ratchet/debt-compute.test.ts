@@ -9,7 +9,12 @@ import { randomUUID } from "node:crypto";
 import type { FileDebt } from "./debt-compute.ts";
 import { ARRAY_DEBT_DIR, DEBT_LIMITS, STYLISTIC_ESLINT_CONFIG, setUpRepo, writeTranscript, executeHook } from "./debt-ratchet-test-helpers.ts";
 
-const { computeDebt, blockReason } = await import("./debt-compute.ts");
+const { computeDebt, blockReason, buildLedger } = await import("./debt-compute.ts");
+
+test("test_buildLedger_sums_file_counts_into_total", () => {
+  const ledger = buildLedger({ "/a.ts": 2, "/b.ts": 3 });
+  assert.deepEqual(ledger, { files: { "/a.ts": 2, "/b.ts": 3 }, total: 5 });
+});
 
 test("computeDebt on a repo with no eslint.config.js and no node_modules returns a numeric count", () => {
   const dir = mkdtempSync(`${tmpdir()}/debt-ratchet-noconfig-`);

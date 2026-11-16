@@ -249,7 +249,7 @@ function buildShowCommand(path: string, lines: number[]): string {
   return `nl -ba '${path}' | sed -n '${printRanges.join(";")}'`;
 }
 
-function listOverCapLines({ path, runs }: FileReflow) {
+export function listOverCapLines({ path, runs }: FileReflow) {
   const lines: number[] = [];
   for (const run of runs) {
     const isOverCap = run.capped && run.words >= WORD_LIMIT;

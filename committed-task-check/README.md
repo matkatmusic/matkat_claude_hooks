@@ -50,12 +50,33 @@ When the roadmap file does not exist, the block reason has no roadmap command.
 
 1. The hook reads `cwd`, `session_id`, `transcript_path`, and `stop_hook_active` from the Stop payload.
 2. If `stop_hook_active` is true, the hook prints nothing.
-3. If `CLAUDE_CODE_TASK_LIST_ID` is not set, the hook prints nothing.
-4. If `cwd` is not in a git repo, the hook prints nothing.
-5. The hook lists new commits in the repo and each submodule. If there are none, it prints nothing.
-6. The hook moves the marker.
-7. If there are no pending or in progress tasks, the hook prints nothing.
-8. Otherwise the hook prints a JSON object with `decision: "block"` and the `reason`.
+3. If `CLAUDE_TMUX_TEAM_JOB` is set and the job is not the Director or the TeamLeader, the hook prints nothing. See "Team chats".
+4. If `CLAUDE_CODE_TASK_LIST_ID` is not set, the hook prints nothing.
+5. If `cwd` is not in a git repo, the hook prints nothing.
+6. The hook lists new commits in the repo and each submodule. If there are none, it prints nothing.
+7. The hook moves the marker.
+8. If there are no pending or in progress tasks, the hook prints nothing. In a team chat, the hook uses only the tasks that the commits name.
+9. Otherwise the hook prints a JSON object with `decision: "block"` and the `reason`.
+
+### Team chats
+
+A claude-tmux team chat has the environment variable `CLAUDE_TMUX_TEAM_JOB` set. A chat without it works as described above.
+
+- A helper chat gets no commit check. The hook prints nothing.
+- Only the TeamLeader and the Director get the check. The hook reads their job names from the `claude-tmux-team` section of `dispatcher/dispatch.json`.
+- The reason shows one line for each commit: `commit <hash> <subject>`. It shows no changed files.
+- The reason lists only the open tasks whose number is in the task list of a listed commit.
+- If no open task matches, the hook does not block. The marker still moves.
+
+Team chats write each commit message as one JSON object on one line:
+
+```
+{"subject": "fix swap retry", "tasks": [540]}
+```
+
+- If the message starts with `{`, the hook runs `JSON.parse` on it. It reads `subject` for the commit line and `tasks` for the task numbers.
+- If the message does not start with `{`, the commit names no task. The commit line shows the first line of the message.
+- If the JSON is not valid, the hook fails with an error.
 
 ### The settings values
 

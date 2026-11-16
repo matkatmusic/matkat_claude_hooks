@@ -24,6 +24,15 @@ function countEslintMessages(args: string[], cwd: string, input?: string): { cou
   return { count: lines.length, lines };
 }
 
+export function buildLedger(files: Record<string, number>): { files: Record<string, number>; total: number } {
+  let total = 0;
+  const filePaths = Object.keys(files);
+  for (let i = 0; i < filePaths.length; i++) {
+    total += files[filePaths[i]];
+  }
+  return { files, total };
+}
+
 export function computeDebt(filePath: string): FileDebt | undefined {
   const realFilePath = realpathSync(filePath);
   const dir = dirname(realFilePath);

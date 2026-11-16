@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
-import { computeDebt } from "./debt-compute.ts";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
+import { buildLedger, computeDebt } from "./debt-compute.ts";
+import { applyReflowToFile, listOverCapLines } from "../comment-length-limiter/reflowComments.ts";
+import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { filterUniqueDebtCheckedFiles } from "../shared/debt-files.ts";
 // On-demand, non-blocking debt report: unlike the Stop hook, never blocks the turn.
 
@@ -30,20 +32,35 @@ if (import.meta.main) {
   const files = filterUniqueDebtCheckedFiles(absolutePaths);
 
   const debtLines: string[] = [];
-  let total = 0;
+  const fileDebtCounts: Record<string, number> = {};
+  const details: Record<string, { eslintLines: number[]; longCommentLines: number[]; lineCount: number; missingTest: boolean }> = {};
   let fileCount = 0;
   for (let i = 0; i < files.length; i++) {
+    applyReflowToFile(files[i]);
     const debt = computeDebt(files[i]);
-    const hasDebt = debt !== undefined && debt.current > 0;
+    if (debt === undefined)
+      continue;
+    const runs = applyReflowToFile(files[i]);
+    const longCommentLines = listOverCapLines({ path: files[i], runs }).lines;
+    fileDebtCounts[files[i]] = debt.current + longCommentLines.length;
+    details[files[i]] = { eslintLines: debt.lines, longCommentLines, lineCount: debt.lineCount, missingTest: debt.missingTest };
+    const hasDebt = fileDebtCounts[files[i]] > 0;
     if (!hasDebt)
       continue;
     fileCount++;
-    total += debt.current;
+    const printedLines = [...debt.lines, ...longCommentLines];
     const sedAddresses: string[] = [];
-    for (let j = 0; j < debt.lines.length; j++)
-      sedAddresses.push(`${debt.lines[j]}p`);
-    debtLines.push(`${debt.file}: lines ${debt.lines.join(",")}  show: nl -ba '${debt.file}' | sed -n '${sedAddresses.join(";")}'`);
+    for (let j = 0; j < printedLines.length; j++)
+      sedAddresses.push(`${printedLines[j]}p`);
+    debtLines.push(`${debt.file}: lines ${printedLines.join(",")}  show: nl -ba '${debt.file}' | sed -n '${sedAddresses.join(";")}'`);
   }
+
+  const ledger = buildLedger(fileDebtCounts);
+  const total = ledger.total;
+  const logFolder = getValues(readSettings(DISPATCHER_DIR), "debt-ratchet").CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR;
+  mkdirSync(logFolder, { recursive: true });
+  const logPath = `${logFolder}/repo-${basename(repoRoot)}.json`;
+  writeFileSync(logPath, JSON.stringify({ ...ledger, details }, null, 2));
 
   if (total === 0) {
     console.log("No style debt found across the repo.");
@@ -52,4 +69,5 @@ if (import.meta.main) {
     console.log(`Style debt exists: ${total} flagged line(s) across ${fileCount} file(s). Not urgent, address when convenient.`);
     console.log(debtLines.join("\n"));
   }
+  console.log(`Debt log written: ${logPath}`);
 }
