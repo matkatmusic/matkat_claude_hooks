@@ -1,6 +1,8 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+// import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
-import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+// import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
+import { closePaneIfOpen, writeSwapFailedMarker } from "../chat-swap/chatSwap.ts";
 import { buildTeamFilePath, fillTemplate, lockTeamFile, readTeamFile, undoReplacementChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import { sendTextToChat } from "./teamSend.ts";
 
@@ -27,16 +29,19 @@ if (removedChat === undefined) {
 }
 
 rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, { force: true });
-mkdirSync(`${DISPATCHER_DIR}/swap-failed`, { recursive: true });
-writeFileSync(`${DISPATCHER_DIR}/swap-failed/${oldSessionId}`, "");
+// mkdirSync(`${DISPATCHER_DIR}/swap-failed`, { recursive: true });
+// writeFileSync(`${DISPATCHER_DIR}/swap-failed/${oldSessionId}`, "");
+writeSwapFailedMarker(DISPATCHER_DIR, oldSessionId);
 
-if (removedChat.pane !== "") {
-  // tmux_paneExists answers true for a missing pane, so list the panes instead
-  const paneListResult = tmux_lib.run(["tmux", "list-panes", "-a", "-F", "#{pane_id}"], { capture_output: true, text: true, check: true });
-  const isPaneOpen = paneListResult.stdout.split("\n").includes(removedChat.pane);
-  if (isPaneOpen)
-    tmux_lib.tmux_killPane(removedChat.pane);
-}
+// if (removedChat.pane !== "") {
+//   // tmux_paneExists answers true for a missing pane, so list the panes instead
+//   const paneListResult = tmux_lib.run(["tmux", "list-panes", "-a", "-F", "#{pane_id}"], { capture_output: true, text: true, check: true });
+//   const isPaneOpen = paneListResult.stdout.split("\n").includes(removedChat.pane);
+//   if (isPaneOpen)
+//     tmux_lib.tmux_killPane(removedChat.pane);
+// }
+if (removedChat.pane !== "")
+  closePaneIfOpen(removedChat.pane);
 
 let oldChatPane = "";
 for (const chat of team.chats) {

@@ -1,8 +1,11 @@
-import { readdirSync, rmSync } from "node:fs";
+// import { rmSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
-import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listReplacedNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+// import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, listReplacedNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { Team } from "./teamFile.ts";
+import { removeHandoffDoneMarker, waitForIdleChat } from "../chat-swap/chatSwap.ts";
 import { sendExitToChat, sendTextToChat } from "./teamSend.ts";
 
 const scriptArguments = process.argv.slice(2);
@@ -70,21 +73,22 @@ const liveSessionNames = sessionListResult.stdout.split("\n");
 for (const noticeChat of listReplacedNoticeChats(team, oldChat, newChat.chatName, parentTeam, childTeams, liveSessionNames, directorJob, values["CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_JOB"]))
   sendTextToChat(noticeChat.pane, noticeChat.chatName, replacedNotice, dialogWaitSeconds);
 
-const readyWaitStartedAt = Date.now();
-let isOldChatReadyForExit = false;
-while (!isOldChatReadyForExit) {
-  if (Date.now() - readyWaitStartedAt > handoffWaitSeconds * 1000)
-    throw new Error(`"${oldChat.chatName}" is not ready for /exit: it is busy or its input box holds text`);
-  const oldChatScreen = tmux_lib.tmux_capturePane(oldChat.pane);
-  const isExitDialogOpen = hasBackgroundWorkDialog(oldChatScreen);
-  if (isExitDialogOpen)
-    tmux_lib.run(["tmux", "send-keys", "-t", oldChat.pane, "Escape"], { capture_output: true, text: true, check: true });
-  const isOldChatBusy = isChatBusy(oldChatScreen);
-  if (!isOldChatBusy)
-    isOldChatReadyForExit = isInputBoxEmpty(oldChatScreen);
-  if (!isOldChatReadyForExit)
-    tmux_lib.sleep(1);
-}
+// const readyWaitStartedAt = Date.now();
+// let isOldChatReadyForExit = false;
+// while (!isOldChatReadyForExit) {
+//   if (Date.now() - readyWaitStartedAt > handoffWaitSeconds * 1000)
+//     throw new Error(`"${oldChat.chatName}" is not ready for /exit: it is busy or its input box holds text`);
+//   const oldChatScreen = tmux_lib.tmux_capturePane(oldChat.pane);
+//   const isExitDialogOpen = hasBackgroundWorkDialog(oldChatScreen);
+//   if (isExitDialogOpen)
+//     tmux_lib.run(["tmux", "send-keys", "-t", oldChat.pane, "Escape"], { capture_output: true, text: true, check: true });
+//   const isOldChatBusy = isChatBusy(oldChatScreen);
+//   if (!isOldChatBusy)
+//     isOldChatReadyForExit = isInputBoxEmpty(oldChatScreen);
+//   if (!isOldChatReadyForExit)
+//     tmux_lib.sleep(1);
+// }
+waitForIdleChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds);
 sendExitToChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds, closeWaitSeconds);
 // sendTextToChat(oldChat.pane, oldChat.chatName, "/exit", dialogWaitSeconds);
 
@@ -106,7 +110,8 @@ removeChat(teamToShrink, oldChat.chatName);
 writeTeamFile(teamFilePath, teamToShrink);
 unlockTeamFile(teamFilePath);
 
-rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`);
+// rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`);
+removeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 
 const activeChat = findChatWithStatus(teamToShrink, job, "active")!;
 tmux_lib.tmux_selectLayout(activeChat.pane, values["CLAUDE_HOOKS_CLAUDE_TEAM_WINDOW_LAYOUT"]);
