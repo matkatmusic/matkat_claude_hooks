@@ -51,7 +51,9 @@ if (isOldWindowActive)
 
 // waitForIdleChat(oldPane, oldChatName, handoffWaitSeconds);
 // text typed into the old chat during the swap stays in its input box; clear it so /exit can go in
-waitForIdleChatAndClearInputBox(oldPane, oldChatName, handoffWaitSeconds);
+// waitForIdleChatAndClearInputBox(oldPane, oldChatName, handoffWaitSeconds);
+// the new chat is ready, so wait as long as the old chat needs; a closed pane still throws at once
+waitForIdleChatAndClearInputBox(oldPane, oldChatName, Number.POSITIVE_INFINITY);
 sendExitToChat(oldPane, oldChatName, handoffWaitSeconds, closeWaitSeconds);
 removeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 rmSync(swapRecordPath);

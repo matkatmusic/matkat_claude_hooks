@@ -119,6 +119,16 @@ process.stdin.on("data", (chunk) => {
 });
 `;
 
+const fakeBusyThenIdleChatProgram = `
+const fs = require("node:fs");
+const [startedFile] = process.argv.slice(2);
+process.stdin.setRawMode(true);
+process.stdin.resume();
+process.stdout.write("\\x1b[2J\\x1b[H✻ Working… (1s)\\r\\n❯ ");
+fs.writeFileSync(startedFile, "");
+setTimeout(() => process.stdout.write("\\x1b[2J\\x1b[H❯ "), 3000);
+`;
+
 test("test_listHandoffFilesInDirectories_returns_the_files_of_the_session_from_each_folder", () => {
   // Scenario: the files of the session are listed from every folder, first folder first. Files of other sessions are left out.
   // Step 1: make two folders. Each holds a file of session abcdefgh and a file of another session.
@@ -434,4 +444,44 @@ test("test_getGitRootOfWorkDirectory_returns_the_root_of_a_git_repository", () =
   // Step 4: the call succeeds and the answer is the repository folder (compared by real path, because macOS temporary folders sit under /private).
   assert.equal(rootCall.status, 0, rootCall.stderr);
   assert.equal(JSON.parse(rootCall.stdout.trim()), realpathSync(testFolder));
+});
+
+test("test_waitForIdleChatAndClearInputBox_keeps_waiting_with_no_time_limit", (t) => {
+  // Scenario: with an infinite wait time, the wait stays through the busy phase and returns when the chat is idle.
+  // Step 1: start a fake chat that is busy for 3 seconds, then idle, and wait until it runs.
+  const testFolder = makeTemporaryFolder();
+  const startedFile = join(testFolder, "started.txt");
+  const programFile = join(testFolder, "fakeBusyThenIdleChat.cjs");
+  writeFileSync(programFile, fakeBusyThenIdleChatProgram);
+  const { pane } = startPane(t, "no-limit", ["node", programFile, startedFile]);
+  for (let waited = 0; waited < 50 && !existsSync(startedFile); waited++)
+    spawnSync("sleep", ["0.1"]);
+  assert.equal(existsSync(startedFile), true);
+  // Step 2: wait with an infinite wait time, in a child process. Measure the time.
+  const code = `import { waitForIdleChatAndClearInputBox } from "./shared/chatSwap.ts"; waitForIdleChatAndClearInputBox(${JSON.stringify(pane)}, "busy chat", Number.POSITIVE_INFINITY);`;
+  const startTime = Date.now();
+  const wait = runInBun(code);
+  const elapsedMilliseconds = Date.now() - startTime;
+  // Step 3: the call succeeds, and it waited through the busy phase.
+  assert.equal(wait.status, 0, wait.stderr);
+  assert.ok(elapsedMilliseconds >= 2000, `took ${elapsedMilliseconds} ms`);
+});
+
+test("test_waitForIdleChatAndClearInputBox_gives_up_at_a_short_limit", (t) => {
+  // Scenario: with a wait time of 1 second, a chat that stays busy for 3 seconds makes the wait fail.
+  // Step 1: start the same fake chat in a new pane, and wait until it runs.
+  const testFolder = makeTemporaryFolder();
+  const startedFile = join(testFolder, "started.txt");
+  const programFile = join(testFolder, "fakeBusyThenIdleChat.cjs");
+  writeFileSync(programFile, fakeBusyThenIdleChatProgram);
+  const { pane } = startPane(t, "short-limit", ["node", programFile, startedFile]);
+  for (let waited = 0; waited < 50 && !existsSync(startedFile); waited++)
+    spawnSync("sleep", ["0.1"]);
+  assert.equal(existsSync(startedFile), true);
+  // Step 2: wait with 1 second, in a child process.
+  const code = `import { waitForIdleChatAndClearInputBox } from "./shared/chatSwap.ts"; waitForIdleChatAndClearInputBox(${JSON.stringify(pane)}, "busy chat", 1);`;
+  const wait = runInBun(code);
+  // Step 3: the call fails with the is not idle error.
+  assert.notEqual(wait.status, 0);
+  assert.match(wait.stderr, /is not idle/);
 });
