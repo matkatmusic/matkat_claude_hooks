@@ -1,8 +1,10 @@
+import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments } from "./singleChat.ts";
-import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
+// import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
+import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, openTrackerOfPane, parseSingleChatArguments, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux");
 const singleChat = parseSingleChatArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TMUX_MODEL"]);
@@ -27,6 +29,9 @@ const paneCommand = buildSingleChatPaneCommand(firstChatName, singleChat.model, 
 const newSessionCommand = ["tmux", "new-session", "-d", "-P", "-F", "#{pane_id}", "-s", singleChat.name, "-c", workDirectory, ...environmentFlags, paneCommand];
 const newSessionResult = tmux_lib.run(newSessionCommand, { capture_output: true, text: true, check: true });
 const firstPane = newSessionResult.stdout.trim();
+const trackerPath = openTrackerOfPane(firstPane, gitRootResult.stdout.trim());
+// the first chat already has number 1; this writes 1 into the new tracker
+updateTrackerWithNextChatNumber(trackerPath, singleChat.name, 0);
 console.log(`Started ${firstChatName} in the tmux session ${singleChat.name}.`);
 
 if (process.stdout.isTTY) {
@@ -36,5 +41,10 @@ if (process.stdout.isTTY) {
     process.exit(switchResult.returncode);
   }
   const attachResult = tmux_lib.run(["tmux", "attach-session", "-t", firstPane], { check: false });
+  // process.exit(attachResult.returncode);
+  const isSessionGone = !isTmuxSessionNameTaken(singleChat.name);
+  // the global session-closed hook removes the file too; force skips a file it removed first
+  if (isSessionGone)
+    rmSync(trackerPath, { force: true });
   process.exit(attachResult.returncode);
 }

@@ -286,3 +286,29 @@ test("test_selectWindowOfPane_makes_the_window_of_the_pane_active", (t) => {
   const activeAfter = spawnSync("tmux", ["display-message", "-p", "-t", secondWindowPane, "#{window_active}"], { encoding: "utf8" });
   assert.equal(activeAfter.stdout.trim(), "1");
 });
+
+test("test_isWindowOfPaneActive_is_true_for_the_pane_of_the_active_window", (t) => {
+  // Scenario: the pane of the active window gives true.
+  // Step 1: start a session. The pane of its first window is in the active window.
+  const { pane } = startPane(t, "window-active", ["sleep", "60"]);
+  // Step 2: ask isWindowOfPaneActive in a child process.
+  const code = `import { isWindowOfPaneActive } from "./shared/chatSwap.ts"; console.log(JSON.stringify(isWindowOfPaneActive(${JSON.stringify(pane)})));`;
+  const check = runInBun(code);
+  // Step 3: the call succeeds and the answer is true.
+  assert.equal(check.status, 0, check.stderr);
+  assert.equal(JSON.parse(check.stdout.trim()), true);
+});
+
+test("test_isWindowOfPaneActive_is_false_for_the_pane_of_a_background_window", (t) => {
+  // Scenario: the pane of a window that is not active gives false.
+  // Step 1: start a session with a first window, which is active.
+  const { sessionName } = startPane(t, "window-background", ["sleep", "60"]);
+  // Step 2: add a second window in the background and get its pane.
+  const backgroundPane = addBackgroundWindow(sessionName, ["sleep", "60"]);
+  // Step 3: ask isWindowOfPaneActive in a child process.
+  const code = `import { isWindowOfPaneActive } from "./shared/chatSwap.ts"; console.log(JSON.stringify(isWindowOfPaneActive(${JSON.stringify(backgroundPane)})));`;
+  const check = runInBun(code);
+  // Step 4: the call succeeds and the answer is false.
+  assert.equal(check.status, 0, check.stderr);
+  assert.equal(JSON.parse(check.stdout.trim()), false);
+});

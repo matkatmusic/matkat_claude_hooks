@@ -1,11 +1,14 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+// import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+// import { mkdtempSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText } = await import("./singleChat.ts");
+// const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText } = await import("./singleChat.ts");
+const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane } = await import("./singleChat.ts");
 const { buildDirectorPaneCommand } = await import("../teamSession/teamCommand.ts");
 
 test("test_parseSingleChatArguments_returns_the_given_name", () => {
@@ -208,4 +211,180 @@ test("test_validateSwapPercentText_rejects_an_empty_value", () => {
   // Scenario: the swap percent is an empty text.
   // Step: validate "". Check that it throws the swap percent error.
   assert.throws(() => validateSwapPercentText(""), /CLAUDE_TMUX_SWAP_PERCENT/);
+});
+
+test("test_computeNextChatNumber_is_one_for_a_new_counter", () => {
+  // Scenario: the counter name has no stored number.
+  // Step: compute the next number. Check that it is 1.
+  assert.equal(computeNextChatNumber({}, "bed helper", 0), 1);
+});
+
+test("test_computeNextChatNumber_is_stored_number_plus_one", () => {
+  // Scenario: the counter name has a stored number of 3.
+  // Step: compute the next number. Check that it is 4.
+  assert.equal(computeNextChatNumber({ "bed": 2, "bed helper": 3 }, "bed helper", 0), 4);
+});
+
+test("test_computeNextChatNumber_uses_own_number_when_it_is_higher", () => {
+  // Scenario: a session that started before the tracker existed has chat number 3 and no stored number.
+  // Step: compute the next number. Check that it is 4.
+  assert.equal(computeNextChatNumber({}, "bed", 3), 4);
+});
+
+test("test_computeNextChatNumber_uses_stored_number_when_it_is_higher", () => {
+  // Scenario: the stored number is 5 and the own chat number is 2.
+  // Step: compute the next number. Check that it is 6.
+  assert.equal(computeNextChatNumber({ "bed": 5 }, "bed", 2), 6);
+});
+
+test("test_buildTrackerPath_puts_the_file_in_the_tmux_sessions_folder", () => {
+  // Scenario: a project root and a tmux session id.
+  // Step: build the tracker path. Check that it is inside the tmux-sessions folder and named for the session id.
+  assert.equal(buildTrackerPath("/p", "$241"), "/p/.claude_hooks/tmux-sessions/$241.json");
+});
+
+test("test_updateTrackerWithNextChatNumber_writes_and_returns_the_next_number", () => {
+  // Scenario: a tracker file holds {"bed helper": 1}.
+  // Step 1: make the temp folder and the tracker file.
+  const trackerFolder = mkdtempSync(join(tmpdir(), "claude-tmux-tracker-"));
+  const trackerPath = join(trackerFolder, "tracker.json");
+  writeFileSync(trackerPath, JSON.stringify({ "bed helper": 1 }));
+  // Step 2: update the tracker for "bed helper" with own chat number 0. Check that it returns 2.
+  assert.equal(updateTrackerWithNextChatNumber(trackerPath, "bed helper", 0), 2);
+  // Step 3: check that the file holds {"bed helper": 2}.
+  assert.deepEqual(JSON.parse(readFileSync(trackerPath, "utf8")), { "bed helper": 2 });
+  // Step 4: check that the lock folder is gone.
+  assert.equal(existsSync(`${trackerPath}.lock`), false);
+});
+
+function runTrackerWriterProcess(trackerPath: string): Promise<{ exitCode: number | null; stdout: string }> {
+  const code = `import { updateTrackerWithNextChatNumber } from "${import.meta.dirname}/singleChat.ts"; const numbers = []; for (let index = 0; index < 20; index++) { numbers.push(updateTrackerWithNextChatNumber(${JSON.stringify(trackerPath)}, "bed helper", 0)); } console.log(JSON.stringify(numbers));`;
+  const childProcess = spawn("bun", ["-e", code], { env: { ...process.env, BUN_JSC_useTailCalls: "0" } });
+  return new Promise((resolve) => {
+    let stdout = "";
+    childProcess.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    childProcess.on("close", (exitCode) => {
+      resolve({ exitCode, stdout });
+    });
+  });
+}
+
+test("test_updateTrackerWithNextChatNumber_gives_different_numbers_to_two_writers_at_once", async () => {
+  // Scenario: two processes each take 20 numbers from the same tracker file at the same time.
+  // Step 1: make the temp folder and an empty tracker file.
+  const trackerFolder = mkdtempSync(join(tmpdir(), "claude-tmux-tracker-"));
+  const trackerPath = join(trackerFolder, "tracker.json");
+  writeFileSync(trackerPath, "{}");
+  // Step 2: start both processes at the same time and wait for both to close.
+  const [firstResult, secondResult] = await Promise.all([runTrackerWriterProcess(trackerPath), runTrackerWriterProcess(trackerPath)]);
+  // Step 3: check that both processes exit with 0.
+  assert.equal(firstResult.exitCode, 0);
+  assert.equal(secondResult.exitCode, 0);
+  // Step 4: check that the 40 numbers are exactly 1 to 40, so no number was given twice.
+  const allNumbers: number[] = [...JSON.parse(firstResult.stdout), ...JSON.parse(secondResult.stdout)];
+  allNumbers.sort((left, right) => left - right);
+  const expectedNumbers: number[] = [];
+  for (let number = 1; number <= 40; number++) {
+    expectedNumbers.push(number);
+  }
+  assert.deepEqual(allNumbers, expectedNumbers);
+});
+
+function startTrackerTestSession(t: { after: (hook: () => void) => void }, caseName: string): { pane: string; sessionName: string } {
+  const sessionName = `tracker-test-${process.pid}-${caseName}`;
+  const startResult = spawnSync("tmux", ["new-session", "-d", "-P", "-F", "#{pane_id}", "-s", sessionName, "sleep", "60"], { encoding: "utf8" });
+  assert.equal(startResult.status, 0);
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", `=${sessionName}`]);
+  });
+  return { pane: startResult.stdout.trim(), sessionName };
+}
+
+function removeGlobalHooksOfFolder(folder: string): void {
+  while (true) {
+    const hookLines = spawnSync("tmux", ["show-hooks", "-g"], { encoding: "utf8" }).stdout.split("\n");
+    let matchingLine = "";
+    for (const hookLine of hookLines) {
+      if (hookLine.includes(folder)) {
+        matchingLine = hookLine;
+        break;
+      }
+    }
+    if (matchingLine === "") {
+      return;
+    }
+    const index = /session-closed\[(\d+)\]/.exec(matchingLine)![1];
+    spawnSync("tmux", ["set-hook", "-gu", `session-closed[${index}]`]);
+  }
+}
+
+function countGlobalHookLinesOfFolder(folder: string): number {
+  const hookLines = spawnSync("tmux", ["show-hooks", "-g"], { encoding: "utf8" }).stdout.split("\n");
+  let matchingLineCount = 0;
+  for (const hookLine of hookLines) {
+    if (hookLine.includes(folder)) {
+      matchingLineCount++;
+    }
+  }
+  return matchingLineCount;
+}
+
+test("test_openTrackerOfPane_creates_an_empty_tracker_in_the_project_folder", (t) => {
+  // Scenario: a tmux session has no tracker yet.
+  // Step 1: make the project folder and the tmux session.
+  const projectFolder = mkdtempSync(join(tmpdir(), "claude-tmux-project-"));
+  t.after(() => removeGlobalHooksOfFolder(projectFolder));
+  const { pane } = startTrackerTestSession(t, "creates");
+  // Step 2: open the tracker of the pane.
+  const trackerPath = openTrackerOfPane(pane, projectFolder);
+  // Step 3: check that the path is in the tmux-sessions folder and ends with .json.
+  assert.ok(trackerPath.startsWith(`${projectFolder}/.claude_hooks/tmux-sessions/`));
+  assert.ok(trackerPath.endsWith(".json"));
+  // Step 4: check that the file holds {}.
+  assert.deepEqual(JSON.parse(readFileSync(trackerPath, "utf8")), {});
+});
+
+test("test_openTrackerOfPane_returns_the_same_tracker_on_a_second_call", (t) => {
+  // Scenario: the tracker of a session is already open.
+  // Step 1: make the project folder and the tmux session.
+  const projectFolder = mkdtempSync(join(tmpdir(), "claude-tmux-project-"));
+  t.after(() => removeGlobalHooksOfFolder(projectFolder));
+  const { pane } = startTrackerTestSession(t, "second");
+  // Step 2: open the tracker twice for the same pane.
+  const firstPath = openTrackerOfPane(pane, projectFolder);
+  const secondPath = openTrackerOfPane(pane, projectFolder);
+  // Step 3: check that both paths are equal.
+  assert.equal(secondPath, firstPath);
+});
+
+test("test_openTrackerOfPane_tracker_is_removed_when_the_tmux_session_ends", (t) => {
+  // Scenario: a tmux session has a tracker file.
+  // Step 1: make the project folder and the tmux session.
+  const projectFolder = mkdtempSync(join(tmpdir(), "claude-tmux-project-"));
+  t.after(() => removeGlobalHooksOfFolder(projectFolder));
+  const { pane, sessionName } = startTrackerTestSession(t, "removed");
+  // Step 2: open the tracker and check that the file exists.
+  const trackerPath = openTrackerOfPane(pane, projectFolder);
+  assert.equal(existsSync(trackerPath), true);
+  // Step 3: end the tmux session and wait one second for the hook.
+  spawnSync("tmux", ["kill-session", "-t", `=${sessionName}`]);
+  spawnSync("sleep", ["1"]);
+  // Step 4: check that the file is gone.
+  assert.equal(existsSync(trackerPath), false);
+});
+
+test("test_openTrackerOfPane_adds_one_cleanup_hook_for_two_sessions_in_one_folder", (t) => {
+  // Scenario: two tmux sessions use the same project folder.
+  // Step 1: make the project folder and both tmux sessions.
+  const projectFolder = mkdtempSync(join(tmpdir(), "claude-tmux-project-"));
+  t.after(() => removeGlobalHooksOfFolder(projectFolder));
+  const firstSession = startTrackerTestSession(t, "hookone");
+  const secondSession = startTrackerTestSession(t, "hooktwo");
+  // Step 2: open the tracker of each pane.
+  openTrackerOfPane(firstSession.pane, projectFolder);
+  openTrackerOfPane(secondSession.pane, projectFolder);
+  // Step 3: check that the global hooks hold exactly one line for the project folder.
+  assert.equal(countGlobalHookLinesOfFolder(projectFolder), 1);
 });

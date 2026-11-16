@@ -8,6 +8,7 @@ const contextExitValues: Record<string, string | string[]> = dispatchSettings.va
 
 const tmuxValueKeys = [
   "CLAUDE_HOOKS_CLAUDE_TMUX_MODEL",
+  "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL",
   "CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS",
   "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_WAIT_SECONDS",
   "CLAUDE_HOOKS_CLAUDE_TMUX_CLOSE_WAIT_SECONDS",
@@ -19,11 +20,18 @@ const joinValue = (valueKey: string): string => [tmuxValues[valueKey]].flat().jo
 const listFieldNames = (text: string): string[] => [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
 
 test("test_tmuxValues_have_every_key_that_the_claude_tmux_scripts_read", () => {
-  // Scenario: each of the 7 keys of the single chat exists in values["claude-tmux"].
+  // // Scenario: each of the 7 keys of the single chat exists in values["claude-tmux"].
+  // Scenario: each of the 8 keys of the single chat exists in values["claude-tmux"].
   // Step: for each key, check that the value exists.
   for (const valueKey of tmuxValueKeys) {
     assert.notEqual(tmuxValues[valueKey], undefined, `missing key ${valueKey}`);
   }
+});
+
+test("test_tmuxValues_helper_model_is_sonnet", () => {
+  // Scenario: a /tmux-new-helper chat with no typed model uses sonnet.
+  // Step: read the helper model value. Check that it is "sonnet".
+  assert.equal(tmuxValues["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL"], "sonnet");
 });
 
 test("test_tmuxValues_texts_use_only_fields_that_the_scripts_give", () => {

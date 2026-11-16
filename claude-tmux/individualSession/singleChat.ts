@@ -1,7 +1,9 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { wrapShellWord } from "../shared/chatSwap.ts";
+import { lockTeamFile, unlockTeamFile } from "../teamSession/teamFile.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 
 export type SingleChatSwapRecord = { newChatName: string; newPane: string; isNewChatReady: boolean };
@@ -87,4 +89,58 @@ export function validateSwapPercentText(swapPercentText: string | undefined): vo
   const isWholeNumberFrom1To100 = /^(100|[1-9][0-9]?)$/.test(swapPercentText);
   if (!isWholeNumberFrom1To100)
     throw new Error(`CLAUDE_TMUX_SWAP_PERCENT must be a whole number from 1 to 100, not "${swapPercentText}"`);
+}
+
+const TRACKER_OPTION = "@claude_tmux_tracker";
+
+export function buildTrackerPath(projectRoot: string, sessionId: string): string {
+  return `${projectRoot}/.claude_hooks/tmux-sessions/${sessionId}.json`;
+}
+
+export function computeNextChatNumber(lastChatNumbers: Record<string, number>, counterName: string, currentChatNumber: number): number {
+  const lastChatNumber = lastChatNumbers[counterName] ?? 0;
+  return Math.max(lastChatNumber, currentChatNumber) + 1;
+}
+
+export function updateTrackerWithNextChatNumber(trackerPath: string, counterName: string, currentChatNumber: number): number {
+  lockTeamFile(trackerPath);
+  const lastChatNumbers: Record<string, number> = JSON.parse(readFileSync(trackerPath, "utf8"));
+  const nextChatNumber = computeNextChatNumber(lastChatNumbers, counterName, currentChatNumber);
+  lastChatNumbers[counterName] = nextChatNumber;
+  writeFileSync(trackerPath, JSON.stringify(lastChatNumbers, null, 2) + "\n");
+  unlockTeamFile(trackerPath);
+  return nextChatNumber;
+}
+
+function readTmuxOutput(tmuxArguments: string[]): string {
+  return execFileSync("tmux", tmuxArguments, { encoding: "utf8" }).trim();
+}
+
+export function buildTrackerCleanupHookCommand(trackerFolder: string): string {
+  // ponytail: a folder path with ' " or $ breaks this quoting
+  // #{hook_session} is the closed session id, like $12; the single quotes keep the $ from the shell
+  return `run-shell "rm -f '${trackerFolder}/#{hook_session}.json'"`;
+}
+
+function addTrackerCleanupHook(trackerFolder: string): void {
+  // a hook set with -t on the session does not fire at session end; the global hook does
+  const globalHooks = readTmuxOutput(["show-hooks", "-g"]);
+  const hasCleanupHook = globalHooks.includes(`${trackerFolder}/`);
+  if (hasCleanupHook)
+    return;
+  readTmuxOutput(["set-hook", "-ga", "session-closed", buildTrackerCleanupHookCommand(trackerFolder)]);
+}
+
+export function openTrackerOfPane(pane: string, projectRoot: string): string {
+  const storedTrackerPath = readTmuxOutput(["display-message", "-p", "-t", pane, `#{${TRACKER_OPTION}}`]);
+  if (storedTrackerPath !== "")
+    return storedTrackerPath;
+  const sessionId = readTmuxOutput(["display-message", "-p", "-t", pane, "#{session_id}"]);
+  const trackerPath = buildTrackerPath(projectRoot, sessionId);
+  // a tmux server restart reuses session ids, so a new tracker replaces an old file
+  mkdirSync(dirname(trackerPath), { recursive: true });
+  writeFileSync(trackerPath, "{}\n");
+  readTmuxOutput(["set-option", "-t", sessionId, TRACKER_OPTION, trackerPath]);
+  addTrackerCleanupHook(dirname(trackerPath));
+  return trackerPath;
 }

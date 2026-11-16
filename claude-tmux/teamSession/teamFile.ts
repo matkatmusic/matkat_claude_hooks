@@ -297,7 +297,12 @@ export function lockTeamFile(teamFilePath: string): void {
     const mkdirResult = spawnSync("mkdir", [lockPath]);
     if (mkdirResult.status === 0)
       return;
-    const lockAgeSeconds = (Date.now() - statSync(lockPath).mtimeMs) / 1000;
+    // const lockAgeSeconds = (Date.now() - statSync(lockPath).mtimeMs) / 1000;
+    const lockStat = statSync(lockPath, { throwIfNoEntry: false });
+    // the other writer removed the lock between mkdir and stat
+    if (lockStat === undefined)
+      continue;
+    const lockAgeSeconds = (Date.now() - lockStat.mtimeMs) / 1000;
     if (lockAgeSeconds > LOCK_STALE_SECONDS) {
       rmdirSync(lockPath);
       continue;

@@ -159,3 +159,8 @@ export function selectWindowOfPane(pane: string): void {
   const windowId = windowResult.stdout.trim();
   tmux_lib.run(["tmux", "select-window", "-t", windowId], { capture_output: true, text: true, check: true });
 }
+
+export function isWindowOfPaneActive(pane: string): boolean {
+  const windowActiveResult = tmux_lib.run(["tmux", "display-message", "-p", "-t", pane, "#{window_active}"], { capture_output: true, text: true, check: true });
+  return windowActiveResult.stdout.trim() === "1";
+}
