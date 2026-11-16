@@ -78,6 +78,17 @@ export function getSwapMode(teamName: string | undefined, singleChatName: string
   return undefined;
 }
 
+export function getSwapPercent(swapMode: 'team' | 'single' | undefined, environmentSwapPercent: string | undefined, dispatchSwapPercent: number): number {
+  if (swapMode !== 'single')
+    return dispatchSwapPercent;
+  if (environmentSwapPercent === undefined)
+    return dispatchSwapPercent;
+  const isWholeNumber = /^\d+$/.test(environmentSwapPercent);
+  if (!isWholeNumber)
+    throw new Error(`CLAUDE_TMUX_SWAP_PERCENT must be a whole number, not "${environmentSwapPercent}"`);
+  return Number(environmentSwapPercent);
+}
+
 // export function isSwapDue(input: { teamName: string | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
 export function isSwapDue(input: { swapMode: 'team' | 'single' | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
   // if (input.teamName === undefined)
@@ -162,6 +173,8 @@ async function listSingleChatSwapArguments($: EngineInterface, sessionId: string
   swapArgumentWords.push(wrapRequiredEnvironmentValue('CLAUDE_TMUX_WORK_DIRECTORY', await $.env.get('CLAUDE_TMUX_WORK_DIRECTORY')));
   swapArgumentWords.push(wrapRequiredEnvironmentValue('TMUX_PANE', await $.env.get('TMUX_PANE')));
   swapArgumentWords.push(wrapShellWord(sessionId));
+  const swapPercentArgument = await $.env.get('CLAUDE_TMUX_SWAP_PERCENT');
+  swapArgumentWords.push(wrapShellWord(swapPercentArgument ?? ''));
   return swapArgumentWords.join(' ');
 }
 
@@ -190,7 +203,10 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   const singleChatName = await $.env.get('CLAUDE_TMUX_NAME');
   const swapMode = getSwapMode(teamName, singleChatName);
   const usage = await $.session.usage();
-  const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  // const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  const dispatchSwapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  const environmentSwapPercent = await $.env.get('CLAUDE_TMUX_SWAP_PERCENT');
+  const swapPercent = getSwapPercent(swapMode, environmentSwapPercent, dispatchSwapPercent);
   const backgroundTaskCount = (e.background_tasks ?? []).length;
   // const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
   const sessionId = await $.session.id();

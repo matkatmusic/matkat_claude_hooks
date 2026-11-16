@@ -52,20 +52,24 @@ test("test_startClaudeTmux_throws_when_a_tmux_session_with_the_name_exists", (t)
   assert.match(result.stderr, /already exists/);
 });
 
-test("test_swapSingleChat_throws_without_exactly_six_arguments", () => {
-  // Scenario: swapSingleChat.ts gets five arguments, not six.
+// test("test_swapSingleChat_throws_without_exactly_six_arguments", () => {
+test("test_swapSingleChat_throws_without_exactly_seven_arguments", () => {
+  // Scenario: swapSingleChat.ts gets five arguments, not seven.
   // Step 1: run swapSingleChat.ts with five arguments.
   const result = runScriptWithBun("swapSingleChat.ts", ["a", "1", "sonnet", "/w", "%1"], import.meta.dirname);
   // Step 2: check that it fails and the error shows the usage line.
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /usage: swapSingleChat.ts/);
+  // assert.match(result.stderr, /usage: swapSingleChat.ts/);
+  assert.match(result.stderr, /usage: swapSingleChat\.ts .*<swapPercent>/);
 });
 
-test("test_swapSingleChatFailed_throws_without_exactly_six_arguments", () => {
-  // Scenario: swapSingleChatFailed.ts gets five arguments, not six.
+// test("test_swapSingleChatFailed_throws_without_exactly_six_arguments", () => {
+test("test_swapSingleChatFailed_throws_without_exactly_seven_arguments", () => {
+  // Scenario: swapSingleChatFailed.ts gets five arguments, not seven.
   // Step 1: run swapSingleChatFailed.ts with five arguments.
   const result = runScriptWithBun("swapSingleChatFailed.ts", ["a", "1", "sonnet", "/w", "%1"], import.meta.dirname);
   // Step 2: check that it fails and the error shows the usage line.
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /usage: swapSingleChatFailed.ts/);
+  // assert.match(result.stderr, /usage: swapSingleChatFailed.ts/);
+  assert.match(result.stderr, /usage: swapSingleChatFailed\.ts .*<swapPercent>/);
 });

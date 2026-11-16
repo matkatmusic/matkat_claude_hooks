@@ -18,7 +18,9 @@ if (isSessionNameTaken)
   throw new Error(`a tmux session named ${singleChat.name} already exists`);
 
 const firstChatName = buildSingleChatName(singleChat.name, 1);
-const environmentFlags = buildSingleChatEnvironmentFlags(singleChat.name, 1, singleChat.model, workDirectory);
+// const environmentFlags = buildSingleChatEnvironmentFlags(singleChat.name, 1, singleChat.model, workDirectory);
+const swapPercent = process.env.CLAUDE_TMUX_SWAP_PERCENT ?? "";
+const environmentFlags = buildSingleChatEnvironmentFlags(singleChat.name, 1, singleChat.model, workDirectory, swapPercent);
 const paneCommand = buildSingleChatPaneCommand(firstChatName, singleChat.model, "");
 const newSessionCommand = ["tmux", "new-session", "-d", "-P", "-F", "#{pane_id}", "-s", singleChat.name, "-c", workDirectory, ...environmentFlags, paneCommand];
 const newSessionResult = tmux_lib.run(newSessionCommand, { capture_output: true, text: true, check: true });

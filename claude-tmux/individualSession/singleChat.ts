@@ -24,13 +24,25 @@ export function buildSingleChatName(name: string, chatNumber: number): string {
   return `${name} ${chatNumber}`;
 }
 
-export function buildSingleChatEnvironmentFlags(name: string, chatNumber: number, model: string, workDirectory: string): string[] {
-  return [
+// export function buildSingleChatEnvironmentFlags(name: string, chatNumber: number, model: string, workDirectory: string): string[] {
+//   return [
+//     "-e", `CLAUDE_TMUX_NAME=${name}`,
+//     "-e", `CLAUDE_TMUX_CHAT_NUMBER=${chatNumber}`,
+//     "-e", `CLAUDE_TMUX_MODEL=${model}`,
+//     "-e", `CLAUDE_TMUX_WORK_DIRECTORY=${workDirectory}`,
+//   ];
+// }
+export function buildSingleChatEnvironmentFlags(name: string, chatNumber: number, model: string, workDirectory: string, swapPercent: string): string[] {
+  const environmentFlags = [
     "-e", `CLAUDE_TMUX_NAME=${name}`,
     "-e", `CLAUDE_TMUX_CHAT_NUMBER=${chatNumber}`,
     "-e", `CLAUDE_TMUX_MODEL=${model}`,
     "-e", `CLAUDE_TMUX_WORK_DIRECTORY=${workDirectory}`,
   ];
+  const hasSwapPercent = swapPercent !== "";
+  if (hasSwapPercent)
+    environmentFlags.push("-e", `CLAUDE_TMUX_SWAP_PERCENT=${swapPercent}`);
+  return environmentFlags;
 }
 
 export function buildSingleChatPaneCommand(chatName: string, model: string, startingText: string): string {

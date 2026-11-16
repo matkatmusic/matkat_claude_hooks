@@ -5,9 +5,12 @@ import { fillTemplate, removeHandoffDoneMarker, selectWindowOfPane, sendExitToCh
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord } from "./singleChat.ts";
 
 const scriptArguments = process.argv.slice(2);
-if (scriptArguments.length !== 6)
-  throw new Error("usage: swapSingleChat.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId>");
-const [name, chatNumberText, model, workDirectory, oldPane, oldSessionId] = scriptArguments;
+// if (scriptArguments.length !== 6)
+if (scriptArguments.length !== 7)
+  // throw new Error("usage: swapSingleChat.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId>");
+  throw new Error("usage: swapSingleChat.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId> <swapPercent>");
+// const [name, chatNumberText, model, workDirectory, oldPane, oldSessionId] = scriptArguments;
+const [name, chatNumberText, model, workDirectory, oldPane, oldSessionId, swapPercent] = scriptArguments;
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux");
 const dialogWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS"]);
@@ -28,7 +31,8 @@ const handoffFilePath = sendHandoffCommandAndWaitForFile(oldPane, oldChatName, h
 writeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 
 const takeoverPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT"], { oldChatName, handoffPath: handoffFilePath });
-const environmentFlags = buildSingleChatEnvironmentFlags(name, newChatNumber, model, workDirectory);
+// const environmentFlags = buildSingleChatEnvironmentFlags(name, newChatNumber, model, workDirectory);
+const environmentFlags = buildSingleChatEnvironmentFlags(name, newChatNumber, model, workDirectory, swapPercent);
 const paneCommand = buildSingleChatPaneCommand(newChatName, model, takeoverPrompt);
 const newPane = startChatInNewWindow(oldPane, workDirectory, environmentFlags, paneCommand);
 writeSwapRecord(swapRecordPath, { newChatName, newPane, isNewChatReady: false });

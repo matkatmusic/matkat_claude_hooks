@@ -51,9 +51,16 @@ test("test_buildSingleChatName_joins_the_name_and_the_number", () => {
 });
 
 test("test_buildSingleChatEnvironmentFlags_returns_four_pairs", () => {
-  // Scenario: a session name, a chat number, a model and a work folder.
-  // Step: build the flags. Check that each of the four values has its own -e pair.
-  assert.deepEqual(buildSingleChatEnvironmentFlags("bed", 2, "haiku", "/w"), ["-e", "CLAUDE_TMUX_NAME=bed", "-e", "CLAUDE_TMUX_CHAT_NUMBER=2", "-e", "CLAUDE_TMUX_MODEL=haiku", "-e", "CLAUDE_TMUX_WORK_DIRECTORY=/w"]);
+  // Scenario: a session name, a chat number, a model, a work folder and an empty swap percent.
+  // Step: build the flags. Check that each of the four values has its own -e pair and the empty swap percent adds none.
+  // assert.deepEqual(buildSingleChatEnvironmentFlags("bed", 2, "haiku", "/w"), ["-e", "CLAUDE_TMUX_NAME=bed", "-e", "CLAUDE_TMUX_CHAT_NUMBER=2", "-e", "CLAUDE_TMUX_MODEL=haiku", "-e", "CLAUDE_TMUX_WORK_DIRECTORY=/w"]);
+  assert.deepEqual(buildSingleChatEnvironmentFlags("bed", 2, "haiku", "/w", ""), ["-e", "CLAUDE_TMUX_NAME=bed", "-e", "CLAUDE_TMUX_CHAT_NUMBER=2", "-e", "CLAUDE_TMUX_MODEL=haiku", "-e", "CLAUDE_TMUX_WORK_DIRECTORY=/w"]);
+});
+
+test("test_buildSingleChatEnvironmentFlags_adds_the_swap_percent_when_given", () => {
+  // Scenario: a session name, a chat number, a model, a work folder and the swap percent "5".
+  // Step: build the flags. Check that the four pairs come first and the swap percent pair comes last.
+  assert.deepEqual(buildSingleChatEnvironmentFlags("bed", 2, "haiku", "/w", "5"), ["-e", "CLAUDE_TMUX_NAME=bed", "-e", "CLAUDE_TMUX_CHAT_NUMBER=2", "-e", "CLAUDE_TMUX_MODEL=haiku", "-e", "CLAUDE_TMUX_WORK_DIRECTORY=/w", "-e", "CLAUDE_TMUX_SWAP_PERCENT=5"]);
 });
 
 test("test_buildSingleChatPaneCommand_gives_the_same_command_as_the_team_pane_command", () => {

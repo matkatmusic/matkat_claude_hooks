@@ -1,5 +1,5 @@
 import { test, expect } from 'claude-code/testing'
-import { isSwapDue, getSwapMode } from './register'
+import { isSwapDue, getSwapMode, getSwapPercent } from './register'
 
 // const SWAP_DUE_INPUT = { teamName: 'team a', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false }
 const SWAP_DUE_INPUT = { swapMode: 'team', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false } as const
@@ -335,6 +335,44 @@ test('test_getSwapMode_returns_single_when_only_the_claude_tmux_name_is_set', ()
 
 test('test_getSwapMode_returns_undefined_without_both_names', () => {
   expect(getSwapMode(undefined, undefined)).toBe(undefined)
+})
+
+test('test_getSwapPercent_uses_the_environment_value_in_single_mode', () => {
+  expect(getSwapPercent('single', '5', 30)).toBe(5)
+})
+
+test('test_getSwapPercent_uses_the_dispatch_value_without_an_environment_value', () => {
+  expect(getSwapPercent('single', undefined, 30)).toBe(30)
+})
+
+test('test_getSwapPercent_ignores_the_environment_value_in_team_mode', () => {
+  expect(getSwapPercent('team', '5', 30)).toBe(30)
+})
+
+test('test_getSwapPercent_throws_for_a_value_that_is_not_a_whole_number', () => {
+  expect(() => getSwapPercent('single', 'abc', 30)).toThrow(/CLAUDE_TMUX_SWAP_PERCENT/)
+})
+
+test('test_a_Stop_below_the_environment_swap_percent_in_a_claude_tmux_chat_starts_no_swap', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, { ...SINGLE_CHAT_ENVIRONMENT, CLAUDE_TMUX_SWAP_PERCENT: '40' }, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(0)
+})
+
+test('test_the_single_chat_swap_command_passes_the_environment_swap_percent_as_the_seventh_argument', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, { ...SINGLE_CHAT_ENVIRONMENT, CLAUDE_TMUX_SWAP_PERCENT: '5' }, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' '5'")
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChatFailed.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' '5'")
+})
+
+test('test_the_single_chat_swap_command_passes_an_empty_seventh_argument_without_an_environment_value', async ($, on) => {
+  const { runCommands } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  await $.classic.Stop(STOP_EVENT)
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands[0]![3]).toContain("swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9' ''")
 })
 
 test('test_a_Stop_above_the_swap_percent_in_a_claude_tmux_chat_starts_swapSingleChat_with_six_arguments', async ($, on) => {

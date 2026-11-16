@@ -5,8 +5,10 @@ import { buildSingleChatName, buildSwapRecordPath, getSwapFailedAction, readSwap
 import type { SingleChatSwapRecord } from "./singleChat.ts";
 
 const scriptArguments = process.argv.slice(2);
-if (scriptArguments.length !== 6)
-  throw new Error("usage: swapSingleChatFailed.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId>");
+// if (scriptArguments.length !== 6)
+if (scriptArguments.length !== 7)
+  // throw new Error("usage: swapSingleChatFailed.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId>");
+  throw new Error("usage: swapSingleChatFailed.ts <name> <chatNumber> <model> <workDirectory> <oldPane> <oldSessionId> <swapPercent>");
 const [name, chatNumberText, , , oldPane, oldSessionId] = scriptArguments;
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux");
