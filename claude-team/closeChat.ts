@@ -1,7 +1,8 @@
-import { rmSync } from "node:fs";
+import { readdirSync, rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
-import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { buildHandle, buildTeamFilePath, fillTemplate, findChatWithStatus, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listReplacedNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import type { Team } from "./teamFile.ts";
 import { sendExitToChat, sendTextToChat } from "./teamSend.ts";
 
 const scriptArguments = process.argv.slice(2);
@@ -38,18 +39,36 @@ const newChat = findChatWithStatus(team, job, "active");
 if (newChat === undefined)
   throw new Error(`job ${job} has no active chat`);
 const replacedNotice = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_REPLACED_NOTICE"], { oldHandle: buildHandle(oldChat.chatName), newHandle: buildHandle(newChat.chatName) });
-for (const noticeChat of listNoticeChats(team, newChat.chatName))
-  sendTextToChat(noticeChat.pane, noticeChat.chatName, replacedNotice, dialogWaitSeconds);
-if (oldChat.isTeamLeader === true) {
-  if (team.parentTeam !== undefined) {
-    const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
-    const parentTeam = readTeamFile(buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.parentTeam));
-    const directorChat = findChatWithStatus(parentTeam, directorJob, "active");
-    if (directorChat === undefined)
-      throw new Error(`the Director of team ${team.parentTeam} has no active chat`);
-    sendTextToChat(directorChat.pane, directorChat.chatName, replacedNotice, dialogWaitSeconds);
+// for (const noticeChat of listNoticeChats(team, newChat.chatName))
+//   sendTextToChat(noticeChat.pane, noticeChat.chatName, replacedNotice, dialogWaitSeconds);
+// if (oldChat.isTeamLeader === true) {
+//   if (team.parentTeam !== undefined) {
+//     const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
+//     const parentTeam = readTeamFile(buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.parentTeam));
+//     const directorChat = findChatWithStatus(parentTeam, directorJob, "active");
+//     if (directorChat === undefined)
+//       throw new Error(`the Director of team ${team.parentTeam} has no active chat`);
+//     sendTextToChat(directorChat.pane, directorChat.chatName, replacedNotice, dialogWaitSeconds);
+//   }
+// }
+const directorJob = values["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
+const stateDirectory = values["CLAUDE_HOOKS_SESSION_STATE_DIR"];
+let parentTeam: Team | undefined = undefined;
+if (team.parentTeam !== undefined)
+  parentTeam = readTeamFile(buildTeamFilePath(stateDirectory, team.parentTeam));
+const childTeams: Team[] = [];
+for (const fileName of readdirSync(`${stateDirectory}/claude-team`)) {
+  const isTeamFile = fileName.endsWith(".json");
+  if (isTeamFile) {
+    const otherTeam = readTeamFile(`${stateDirectory}/claude-team/${fileName}`);
+    if (otherTeam.parentTeam === team.teamName)
+      childTeams.push(otherTeam);
   }
 }
+const sessionListResult = tmux_lib.run(["tmux", "list-sessions", "-F", "#{session_name}"], { capture_output: true, text: true, check: true });
+const liveSessionNames = sessionListResult.stdout.split("\n");
+for (const noticeChat of listReplacedNoticeChats(team, oldChat, newChat.chatName, parentTeam, childTeams, liveSessionNames, directorJob, values["CLAUDE_HOOKS_CLAUDE_TEAM_READ_FIND_JOB"]))
+  sendTextToChat(noticeChat.pane, noticeChat.chatName, replacedNotice, dialogWaitSeconds);
 
 const readyWaitStartedAt = Date.now();
 let isOldChatReadyForExit = false;

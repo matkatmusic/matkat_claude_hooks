@@ -60,6 +60,64 @@ export function listNoticeChats(team: Team, newChatName: string): TeamChat[] {
   return noticeChats;
 }
 
+export function listReplacedNoticeChats(team: Team, oldChat: TeamChat, newChatName: string, parentTeam: Team | undefined, childTeams: Team[], liveSessionNames: string[], directorJob: string, readFindJob: string): TeamChat[] {
+  const replacedNoticeChats: TeamChat[] = [];
+  const ownTeamNoticeChats = listNoticeChats(team, newChatName);
+  if (oldChat.isTeamLeader === true) {
+    for (const chat of ownTeamNoticeChats)
+      replacedNoticeChats.push(chat);
+    if (parentTeam !== undefined) {
+      for (const chat of listNoticeChats(parentTeam, newChatName)) {
+        if (chat.job === directorJob)
+          replacedNoticeChats.push(chat);
+      }
+    }
+    if (oldChat.job === directorJob) {
+      for (const childTeam of childTeams) {
+        const childSessionIsLive = liveSessionNames.includes(childTeam.teamName);
+        if (childSessionIsLive) {
+          for (const chat of listNoticeChats(childTeam, newChatName)) {
+            if (chat.isTeamLeader === true)
+              replacedNoticeChats.push(chat);
+          }
+        }
+      }
+    }
+    return replacedNoticeChats;
+  }
+  if (oldChat.job === directorJob) {
+    for (const chat of ownTeamNoticeChats) {
+      if (chat.job === readFindJob)
+        replacedNoticeChats.push(chat);
+      if (chat.isTeamLeader === true)
+        replacedNoticeChats.push(chat);
+    }
+    for (const childTeam of childTeams) {
+      const childSessionIsLive = liveSessionNames.includes(childTeam.teamName);
+      if (childSessionIsLive) {
+        for (const chat of listNoticeChats(childTeam, newChatName)) {
+          if (chat.isTeamLeader === true)
+            replacedNoticeChats.push(chat);
+        }
+      }
+    }
+    return replacedNoticeChats;
+  }
+  for (const chat of ownTeamNoticeChats) {
+    if (chat.isTeamLeader === true)
+      replacedNoticeChats.push(chat);
+  }
+  if (oldChat.job === readFindJob) {
+    for (const chat of ownTeamNoticeChats) {
+      if (chat.job === directorJob) {
+        if (chat.isTeamLeader !== true)
+          replacedNoticeChats.push(chat);
+      }
+    }
+  }
+  return replacedNoticeChats;
+}
+
 export function addReplacementChat(team: Team, job: string): { oldChat: TeamChat; newChat: TeamChat } {
   const oldChat = findChatWithStatus(team, job, "active");
   if (oldChat === undefined)
