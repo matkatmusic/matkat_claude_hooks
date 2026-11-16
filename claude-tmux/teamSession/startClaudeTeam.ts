@@ -5,11 +5,14 @@ import { buildChatName, buildDetachedSizeFlags, buildDirectorPaneCommand, parseT
 import { buildHandle, buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, findChatWithStatus, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { Team } from "./teamFile.ts";
 import { sendTextToChat } from "../shared/chatSend.ts";
-import { fillTemplate } from "../shared/chatSwap.ts";
+// import { fillTemplate } from "../shared/chatSwap.ts";
+import { fillTemplate, getGitRootOfWorkDirectory } from "../shared/chatSwap.ts";
 import { startHelperChats } from "./teamStart.ts";
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
 const team = parseTeamArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_MODEL"]);
+// the same start check as claude-tmux --name: it throws outside a git repository
+getGitRootOfWorkDirectory(process.cwd());
 const directorJob = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"];
 const directorChatName = buildChatName(team.name, directorJob, 1);
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.name);

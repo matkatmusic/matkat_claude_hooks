@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+// import { mkdtempSync } from "node:fs";
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -97,4 +98,20 @@ test("test_startTeamHelpers_throws_for_a_chat_that_is_not_the_director", () => {
   // Step 2: check that it fails with the message.
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /only the Director can start the helper chats/);
+});
+
+test("test_startClaudeTeam_throws_outside_a_git_repository", () => {
+  // Scenario: the work folder is not inside a git repository. The script must stop before it starts tmux or a chat.
+  // Step 1: make a plain folder. Check that git does not see a repository there.
+  const plainFolder = mkdtempSync(join(tmpdir(), "claude-team-plain-"));
+  assert.notEqual(spawnSync("git", ["-C", plainFolder, "rev-parse"]).status, 0);
+  // Step 2: put a fake tmux first on PATH. It fails every call, so no tmux session can start.
+  const fakeBinFolder = mkdtempSync(join(tmpdir(), "claude-team-fake-bin-"));
+  writeFileSync(join(fakeBinFolder, "tmux"), "#!/bin/sh\nexit 1\n");
+  chmodSync(join(fakeBinFolder, "tmux"), 0o755);
+  // Step 3: run the script from the plain folder.
+  const result = spawnSync("bun", [`${import.meta.dirname}/startClaudeTeam.ts`, "--team", "--name", `claude-team-git-test-${process.pid}`], { encoding: "utf8", cwd: plainFolder, env: { ...process.env, PATH: `${fakeBinFolder}:${process.env.PATH}`, BUN_JSC_useTailCalls: "0" } });
+  // Step 4: check that it fails with the message.
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must start inside a git repository/);
 });

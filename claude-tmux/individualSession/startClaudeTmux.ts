@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
+import { getGitRootOfWorkDirectory } from "../shared/chatSwap.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
@@ -11,9 +12,10 @@ const singleChat = parseSingleChatArguments(process.argv.slice(2), values["CLAUD
 const workDirectory = process.cwd();
 validateSwapPercentText(process.env.CLAUDE_TMUX_SWAP_PERCENT);
 
-const gitRootResult = tmux_lib.run(["git", "-C", workDirectory, "rev-parse", "--show-toplevel"], { capture_output: true, text: true, check: false });
-if (gitRootResult.returncode !== 0)
-  throw new Error("claude-tmux must start inside a git repository: the handoff file goes to the .idleState folder of the project root");
+// const gitRootResult = tmux_lib.run(["git", "-C", workDirectory, "rev-parse", "--show-toplevel"], { capture_output: true, text: true, check: false });
+// if (gitRootResult.returncode !== 0)
+//   throw new Error("claude-tmux must start inside a git repository: the handoff file goes to the .idleState folder of the project root");
+const projectRoot = getGitRootOfWorkDirectory(workDirectory);
 // const hasSessionCode = tmux_lib.tmux_hasSession(singleChat.name);
 // if (hasSessionCode === 0)
 //   throw new Error(`a tmux session named ${singleChat.name} already exists`);
@@ -29,7 +31,8 @@ const paneCommand = buildSingleChatPaneCommand(firstChatName, singleChat.model, 
 const newSessionCommand = ["tmux", "new-session", "-d", "-P", "-F", "#{pane_id}", "-s", singleChat.name, "-c", workDirectory, ...environmentFlags, paneCommand];
 const newSessionResult = tmux_lib.run(newSessionCommand, { capture_output: true, text: true, check: true });
 const firstPane = newSessionResult.stdout.trim();
-const trackerPath = openTrackerOfPane(firstPane, gitRootResult.stdout.trim());
+// const trackerPath = openTrackerOfPane(firstPane, gitRootResult.stdout.trim());
+const trackerPath = openTrackerOfPane(firstPane, projectRoot);
 // the first chat already has number 1; this writes 1 into the new tracker
 updateTrackerWithNextChatNumber(trackerPath, singleChat.name, 0);
 console.log(`Started ${firstChatName} in the tmux session ${singleChat.name}.`);
