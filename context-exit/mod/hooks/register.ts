@@ -167,7 +167,7 @@ async function listSingleChatSwapArguments($: EngineInterface, sessionId: string
 
 async function launchSingleChatSwap($: EngineInterface, sessionId: string): Promise<void> {
   const swapArguments = await listSingleChatSwapArguments($, sessionId);
-  const scriptFolder = `${$.plugin.root}/../../claude-tmux`;
+  const scriptFolder = `${$.plugin.root}/../../claude-tmux/individualSession`;
   const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-tmux-swap.log`;
   const swapCommand = `bun ${scriptFolder}/swapSingleChat.ts ${swapArguments} >> ${logPath} 2>&1`;
   const failedCommand = `bun ${scriptFolder}/swapSingleChatFailed.ts ${swapArguments} >> ${logPath} 2>&1`;
@@ -184,9 +184,9 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'classic.Stop');
   if (!enabled)
     return next(e);
-  const teamName = await $.env.get('CLAUDE_TEAM_NAME');
-  const job = await $.env.get('CLAUDE_TEAM_JOB');
-  const chatName = await $.env.get('CLAUDE_TEAM_CHAT_NAME');
+  const teamName = await $.env.get('CLAUDE_TMUX_TEAM_NAME');
+  const job = await $.env.get('CLAUDE_TMUX_TEAM_JOB');
+  const chatName = await $.env.get('CLAUDE_TMUX_TEAM_CHAT_NAME');
   const singleChatName = await $.env.get('CLAUDE_TMUX_NAME');
   const swapMode = getSwapMode(teamName, singleChatName);
   const usage = await $.session.usage();
@@ -214,8 +214,8 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
     return next(e);
   }
   await $.state.set(isSwapStartedRef, true);
-  const scriptFolder = `${$.plugin.root}/../../claude-team`;
-  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-team-swap.log`;
+  const scriptFolder = `${$.plugin.root}/../../claude-tmux/teamSession`;
+  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-tmux-team-swap.log`;
   const swapArguments = `${wrapShellWord(teamName!)} ${wrapShellWord(job!)} ${wrapShellWord(chatName!)}`;
   // const sessionId = await $.session.id();
   const swapCommand = `bun ${scriptFolder}/swapChat.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;

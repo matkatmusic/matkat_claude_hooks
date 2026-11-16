@@ -8,10 +8,10 @@ import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 const TASK_LIST_ID = "committed-task-check-test";
 const OPEN_TASK_NUMBER = 7;
 const OTHER_OPEN_TASK_NUMBER = 8;
-const teamValues = getValues(readSettings(DISPATCHER_DIR), "claude-team");
-const TEAM_LEADER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"];
-const DIRECTOR_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"];
-const HELPER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_JOBS"].split(",")[0];
+const teamValues = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+const TEAM_LEADER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_JOB"];
+const DIRECTOR_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"];
+const HELPER_JOB = teamValues["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_JOBS"].split(",")[0];
 
 type Fixture = {
     repo: string;
@@ -70,7 +70,7 @@ function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | 
         settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: fixture.stateDir },
         ...overrides,
     };
-    const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: taskListId ?? undefined, CLAUDE_TEAM_JOB: teamJob };
+    const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: taskListId ?? undefined, CLAUDE_TMUX_TEAM_JOB: teamJob };
     const result = spawnSync("node", [`${import.meta.dirname}/committed-task-check.ts`], {
         input: JSON.stringify(payload),
         encoding: "utf8",

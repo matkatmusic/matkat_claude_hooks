@@ -147,11 +147,11 @@ const input = JSON.parse(readFileSync(0, "utf8"));
 if (input.stop_hook_active)
     process.exit(0);
 
-const teamJob = process.env.CLAUDE_TEAM_JOB;
+const teamJob = process.env.CLAUDE_TMUX_TEAM_JOB;
 if (teamJob !== undefined) {
-    const teamValues = getValues(readSettings(DISPATCHER_DIR), "claude-team");
-    if (teamJob !== teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB"]) {
-        if (teamJob !== teamValues["CLAUDE_HOOKS_CLAUDE_TEAM_TEAMLEADER_JOB"])
+    const teamValues = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+    if (teamJob !== teamValues["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB"]) {
+        if (teamJob !== teamValues["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TEAMLEADER_JOB"])
             process.exit(0);
     }
 }

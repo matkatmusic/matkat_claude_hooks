@@ -86,7 +86,7 @@ function watchSwap($: any, on: any, teamName: string | undefined) {
   on('env.get', (_$: any, e: any) => {
     if (teamName === undefined)
       return { value: undefined }
-    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    const values: Record<string, string> = { CLAUDE_TMUX_TEAM_NAME: teamName, CLAUDE_TMUX_TEAM_JOB: 'orchestrator', CLAUDE_TMUX_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
     return { value: values[e.name] }
   })
   on('process.run', (_$: any, e: any) => {
@@ -109,7 +109,7 @@ function watchSwapWithFailedMarker($: any, on: any, teamName: string) {
   on('session.id', () => ({ value: 'sess-9' }))
   on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 35, window: 200000 } } }))
   on('env.get', (_$: any, e: any) => {
-    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    const values: Record<string, string> = { CLAUDE_TMUX_TEAM_NAME: teamName, CLAUDE_TMUX_TEAM_JOB: 'orchestrator', CLAUDE_TMUX_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
     return { value: values[e.name] }
   })
   on('process.run', (_$: any, e: any) => {
@@ -343,7 +343,7 @@ test('test_a_Stop_above_the_swap_percent_in_a_claude_tmux_chat_starts_swapSingle
   const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
   expect(tmuxCommands).toHaveLength(1)
   expect(tmuxCommands[0]!.slice(0, 3)).toEqual(['tmux', 'run-shell', '-b'])
-  expect(tmuxCommands[0]![3]).toContain("claude-tmux/swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9'")
+  expect(tmuxCommands[0]![3]).toContain("claude-tmux/individualSession/swapSingleChat.ts 'bed' '1' 'haiku' '/work/bed' '%7' 'sess-9'")
 })
 
 test('test_the_single_chat_swap_command_runs_swapSingleChatFailed_with_the_same_arguments', async ($, on) => {

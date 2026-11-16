@@ -9,6 +9,6 @@ typesafe_paths/
 .claude_hooks/
 ask-dont-dump/auditor/marks/
 undefined/
-dispatcher/claude-team-swap.log
+dispatcher/claude-tmux-team-swap.log
 dispatcher/handoff-done/
 dispatcher/swap-failed/
