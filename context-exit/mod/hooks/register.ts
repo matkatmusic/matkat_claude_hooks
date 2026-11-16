@@ -6,7 +6,10 @@ const WARNING_PERCENTS_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS';
 const TOAST_MS = 60000;
 const DISPATCHER_DIR = '../../dispatcher';
 
+const SWAP_PERCENT_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT';
+
 const warnedPercentRef = { plugin: 'context-exit', key: 'warnedPercent' } as const;
+const isSwapStartedRef = { plugin: 'context-exit', key: 'isSwapStarted' } as const;
 
 async function parseDefaultFile($: EngineInterface): Promise<{ enablements: Record<string, Record<string, boolean>>; values?: Record<string, Record<string, string | boolean>> }> {
   return JSON.parse(await $.fs.read(`${$.plugin.root}/${DISPATCHER_DIR}/dispatch.json`));
@@ -64,6 +67,20 @@ async function readValue($: EngineInterface, section: string, key: string): Prom
   return defaultValue;
 }
 
+export function isSwapDue(input: { teamName: string | undefined; percent: number | undefined; swapPercent: number; backgroundTaskCount: number; isSwapStarted: boolean }): boolean {
+  if (input.teamName === undefined)
+    return false;
+  if (input.percent === undefined)
+    return false;
+  if (input.percent < input.swapPercent)
+    return false;
+  if (input.backgroundTaskCount > 0)
+    return false;
+  if (input.isSwapStarted)
+    return false;
+  return true;
+}
+
 const handoffTurn = { isActive: false };
 
 async function getStopHooksOffMarkerPath($: EngineInterface): Promise<string> {
@@ -113,6 +130,44 @@ const reportContextUsageOnTurnComplete: Hook<'turn.complete'> = async ($, e, nex
   return next(e);
 };
 
+function wrapShellWord(text: string): string {
+  return "'" + text.replaceAll("'", "'\\''") + "'";
+}
+
+const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
+  const enabled = await isEventEnabled($, PLUGIN_NAME, 'classic.Stop');
+  if (!enabled)
+    return next(e);
+  const teamName = await $.env.get('CLAUDE_TEAM_NAME');
+  const job = await $.env.get('CLAUDE_TEAM_JOB');
+  const chatName = await $.env.get('CLAUDE_TEAM_CHAT_NAME');
+  const usage = await $.session.usage();
+  const swapPercent = Number(await readValue($, PLUGIN_NAME, SWAP_PERCENT_KEY));
+  const backgroundTaskCount = (e.background_tasks ?? []).length;
+  const { value: isSwapStarted = false } = await $.state.get(isSwapStartedRef);
+  const isDue = isSwapDue({ teamName, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
+  if (!isDue)
+    return next(e);
+  await $.state.set(isSwapStartedRef, true);
+  const scriptFolder = `${$.plugin.root}/../../claude-team`;
+  const logPath = `${$.plugin.root}/${DISPATCHER_DIR}/claude-team-swap.log`;
+  const swapArguments = `${wrapShellWord(teamName!)} ${wrapShellWord(job!)} ${wrapShellWord(chatName!)}`;
+  const sessionId = await $.session.id();
+  const swapCommand = `bun ${scriptFolder}/swapChat.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;
+  const failedCommand = `bun ${scriptFolder}/swapFailed.ts ${swapArguments} ${wrapShellWord(sessionId)} >> ${logPath} 2>&1`;
+  const result = await $.process.run(['tmux', 'run-shell', '-b', `${swapCommand} || ${failedCommand}`]);
+  if (result.exitCode !== 0)
+    throw new Error(`tmux run-shell failed: ${result.stderr}`);
+  return next(e);
+};
+
+const startSwapOnStopWithDebugLog: Hook<'classic.Stop'> = async ($, e, next) => {
+  const debugLog = await wrapNextForDebugLog($, 'startSwapOnStop', 'classic.Stop', e, next);
+  const returned = await startSwapOnStop($, e, debugLog.next);
+  await debugLog.finish(returned);
+  return returned;
+};
+
 const logTurnOffStopHooksOnHandoffPrompt: Hook<'prompt.submit'> = async ($, e, next) => {
   const debugLog = await wrapNextForDebugLog($, 'turnOffStopHooksOnHandoffPrompt', 'prompt.submit', e, next);
   const returned = await turnOffStopHooksOnHandoffPrompt($, e, debugLog.next);
@@ -130,4 +185,5 @@ const reportContextUsageOnTurnCompleteWithDebugLog: Hook<'turn.complete'> = asyn
 export const register: Register = on => {
   on('prompt.submit', logTurnOffStopHooksOnHandoffPrompt).catch(logAndRethrowHookFailure);
   on('turn.complete', reportContextUsageOnTurnCompleteWithDebugLog).catch(logAndRethrowHookFailure);
+  on('classic.Stop', startSwapOnStopWithDebugLog).catch(logAndRethrowHookFailure);
 };

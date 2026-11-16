@@ -11,6 +11,7 @@ export const PUSH_KEYS_SCRIPT = "import os, fcntl, termios\nfd = os.open('/dev/t
 export const idleState: {
   isWritingState: boolean;
   stateFilePath: string | undefined;
+  handoffStateFilePath: string | undefined;
   idleTimer: { cancel: () => void } | undefined;
   lastAnswerAt: number;
   statePrompt: string;
@@ -18,6 +19,7 @@ export const idleState: {
 } = {
   isWritingState: false,
   stateFilePath: undefined,
+  handoffStateFilePath: undefined,
   idleTimer: undefined,
   lastAnswerAt: 0,
   statePrompt: '',

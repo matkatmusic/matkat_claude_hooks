@@ -1,14 +1,15 @@
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { buildChatName, buildDirectorPaneCommand } from "./teamCommand.ts";
-import { buildJobValueKey, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, lockTeamFile, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
+import { buildJobValueKey, buildMessageWithRoleText, buildPaneEnvironmentFlags, buildTeamFilePath, fillTemplate, findChatWithStatus, lockTeamFile, parseSendTarget, readTeamFile, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { TeamChat } from "./teamFile.ts";
 import { sendTextToChat } from "./teamSend.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 2)
   throw new Error('usage: sendToJob.ts <job> "<text>"');
-const [job, text] = scriptArguments;
+const [target, text] = scriptArguments;
+const { job, isOldChat } = parseSendTarget(target);
 
 const teamName = process.env.CLAUDE_TEAM_NAME;
 const senderJob = process.env.CLAUDE_TEAM_JOB;
@@ -38,6 +39,14 @@ function fillSendInstructions(chatName: string, chatJob: string): string {
 }
 
 let targetChat: TeamChat | undefined;
+if (isOldChat) {
+  lockTeamFile(teamFilePath);
+  const teamWithOldChat = readTeamFile(teamFilePath);
+  unlockTeamFile(teamFilePath);
+  targetChat = findChatWithStatus(teamWithOldChat, job, "leaving");
+  if (targetChat === undefined)
+    throw new Error(`job ${job} has no old chat`);
+}
 const startedAt = Date.now();
 while (targetChat === undefined) {
   if (Date.now() - startedAt > startWaitSeconds * 1000)
@@ -72,7 +81,8 @@ while (targetChat === undefined) {
 
   const directorPane = findChatWithStatus(team, directorJob, "active")!.pane;
   const environmentFlags = buildPaneEnvironmentFlags(teamName, job, newChat.chatName);
-  const splitCommand = ["tmux", "split-window", "-t", directorPane, "-c", team.workDirectory, "-P", "-F", "#{pane_id}", ...environmentFlags, buildDirectorPaneCommand(newChat.chatName, newChat.model)];
+  const roleText = `${values[buildJobValueKey(job, "PROMPT")]}\n${fillSendInstructions(newChat.chatName, job)}`;
+  const splitCommand = ["tmux", "split-window", "-t", directorPane, "-c", team.workDirectory, "-P", "-F", "#{pane_id}", ...environmentFlags, buildDirectorPaneCommand(newChat.chatName, newChat.model, roleText)];
   const splitResult = tmux_lib.run(splitCommand, { capture_output: true, text: true, check: true });
   const newPane = splitResult.stdout.trim();
   tmux_lib.tmux_selectLayout(newPane, "tiled");
@@ -86,11 +96,6 @@ while (targetChat === undefined) {
   const readinessCode = tmux_lib.tmux_waitForClaudeReadiness(newPane);
   if (readinessCode !== 0)
     throw new Error(`${newChat.chatName} did not become ready in pane ${newPane}`);
-  tmux_lib.sleep(6);
-  const roleText = `${values[buildJobValueKey(job, "PROMPT")]}\n${fillSendInstructions(newChat.chatName, job)}`;
-  const roleSendCode = tmux_lib.tmux_sendAndSubmit(newPane, roleText);
-  if (roleSendCode !== 0)
-    throw new Error(`tmux could not send the role text to pane ${newPane}`);
 
   lockTeamFile(teamFilePath);
   const teamToActivate = readTeamFile(teamFilePath);
@@ -101,5 +106,16 @@ while (targetChat === undefined) {
 }
 
 const messageHeader = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TEAM_MESSAGE_HEADER"], { senderChatName, senderJob });
-sendTextToChat(targetChat.pane, targetChat.chatName, `${messageHeader}\n${text}`, dialogWaitSeconds);
+const roleTextForTarget = `${values[buildJobValueKey(job, "PROMPT")]}\n${fillSendInstructions(targetChat.chatName, job)}`;
+sendTextToChat(targetChat.pane, targetChat.chatName, buildMessageWithRoleText(targetChat, roleTextForTarget, `${messageHeader}\n${text}`), dialogWaitSeconds);
+if (targetChat.needsRoleText === true) {
+  lockTeamFile(teamFilePath);
+  const teamWithRoleTextSent = readTeamFile(teamFilePath);
+  for (const chat of teamWithRoleTextSent.chats) {
+    if (chat.chatName === targetChat.chatName)
+      chat.needsRoleText = false;
+  }
+  writeTeamFile(teamFilePath, teamWithRoleTextSent);
+  unlockTeamFile(teamFilePath);
+}
 console.log(`sent to "${targetChat.chatName}"`);

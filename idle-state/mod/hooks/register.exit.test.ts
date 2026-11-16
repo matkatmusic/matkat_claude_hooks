@@ -6,6 +6,7 @@ import {
   DISPATCH_ALL_OFF,
   DISPATCH_ALL_ON,
   DISPATCH_ALL_ON_WITH_DEBUG,
+  existingFsPathEnds,
   NO_PROCESS_FOUND,
   STATE_OBJECT,
   STOP_EVENT,
@@ -183,6 +184,67 @@ async function assertExitSetsNoTimerWhenEventIsDisabled($: any, on: any) {
   expect(recorded.commands).toEqual(['exit']);
 }
 
+async function assertExitSendsNoPromptAfterHandoffStateFileIsWritten($: any, on: any) {
+  // the main agent writes a handoff state file, then the user exits: no state prompt is sent
+  idleState.handoffStateFilePath = undefined;
+  idleState.stateFilePath = undefined;
+  idleState.isWritingState = false;
+  const { clock, recorded, events } = setUpExitRecording(on, DISPATCH_ALL_ON);
+  countToolRuns(on);
+
+  await $.tool.call({ tool: 'Write', file_path: '/work/p/.idleState/2026-10-15-1000-abcdefgh.json', content: '{}' });
+  await $.command.run(EXIT_COMMAND);
+  await clock.settle();
+  expect(events).toEqual([]);
+  expect(recorded.submitted).toHaveLength(0);
+}
+
+async function assertExitSendsPromptWhenAPromptFollowsTheHandoffStateFile($: any, on: any) {
+  // the main agent writes a handoff state file, the user submits a prompt, then exits: the state prompt is sent
+  idleState.handoffStateFilePath = undefined;
+  idleState.stateFilePath = undefined;
+  idleState.isWritingState = false;
+  const { clock, recorded, events } = setUpExitRecording(on, DISPATCH_ALL_ON);
+  countToolRuns(on);
+
+  await $.tool.call({ tool: 'Write', file_path: '/work/p/.idleState/2026-10-15-1000-abcdefgh.json', content: '{}' });
+  await $.prompt.submit({ text: 'do more work', wait: false, origin: { kind: 'composer' } });
+  await $.command.run(EXIT_COMMAND);
+  await clock.settle();
+  expect(events).toEqual(['clock.after']);
+  expect(recorded.submitted).toHaveLength(2);
+}
+
+async function assertExitRunsAtOnceWhenHandoffDoneMarkerExists($: any, on: any) {
+  // the swap script wrote the handoff-done marker for this session: exit runs, no timer, no state prompt
+  idleState.handoffStateFilePath = undefined;
+  idleState.stateFilePath = undefined;
+  idleState.isWritingState = false;
+  const { clock, recorded, events } = setUpExitRecording(on, DISPATCH_ALL_ON);
+  existingFsPathEnds.push('/dispatcher/handoff-done/abcdef1234567890');
+
+  await $.command.run(EXIT_COMMAND);
+  await clock.settle();
+  existingFsPathEnds.length = 0;
+  expect(recorded.commands).toEqual(['exit']);
+  expect(events).toEqual([]);
+  expect(recorded.submitted).toEqual([]);
+}
+
+async function assertExitWritesStateWhenNoHandoffDoneMarker($: any, on: any) {
+  // no marker and no state file path: exit writes the idle-state file first, as before
+  idleState.handoffStateFilePath = undefined;
+  idleState.stateFilePath = undefined;
+  idleState.isWritingState = false;
+  const { clock } = setUpExitRecording(on, DISPATCH_ALL_ON);
+
+  const returned = await $.command.run(EXIT_COMMAND);
+  await clock.settle();
+  expect(returned).toEqual({ text: 'Writing the idle-state file before exit.' });
+}
+
+test('exit runs at once when the handoff-done marker exists', assertExitRunsAtOnceWhenHandoffDoneMarkerExists);
+test('exit writes the state file when no handoff-done marker exists', assertExitWritesStateWhenNoHandoffDoneMarker);
 test('with debug logging on, exit writes the hook.output debug line before it sets the timer', assertExitDebugOutputLineIsWrittenBeforeTimerIsSet);
 test('with debug logging off, exit sets the timer and sends the state prompt', assertExitSetsTimerAndSendsPromptWithDebugLoggingOff);
 test('exit sets no timer once the state file is written', assertExitSetsNoTimerWhenStateFileIsWritten);
@@ -190,3 +252,5 @@ test('exit sets no timer when command.run is disabled', assertExitSetsNoTimerWhe
 test('exit during a running turn waits for the state prompt turn before it writes the state file', assertExitDuringRunningTurnWaitsForTheStatePromptTurn);
 test('a turn.start with other text does not start the state write', assertTurnStartWithOtherTextDoesNotStartStateWrite);
 test('a turn.start before any state prompt exists does not start the state write', assertTurnStartBeforeAnyStatePromptDoesNotStartStateWrite);
+test('exit sends no state prompt after the main agent wrote a handoff state file', assertExitSendsNoPromptAfterHandoffStateFileIsWritten);
+test('exit sends the state prompt when a prompt follows the handoff state file', assertExitSendsPromptWhenAPromptFollowsTheHandoffStateFile);

@@ -130,6 +130,14 @@ test("dispatch.json has a boolean debugLoggingEnabled, set to false", () => {
   assert.equal(defaults.debugLoggingEnabled, false);
 });
 
+test("a value that is an array of strings is joined with line breaks", () => {
+  // Scenario: a section value written as an array of lines reaches the caller as one string.
+  // Step 1: a user file sets ALPHA_KEY to ["line one", "line two"].
+  const settings = readSettings(makeDir({ enablements: {}, values: { alpha: { ALPHA_KEY: ["line one", "line two"] } } }));
+  // Step 2: getValues returns one string with a line break between the two lines.
+  assert.equal(getValues(settings, "alpha")["ALPHA_KEY"], "line one\nline two");
+});
+
 test("a value that starts with ~/ gets the home folder", () => {
   const settings = readSettings(makeDir({ enablements: {}, values: { alpha: { ALPHA_KEY: "~/some/dir" } } }));
   assert.equal(getValues(settings, "alpha")["ALPHA_KEY"], `${homedir()}/some/dir`);

@@ -98,6 +98,22 @@ async function getChangeRequestContext($: EngineInterface, e: PromptSubmitInput)
   return `${CHANGE_REQUEST_TEXT} Flagged items (first 5 words): ${JSON.stringify(items)}. Create one task for each item.`;
 }
 
+async function isHelperChatOfTeam($: EngineInterface): Promise<boolean> {
+  const teamJob = await $.env.get('CLAUDE_TEAM_JOB');
+  if (teamJob === undefined)
+    return false;
+  const defaults = await parseDefaultFile($);
+  const directorJob = defaults.values?.['claude-team']?.['CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB'];
+  return teamJob !== directorJob;
+}
+
+async function getAskIfUnclearItems($: EngineInterface, e: PromptSubmitInput): Promise<string[]> {
+  const isHelperChat = await isHelperChatOfTeam($);
+  if (isHelperChat)
+    return [];
+  return getFlaggedItems($, e, 'ask-if-unclear', 'Is the user asking for code, a file, or a setting to be built or changed?');
+}
+
 function getDefinedTexts(texts: (string | undefined)[]): string[] {
   const defined: string[] = [];
   for (const text of texts) {
@@ -109,7 +125,7 @@ function getDefinedTexts(texts: (string | undefined)[]): string[] {
 
 // The engine allows one unmatched prompt.submit hook per plugin, so this one runs all four checks.
 const addIntentContext: Hook<'prompt.submit'> = async ($, e, next) => {
-  const [bugText, featureText, changeText, askItems] = await Promise.all([getBugReportContext($, e), getFeatureRequestContext($, e), getChangeRequestContext($, e), getFlaggedItems($, e, 'ask-if-unclear', 'Is the user asking for code, a file, or a setting to be built or changed?')]);
+  const [bugText, featureText, changeText, askItems] = await Promise.all([getBugReportContext($, e), getFeatureRequestContext($, e), getChangeRequestContext($, e), getAskIfUnclearItems($, e)]);
   const added = getDefinedTexts([bugText, featureText, changeText]);
   const hasNoContext = added.length === 0;
   const hasNoAskItems = askItems.length === 0;

@@ -1,7 +1,11 @@
 import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { hasOpenDialog, inputBoxHoldsMessage } from "./teamFile.ts";
 
-const SUBMIT_PASSES = 5;
+// const SUBMIT_PASSES = 5;
+const SUBMIT_PASSES = 6;
+const SUBMIT_WAIT_SECONDS = 10;
+const APPEAR_POLL_SECONDS = 0.25;
+const APPEAR_POLLS = 20;
 
 export function sendTextToChat(pane: string, chatName: string, text: string, dialogWaitSeconds: number): void {
   let dialogIsOpen = true;
@@ -14,19 +18,41 @@ export function sendTextToChat(pane: string, chatName: string, text: string, dia
   if (dialogIsOpen)
     throw new Error(`the chat "${chatName}" has an open dialog`);
 
-  const typeCode = tmux_lib.tmux_sendKeys(pane, text);
-  if (typeCode !== 0)
-    throw new Error(`tmux could not type the text into pane ${pane}`);
+  const bufferName = `claude-team-${process.pid}`;
+  tmux_lib.run(["tmux", "set-buffer", "-b", bufferName, "--", text], { capture_output: true, text: true, check: true });
+  tmux_lib.run(["tmux", "paste-buffer", "-p", "-d", "-b", bufferName, "-t", pane], { capture_output: true, text: true, check: true });
 
+  let textIsInInputBox = false;
+  for (let poll = 0; poll < APPEAR_POLLS; poll++) {
+    textIsInInputBox = inputBoxHoldsMessage(tmux_lib.tmux_capturePane(pane), text);
+    if (textIsInInputBox)
+      break;
+    tmux_lib.sleep(APPEAR_POLL_SECONDS);
+  }
+  if (!textIsInInputBox)
+    throw new Error(`the text did not appear in the input box of "${chatName}"`);
+
+  // The old loop gave up after about 7.5 seconds.
+  // for (let pass = 0; pass < SUBMIT_PASSES; pass++) {
+  //   tmux_lib.sleep(0.5);
+  //   const screen = tmux_lib.tmux_capturePane(pane);
+  //   if (hasOpenDialog(screen))
+  //     throw new Error(`a dialog opened in "${chatName}" during the send`);
+  //   if (!inputBoxHoldsMessage(screen, text))
+  //     return;
+  //   tmux_lib.tmux_sendEnter(pane);
+  //   tmux_lib.sleep(1);
+  // }
   for (let pass = 0; pass < SUBMIT_PASSES; pass++) {
-    tmux_lib.sleep(0.5);
-    const screen = tmux_lib.tmux_capturePane(pane);
-    if (hasOpenDialog(screen))
-      throw new Error(`a dialog opened in "${chatName}" during the send`);
-    if (!inputBoxHoldsMessage(screen, text))
-      return;
     tmux_lib.tmux_sendEnter(pane);
-    tmux_lib.sleep(1);
+    for (let waitedSeconds = 0; waitedSeconds < SUBMIT_WAIT_SECONDS; waitedSeconds++) {
+      tmux_lib.sleep(1);
+      const screen = tmux_lib.tmux_capturePane(pane);
+      if (hasOpenDialog(screen))
+        throw new Error(`a dialog opened in "${chatName}" during the send`);
+      if (!inputBoxHoldsMessage(screen, text))
+        return;
+    }
   }
   throw new Error(`the message to "${chatName}" was not submitted`);
 }

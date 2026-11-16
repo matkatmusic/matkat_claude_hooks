@@ -14,7 +14,7 @@ export type HookEntry = {
 
 export type Settings = {
   enablements: Record<string, Record<string, boolean>>;
-  values: Record<string, Record<string, string>>;
+  values: Record<string, Record<string, string | string[]>>;
   hooks: HookEntry[];
   debugLoggingEnabled?: boolean;
 };
@@ -94,14 +94,16 @@ export function getSetting(input: { settings?: Record<string, string> }, key: st
 }
 
 export function getValues(settings: { defaults: Settings; user: Settings; dispatcherDir: string }, name: string): Record<string, string> {
-  const merged: Record<string, string> = {
+  const merged: Record<string, string | string[]> = {
     ...settings.defaults.values["shared"],
     ...settings.user.values["shared"],
     ...settings.defaults.values[name],
     ...settings.user.values[name],
   };
   for (const key of Object.keys(merged)) {
-    const value = merged[key];
+    if (Array.isArray(merged[key]))
+      merged[key] = merged[key].join("\n");
+    const value = merged[key] as string;
     const hasHomePrefix = value.startsWith("~/");
     if (hasHomePrefix)
       merged[key] = homedir() + value.slice(1);
@@ -109,5 +111,5 @@ export function getValues(settings: { defaults: Settings; user: Settings; dispat
     if (hasRelativePrefix)
       merged[key] = resolve(settings.dispatcherDir, value);
   }
-  return merged;
+  return merged as Record<string, string>;
 }

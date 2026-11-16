@@ -1,4 +1,35 @@
 import { test, expect } from 'claude-code/testing'
+import { isSwapDue } from './register'
+
+const SWAP_DUE_INPUT = { teamName: 'team a', percent: 35, swapPercent: 30, backgroundTaskCount: 0, isSwapStarted: false }
+
+test('isSwapDue is false with no team name', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, teamName: undefined })).toBe(false)
+})
+
+test('isSwapDue is false when the percent is undefined', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, percent: undefined })).toBe(false)
+})
+
+test('isSwapDue is false when the percent is below the swap percent', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, percent: 29 })).toBe(false)
+})
+
+test('isSwapDue is true when the percent equals the swap percent', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, percent: 30 })).toBe(true)
+})
+
+test('isSwapDue is false with one background task', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, backgroundTaskCount: 1 })).toBe(false)
+})
+
+test('isSwapDue is false when the swap already started', () => {
+  expect(isSwapDue({ ...SWAP_DUE_INPUT, isSwapStarted: true })).toBe(false)
+})
+
+test('isSwapDue is true when all conditions are met', () => {
+  expect(isSwapDue(SWAP_DUE_INPUT)).toBe(true)
+})
 
 const ANSWER = { answer: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
 const DEFAULT_TOAST_MS = 4000
@@ -36,6 +67,57 @@ function watchStopHooksOffMarker(on: any) {
   })
   return { markerWrites, removeCommands }
 }
+
+const DISPATCH_WITH_SWAP = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true, "classic.Stop": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80", "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30" } } }'
+const STOP_EVENT = { stop_hook_active: false, transcript_path: '/logs/chat.jsonl' } as const
+
+function watchSwap($: any, on: any, teamName: string | undefined) {
+  const swapCommands: string[][] = []
+  on('classic.Stop', () => ({}))
+  on('fs.exists', () => ({ value: false }))
+  on('fs.read', () => ({ value: DISPATCH_WITH_SWAP }))
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('session.usage', () => ({ value: { startedAt: 0, rateLimits: [], context: { percent: 35, window: 200000 } } }))
+  on('env.get', (_$: any, e: any) => {
+    if (teamName === undefined)
+      return { value: undefined }
+    const values: Record<string, string> = { CLAUDE_TEAM_NAME: teamName, CLAUDE_TEAM_JOB: 'orchestrator', CLAUDE_TEAM_CHAT_NAME: `${teamName} orchestrator 1` }
+    return { value: values[e.name] }
+  })
+  on('process.run', (_$: any, e: any) => {
+    swapCommands.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  return { swapCommands }
+}
+
+test('a Stop above the swap percent in a team chat starts the swap script once', async ($, on) => {
+  const { swapCommands } = watchSwap($, on, 'team a')
+  await $.classic.Stop(STOP_EVENT)
+  expect(swapCommands).toHaveLength(1)
+  expect(swapCommands[0]!.slice(0, 3)).toEqual(['tmux', 'run-shell', '-b'])
+  expect(swapCommands[0]![3]).toContain('swapChat.ts')
+  expect(swapCommands[0]![3]).toContain('team a orchestrator 1')
+})
+
+test('the swap command passes the session id as the fourth argument of swapFailed.ts', async ($, on) => {
+  const { swapCommands } = watchSwap($, on, 'team a')
+  await $.classic.Stop(STOP_EVENT)
+  expect(swapCommands[0]![3]).toContain("swapFailed.ts 'team a' 'orchestrator' 'team a orchestrator 1' 'sess-9'")
+})
+
+test('a second Stop above the swap percent starts no second swap', async ($, on) => {
+  const { swapCommands } = watchSwap($, on, 'team a')
+  await $.classic.Stop(STOP_EVENT)
+  await $.classic.Stop(STOP_EVENT)
+  expect(swapCommands).toHaveLength(1)
+})
+
+test('a Stop with no team name starts no swap', async ($, on) => {
+  const { swapCommands } = watchSwap($, on, undefined)
+  await $.classic.Stop(STOP_EVENT)
+  expect(swapCommands).toEqual([])
+})
 
 async function submitPrompt($: any, text: string) {
   await $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })

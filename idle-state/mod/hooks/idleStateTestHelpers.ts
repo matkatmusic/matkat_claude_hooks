@@ -48,8 +48,14 @@ export function getNoProcessFound() {
   return { value: NO_PROCESS_FOUND };
 }
 
+export const existingFsPathEnds: string[] = [];
+
 export function setFsStubs(on: any, dispatchText = DISPATCH_ALL_ON) {
-  function getFsExists() {
+  function getFsExists(_$: any, e: any) {
+    for (const pathEnd of existingFsPathEnds) {
+      if (e.path.endsWith(pathEnd))
+        return { value: true };
+    }
     return { value: false };
   }
   function readFsFile(_$: any, e: any) {

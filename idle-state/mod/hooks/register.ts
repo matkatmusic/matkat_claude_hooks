@@ -1,5 +1,5 @@
 import type { Register, Hook, EngineInterface } from 'claude-code';
-import { PLUGIN_NAME, IDLE_MINUTES_KEY, idleState, clearState, removeStopHooksOffMarker, writeStopHooksOffMarker } from './idleStateShared';
+import { PLUGIN_NAME, IDLE_MINUTES_KEY, IDLE_STATE_FOLDER_NAME, idleState, clearState, removeStopHooksOffMarker, writeStopHooksOffMarker } from './idleStateShared';
 import { sendStatePrompt, scheduleStatePrompt, writeStateFileAndExit } from './stateWriting';
 import { logAndRethrowHookFailure, wrapNextForDebugLog } from './logHookFailure';
 const DISPATCHER_DIR = '../../dispatcher';
@@ -77,11 +77,16 @@ const clearStateOnSessionEnd: Hook<'session.end'> = async ($, e, next) => {
   return clearState($, e, next);
 };
 
+function clearIdleTimerAndHandoffStateFilePath() {
+  idleState.idleTimer?.cancel();
+  idleState.handoffStateFilePath = undefined;
+}
+
 const blockPromptAfterStateSaved: Hook<'prompt.submit'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'prompt.submit');
   if (!enabled)
     return next(e);
-  idleState.idleTimer?.cancel();
+  clearIdleTimerAndHandoffStateFilePath();
   if (idleState.stateFilePath === undefined) {
     const isUserPromptDuringStateWrite = idleState.isWritingState && !e.text.includes(idleState.statePrompt);
     if (isUserPromptDuringStateWrite) {
@@ -93,10 +98,22 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = async ($, e, next) => 
   return { drop: `The chat cache has expired. You should exit this chat. Start a new chat and run /catch-up.` };
 };
 
+function saveHandoffStateFilePathOnWrite(e: Parameters<Hook<'tool.call'>>[1]) {
+  if (e.tool === 'Write') {
+    const isInIdleStateFolder = e.file_path.includes(`/${IDLE_STATE_FOLDER_NAME}/`);
+    if (isInIdleStateFolder) {
+      const isJsonFile = e.file_path.endsWith('.json');
+      if (isJsonFile)
+        idleState.handoffStateFilePath = e.file_path;
+    }
+  }
+}
+
 const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'tool.call');
   if (!enabled)
     return next(e);
+  saveHandoffStateFilePathOnWrite(e);
   if (!idleState.isWritingState)
     return next(e);
   return { deny: 'The idle-state prompt is pending. Do not use any tools.' };
@@ -172,6 +189,12 @@ async function writeIdleStateBeforeExit($: EngineInterface, e: Parameters<Hook<'
   if (!enabled)
     return { returned: await next(e), isStatePromptDue: false };
   if (idleState.stateFilePath !== undefined)
+    return { returned: await next(e), isStatePromptDue: false };
+  if (idleState.handoffStateFilePath !== undefined)
+    return { returned: await next(e), isStatePromptDue: false };
+  const handoffDoneMarkerPath = `${$.plugin.root}/../../dispatcher/handoff-done/${await $.session.id()}`;
+  const isHandoffDone = await $.fs.exists(handoffDoneMarkerPath);
+  if (isHandoffDone)
     return { returned: await next(e), isStatePromptDue: false };
   idleState.idleTimer?.cancel();
   return { returned: { text: 'Writing the idle-state file before exit.' }, isStatePromptDue: true };

@@ -6,6 +6,7 @@ const ALL_OFF = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": 
 const ASK_SENTENCE = "if anything I'm asking for is unclear, use AskUserQuestion to gain clarity and alignment before starting to build my request.";
 const TYPED = { text: 'the save button does nothing', wait: false, origin: { kind: 'composer' } } as const;
 const FROM_PLUGIN = { text: 'the save button does nothing', wait: false, origin: { kind: 'plugin', name: 'other-mod' } } as const;
+const ALL_ON_WITH_DIRECTOR = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": { "prompt.submit": true }, "feature-request": { "prompt.submit": true }, "change-request": { "prompt.submit": true }, "ask-if-unclear": { "prompt.submit": true } }, "values": { "claude-team": { "CLAUDE_HOOKS_CLAUDE_TEAM_DIRECTOR_JOB": "Director" } } }';
 const YES = '{"yes": ["the save button does"]}';
 const NO = '{"no": []}';
 const TWO_ITEMS = '{"yes": ["the save button does", "also the load menu is"]}';
@@ -21,7 +22,7 @@ function findKeywordIndex(prompt: string): number {
 }
 
 // answers are given in this order: bug-report, feature-request, change-request, ask-if-unclear
-function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswered = true, unansweredReason = 'empty-reply') {
+function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswered = true, unansweredReason = 'empty-reply', teamJob: string | undefined = undefined) {
   const seen = { context: undefined as readonly string[] | undefined, text: undefined as string | undefined, modelCalls: 0 };
   function getNoUserFile() {
     return { value: false };
@@ -45,6 +46,11 @@ function setUpStubs(on: any, answers: string[], dispatchText = ALL_ON, isAnswere
     seen.text = e.text;
     return { text: e.text, context: e.context };
   }
+  function getEnvironmentValue(_$: any, e: any) {
+    const values: Record<string, string | undefined> = { CLAUDE_TEAM_JOB: teamJob };
+    return { value: values[e.name] };
+  }
+  on('env.get', getEnvironmentValue);
   on('fs.exists', getNoUserFile);
   on('fs.read', readDispatchText);
   on('clock.now', getClockNow);
@@ -164,6 +170,19 @@ async function assertAskIfUnclearSkipsPluginOriginPrompt($: any, on: any) {
   expect(seen.text).toBe(FROM_PLUGIN.text);
 }
 
+async function assertAskIfUnclearSkipsHelperChat($: any, on: any) {
+  const seen = setUpStubs(on, [NO, NO, NO, YES], ALL_ON_WITH_DIRECTOR, true, 'empty-reply', 'Planner');
+  await $.prompt.submit(TYPED);
+  expect(seen.text).toBe(TYPED.text);
+  expect(seen.modelCalls).toBe(3);
+}
+
+async function assertAskIfUnclearStillAppliesInDirectorChat($: any, on: any) {
+  const seen = setUpStubs(on, [NO, NO, NO, YES], ALL_ON_WITH_DIRECTOR, true, 'empty-reply', 'Director');
+  await $.prompt.submit(TYPED);
+  expect(seen.text).toBe(`${TYPED.text} \n\n${ASK_SENTENCE}`);
+}
+
 // The engine skips a hook that throws, so a thrown error shows as a prompt with no context.
 async function assertBadJsonMakesTheHookThrowAndAddsNoContext($: any, on: any) {
   const seen = setUpStubs(on, ['yes, a bug', NO, NO]);
@@ -262,6 +281,8 @@ test('test_ask_if_unclear_yes_keeps_other_context', assertAskIfUnclearYesKeepsOt
 test('test_ask_if_unclear_no_leaves_the_text_alone', assertAskIfUnclearNoLeavesTextAlone);
 test('test_ask_if_unclear_disabled_leaves_the_text_alone', assertAskIfUnclearDisabledLeavesTextAlone);
 test('test_ask_if_unclear_skips_plugin_origin_prompt', assertAskIfUnclearSkipsPluginOriginPrompt);
+test('test_ask_if_unclear_skips_a_helper_chat_in_a_team', assertAskIfUnclearSkipsHelperChat);
+test('test_ask_if_unclear_still_applies_in_the_director_chat', assertAskIfUnclearStillAppliesInDirectorChat);
 test('test_a_throwing_hook_is_logged_and_adds_no_context',assertThrowingHookIsLoggedAndAddsNoContext);
 test('test_aborted_model_reply_adds_no_context_and_logs_no_failure', assertAbortedModelReplyAddsNoContextAndLogsNoFailure);
 test('test_two_items_are_listed_in_the_context', assertTwoItemsAreListedInTheContext);
