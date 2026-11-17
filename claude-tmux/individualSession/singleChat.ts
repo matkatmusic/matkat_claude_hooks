@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { wrapShellWord } from "../shared/chatSwap.ts";
@@ -55,9 +56,19 @@ export function buildSingleChatPaneCommand(chatName: string, model: string, star
 }
 
 export function isTmuxSessionNameTaken(sessionName: string): boolean {
-  // tmux has-session -t NAME also matches a name prefix; "=" asks for the exact name
-  const hasSessionResult = tmux_lib.run(["tmux", "has-session", "-t", `=${sessionName}`], { capture_output: true, text: true, check: false });
-  return hasSessionResult.returncode === 0;
+  // // tmux has-session -t NAME also matches a name prefix; "=" asks for the exact name
+  // const hasSessionResult = tmux_lib.run(["tmux", "has-session", "-t", `=${sessionName}`], { capture_output: true, text: true, check: false });
+  // return hasSessionResult.returncode === 0;
+  // has-session reads a dot in the name as a pane separator, so compare the listed names instead
+  const listSessionsResult = tmux_lib.run(["tmux", "list-sessions", "-F", "#{session_name}"], { capture_output: true, text: true, check: false });
+  if (listSessionsResult.returncode !== 0)
+    return false;
+  const sessionNames = listSessionsResult.stdout.split("\n");
+  for (const listedSessionName of sessionNames) {
+    if (listedSessionName === sessionName)
+      return true;
+  }
+  return false;
 }
 
 export function buildSwapRecordPath(stateDirectory: string, oldSessionId: string): string {
@@ -146,8 +157,14 @@ function addTrackerCleanupHook(trackerFolder: string): void {
 
 export function openTrackerOfPane(pane: string, projectRoot: string): string {
   const storedTrackerPath = readTmuxOutput(["display-message", "-p", "-t", pane, `#{${TRACKER_OPTION}}`]);
-  if (storedTrackerPath !== "")
+  if (storedTrackerPath !== "") {
+    // the stored file may have been deleted
+    if (!existsSync(storedTrackerPath)) {
+      mkdirSync(dirname(storedTrackerPath), { recursive: true });
+      writeFileSync(storedTrackerPath, "{}\n");
+    }
     return storedTrackerPath;
+  }
   const sessionId = readTmuxOutput(["display-message", "-p", "-t", pane, "#{session_id}"]);
   const trackerPath = buildTrackerPath(projectRoot, sessionId);
   // a tmux server restart reuses session ids, so a new tracker replaces an old file
