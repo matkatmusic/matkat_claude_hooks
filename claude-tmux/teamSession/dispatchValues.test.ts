@@ -209,3 +209,10 @@ test("test_teamValues_have_no_angle_brackets", () => {
   }
   assert.deepEqual(valueKeysWithAngleBrackets, []);
 });
+
+test("test_teamValues_handoff_command_tells_no_session_id", () => {
+  // Scenario: the team swap sends the handoff command to the old chat; it must not tell the chat its session id.
+  // Step: join the team handoff command. Check that it holds no {field}.
+  const handoffCommand = joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND");
+  assert.equal(/\{\w+\}/.test(handoffCommand), false);
+});

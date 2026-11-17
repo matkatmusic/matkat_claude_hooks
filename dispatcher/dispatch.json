@@ -69,7 +69,7 @@
       "CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_CLOSE_WAIT_SECONDS": "120",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT": [
         "You continue the work of the chat {oldChatName}. That chat passed its context limit and wrote a handoff file for you.",
         "The handoff file is: {handoffPath}",
@@ -283,7 +283,7 @@
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MESSAGE_HEADER": "[claude-tmux-team] From \"{senderChatName}\" (role {senderJob}). To reply, send to the role {senderJob}.",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIALOG_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_START_WAIT_SECONDS": "900",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state The session id of this chat is {sessionId}. Use it for the file name.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_CLOSE_WAIT_SECONDS": "120",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TAKEOVER_PROMPT": [
