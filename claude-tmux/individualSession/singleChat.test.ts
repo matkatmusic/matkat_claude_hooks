@@ -3,7 +3,8 @@ import { strict as assert } from "node:assert";
 // import { spawnSync } from "node:child_process";
 import { spawn, spawnSync } from "node:child_process";
 // import { mkdtempSync } from "node:fs";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+// import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -424,4 +425,39 @@ test("test_openTrackerOfPane_adds_one_cleanup_hook_for_two_sessions_in_one_folde
   openTrackerOfPane(secondSession.pane, projectFolder);
   // Step 3: check that the global hooks hold exactly one line for the project folder.
   assert.equal(countGlobalHookLinesOfFolder(projectFolder), 1);
+});
+
+test("test_openTrackerOfPane_makes_a_new_tracker_when_the_stored_file_is_gone", (t) => {
+  // Scenario: the tmux session remembers a tracker path, but the file was deleted.
+  // Step 1: make the project folder and the tmux session.
+  const projectFolder = mkdtempSync(join(tmpdir(), "claude-tmux-project-"));
+  t.after(() => removeGlobalHooksOfFolder(projectFolder));
+  const { pane } = startTrackerTestSession(t, "gone");
+  // Step 2: open the tracker, then delete the tracker file.
+  const firstPath = openTrackerOfPane(pane, projectFolder);
+  rmSync(firstPath);
+  // Step 3: open the tracker of the same pane again.
+  const secondPath = openTrackerOfPane(pane, projectFolder);
+  // Step 4: check that the path is the same, the file exists, and it holds {}.
+  assert.equal(secondPath, firstPath);
+  assert.equal(existsSync(secondPath), true);
+  assert.equal(readFileSync(secondPath, "utf8"), "{}\n");
+});
+
+test("test_isTmuxSessionNameTaken_true_for_a_name_with_a_dot", (t) => {
+  // Scenario: the session "claude-tmux-test-dot.name PID" exists. tmux reads the part after the dot as a pane name.
+  // Step 1: start the session. Kill it after the test.
+  const dotName = `claude-tmux-test-dot.name ${process.pid}`;
+  const newSession = spawnSync("tmux", ["new-session", "-d", "-P", "-F", "#{session_id}", "-s", dotName, "sleep", "60"], { encoding: "utf8" });
+  assert.equal(newSession.status, 0, newSession.stderr);
+  const dotSessionId = newSession.stdout.trim();
+  t.after(() => {
+    // the dot in the name breaks a name target, so kill by session id
+    spawnSync("tmux", ["kill-session", "-t", dotSessionId]);
+  });
+  // Step 2: ask if the dotted name is taken, in a Bun child process.
+  const child = runIsTmuxSessionNameTaken(dotName);
+  // Step 3: check that the child worked and printed true.
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stdout.trim(), "true");
 });
