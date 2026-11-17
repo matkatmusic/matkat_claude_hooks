@@ -59,6 +59,13 @@ export function wrapShellWord(text: string): string {
   return "'" + text.replaceAll("'", "'\\''") + "'";
 }
 
+export function getGitRootOfWorkDirectory(workDirectory: string): string {
+  const gitRootResult = tmux_lib.run(["git", "-C", workDirectory, "rev-parse", "--show-toplevel"], { capture_output: true, text: true, check: false });
+  if (gitRootResult.returncode !== 0)
+    throw new Error("claude-tmux must start inside a git repository: the handoff file goes to the .idleState folder of the project root");
+  return gitRootResult.stdout.trim();
+}
+
 export function listHandoffFilesInDirectories(idleStateDirectories: string[], sessionId: string): string[] {
   const handoffFiles: string[] = [];
   for (const idleStateDirectory of idleStateDirectories)

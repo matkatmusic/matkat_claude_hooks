@@ -8,7 +8,7 @@ tmux is a tool that keeps terminal windows alive. The context is the memory a ch
 
 1. Install `tmux` and `bun`.
 2. Open a new terminal. The `claude-tmux` function comes from `claude/init.sh`, and an old terminal does not have it.
-3. For `/tmux-new-helper` and `/tmux-switch`, set this entry to `true` in `dispatcher/user-dispatch.json`. The default in `dispatcher/dispatch.json` is `false`.
+3. For `/tmux-new-helper`, set this entry to `true` in `dispatcher/user-dispatch.json`. The default in `dispatcher/dispatch.json` is `false`.
 
 ```json
 { "enablements": { "tmux-helper": { "UserPromptSubmit": true } } }
@@ -66,9 +66,8 @@ A tmux session option, `@claude_tmux_tracker`, stores the path. A global tmux ho
 ## The slash commands
 
 - `/tmux-new-helper [model]` starts a helper chat in a new window next to the current window. The model is the setting `CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL`, `sonnet` by default. A helper swaps like any other chat.
-- `/tmux-switch` opens the tmux list of windows. You pick a chat.
 
-Both commands work only inside tmux. `/tmux-new-helper` also needs a git repository.
+`/tmux-new-helper` works only inside tmux. It also needs a git repository.
 
 ## Settings
 

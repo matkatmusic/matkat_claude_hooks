@@ -37,7 +37,9 @@ test("test_tmuxValues_helper_model_is_sonnet", () => {
 test("test_tmuxValues_texts_use_only_fields_that_the_scripts_give", () => {
   // Scenario: each text uses only the {field} names that the scripts give.
   // Step: join each text. List the {field} names of the text. Check the list.
-  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), ["sessionId"]);
+  // assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), ["sessionId"]);
+  // the handoff command does not tell the chat its session id
+  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), []);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT")), ["handoffPath", "oldChatName"]);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE")), ["logPath"]);
 });

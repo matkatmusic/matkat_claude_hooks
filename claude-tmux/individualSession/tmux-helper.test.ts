@@ -180,3 +180,18 @@ test("test_tmuxNewHelper_throws_outside_a_git_repository", () => {
     assert.notEqual(scriptResult.status, 0);
     assert.match(scriptResult.stderr, /inside a git repository/);
 });
+
+test("test_tmux_helper_ignores_the_tmux_switch_prompt", () => {
+    // Step 1: make a copy of the environment that has no tmux pane.
+    const environment: NodeJS.ProcessEnv = { ...process.env };
+    delete environment.TMUX_PANE;
+    // Step 2: run the script with the /tmux-switch prompt.
+    const scriptResult = spawnSync("node", [`${import.meta.dirname}/tmux-helper.ts`], {
+        encoding: "utf8",
+        input: JSON.stringify({ prompt: "/tmux-switch", cwd: join(import.meta.dirname, "..", "..") }),
+        env: environment,
+    });
+    // Step 3: the script exits with code 0 and prints nothing.
+    assert.equal(scriptResult.status, 0);
+    assert.equal(scriptResult.stdout, "");
+});
