@@ -1,7 +1,8 @@
 import { existsSync, rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
-import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, sendTextToChat, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+// import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, sendTextToChat, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, writeSwapFailedMarker } from "../shared/chatSwap.ts";
 // import { buildSingleChatName, buildSwapRecordPath, getSwapFailedAction, readSwapRecord } from "./singleChat.ts";
 import { buildSingleChatName, buildSwapRecordPath, getSwapFailedAction, openTrackerOfPane, readSwapRecord, resetTrackerAfterFailedSwap } from "./singleChat.ts";
 import type { SingleChatSwapRecord } from "./singleChat.ts";
@@ -40,5 +41,11 @@ if (swapRecord !== undefined) {
 rmSync(buildHandoffDoneMarkerPath(DISPATCHER_DIR, oldSessionId), { force: true });
 writeSwapFailedMarker(DISPATCHER_DIR, oldSessionId);
 const failedNotice = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE"], { logPath: `${DISPATCHER_DIR}/claude-tmux-swap.log` });
-sendTextToChat(oldPane, oldChatName, failedNotice, Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS"]));
+// sendTextToChat(oldPane, oldChatName, failedNotice, Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS"]));
+const sessionIdResult = tmux_lib.run(["tmux", "display-message", "-p", "-t", oldPane, "#{session_id}"], { capture_output: true, text: true, check: true });
+const clientListResult = tmux_lib.run(["tmux", "list-clients", "-t", sessionIdResult.stdout.trim(), "-F", "#{client_name}"], { capture_output: true, text: true, check: true });
+for (const clientName of clientListResult.stdout.split("\n")) {
+  if (clientName !== "")
+    tmux_lib.run(["tmux", "display-message", "-d", "10000", "-c", clientName, failedNotice], { capture_output: true, text: true, check: true });
+}
 console.log(`swap of "${oldChatName}" failed and was undone`);
