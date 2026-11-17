@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DISPATCHER_DIR } from "../../shared/settings.ts";
 
 function runScriptWithBun(scriptName: string, scriptArguments: string[], workDirectory: string) {
   return spawnSync("bun", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", cwd: workDirectory, env: { ...process.env, BUN_JSC_useTailCalls: "0" } });
@@ -83,4 +84,29 @@ test("test_swapSingleChatFailed_throws_without_exactly_seven_arguments", () => {
   assert.notEqual(result.status, 0);
   // assert.match(result.stderr, /usage: swapSingleChatFailed.ts/);
   assert.match(result.stderr, /usage: swapSingleChatFailed\.ts .*<swapPercent>/);
+});
+
+test("test_swapSingleChatFailed_does_not_type_the_fail_notice_into_the_chat", (t) => {
+  // Scenario: after a failed swap, the fail notice must not start a new turn in the old chat.
+  // Step 1: start a tmux session whose pane runs cat. Cat shows on screen every character typed into the pane.
+  const newSessionResult = spawnSync("tmux", ["new-session", "-d", "-x", "300", "-y", "50", "-P", "-F", "#{session_id} #{pane_id}", "cat"], { encoding: "utf8" });
+  assert.equal(newSessionResult.status, 0);
+  const [sessionId, pane] = newSessionResult.stdout.trim().split(" ");
+  // Step 2: kill that session by its id when the test ends. Also remove the swap-failed marker.
+  const oldSessionId = `swap-failed-test-${process.pid}`;
+  const swapFailedMarkerPath = `${DISPATCHER_DIR}/swap-failed/${oldSessionId}`;
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", sessionId]);
+    rmSync(swapFailedMarkerPath, { force: true });
+  });
+  // Step 3: run swapSingleChatFailed.ts for that pane. No swap record exists for oldSessionId.
+  const result = runScriptWithBun("swapSingleChatFailed.ts", ["a", "1", "sonnet", "/w", pane, oldSessionId, "80"], import.meta.dirname);
+  // Step 4: check that the screen of the pane does not show the fail notice.
+  const captureResult = spawnSync("tmux", ["capture-pane", "-p", "-t", pane], { encoding: "utf8" });
+  assert.equal(captureResult.status, 0);
+  assert.doesNotMatch(captureResult.stdout, /The swap to a new chat failed/);
+  // Step 5: check that the swap-failed marker file exists.
+  assert.ok(existsSync(swapFailedMarkerPath));
+  // Step 6: check that the script ended with no error.
+  assert.equal(result.status, 0, result.stderr);
 });

@@ -80,7 +80,7 @@
         "Continue the open work of the handoff file at once. Do not wait for a prompt from the user.",
         "The user sees this chat now. Start your first reply with this line: I continue the work of {oldChatName}."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap of this chat to a new chat failed. This chat stays open and active. The error is in the file {logPath}. Tell the user in one line. A new swap starts when this turn ends."
+      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap to a new chat failed. This chat stays open. The error is in {logPath}. The next swap starts after your next prompt."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "plan-file-reminder": {
