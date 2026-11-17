@@ -7,7 +7,7 @@ import { writeBlockDecision } from "../../shared/session-tasks.ts";
 // import { wrapShellWord } from "../shared/chatSwap.ts";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, openTrackerOfPane, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
-// UserPromptSubmit hook: /tmux-switch opens the tmux chat list, /tmux-new-helper [model] starts a helper chat in a new tmux window.
+// UserPromptSubmit hook: /tmux-new-helper [model] starts a helper chat in a new tmux window.
 const HELPER_SUFFIX_PATTERN = / helper \d+$/;
 
 export function stripHelperSuffix(chatName: string): string {
@@ -63,11 +63,6 @@ function runTmux(args: string[]): string {
     return execFileSync("tmux", args, { encoding: "utf8" }).trim();
 }
 
-function switchChat(tmuxPane: string): string {
-    runTmux(["choose-tree", "-Zw", "-t", tmuxPane]);
-    return "Pick a chat in the tmux list.";
-}
-
 function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string): string {
     // // session_title is the chat name in the hook payload.
     // const chatName = payload.session_title;
@@ -96,28 +91,20 @@ function startHelperChat(tmuxPane: string, payload: Record<string, string>, mode
     const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, "");
     const windowId = runTmux(["display", "-p", "-t", tmuxPane, "#{window_id}"]);
     runTmux(["new-window", "-d", "-a", "-t", windowId, "-n", helperChatName, "-c", workDirectory, ...environmentFlags, paneCommand]);
-    return `${helperChatName} is ready. Use /tmux-switch to open it.`;
+    return `${helperChatName} is ready.`;
 }
 
 if (import.meta.main) {
     const payload = JSON.parse(readFileSync(0, "utf8"));
     const prompt = (typeof payload.prompt === "string" ? payload.prompt.trimStart() : "").replace(/^\/[\w-]+:/, "/");
-    const isSwitch = prompt === "/tmux-switch" || prompt.startsWith("/tmux-switch ");
     const isNewHelper = prompt === "/tmux-new-helper" || prompt.startsWith("/tmux-new-helper ");
-    if (!isSwitch) {
-        if (!isNewHelper)
-            process.exit(0);
-    }
+    if (!isNewHelper)
+        process.exit(0);
     const tmuxPane = process.env.TMUX_PANE;
     if (!tmuxPane) {
         writeBlockDecision("Run this inside tmux.");
         process.exit(0);
     }
-    if (isSwitch) {
-        writeBlockDecision(switchChat(tmuxPane));
-    }
-    else {
-        const model = prompt.slice("/tmux-new-helper".length).trim();
-        writeBlockDecision(startHelperChat(tmuxPane, payload, model));
-    }
+    const model = prompt.slice("/tmux-new-helper".length).trim();
+    writeBlockDecision(startHelperChat(tmuxPane, payload, model));
 }
