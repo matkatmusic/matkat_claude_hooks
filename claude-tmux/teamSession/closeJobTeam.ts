@@ -87,7 +87,20 @@ const handoffFilePath = sendHandoffCommandAndWaitForFile(teamLeader.pane, teamLe
 // tmux_lib.sleep(5);
 
 const statusResult = tmux_lib.run(["git", "-C", jobTeam.workDirectory, "status", "--short"], { capture_output: true, text: true, check: true });
-tmux_lib.run(["tmux", "kill-session", "-t", `=${jobTeamName}`], { capture_output: true, text: true, check: true });
+// kill-session reads a dot in the name as a pane separator, so kill by session id
+// tmux_lib.run(["tmux", "kill-session", "-t", `=${jobTeamName}`], { capture_output: true, text: true, check: true });
+const sessionIdListResult = tmux_lib.run(["tmux", "list-sessions", "-F", "#{session_id} #{session_name}"], { capture_output: true, text: true, check: true });
+let jobTeamSessionId: string | undefined;
+for (const sessionLine of sessionIdListResult.stdout.split("\n")) {
+  const firstSpaceIndex = sessionLine.indexOf(" ");
+  const listedSessionId = sessionLine.slice(0, firstSpaceIndex);
+  const listedSessionName = sessionLine.slice(firstSpaceIndex + 1);
+  if (listedSessionName === jobTeamName)
+    jobTeamSessionId = listedSessionId;
+}
+if (jobTeamSessionId === undefined)
+  throw new Error(`team ${jobTeamName} has no tmux session to close`);
+tmux_lib.run(["tmux", "kill-session", "-t", jobTeamSessionId], { capture_output: true, text: true, check: true });
 
 console.log(`closed team "${jobTeamName}"`);
 console.log(`handoff file: ${handoffFilePath}`);
