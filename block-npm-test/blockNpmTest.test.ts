@@ -95,7 +95,7 @@ test("hook: every test command in the line starts its own background run", () =>
   const logPaths = monitorLogPaths(hook.stdout);
   assert.equal(logPaths.length, 2, hook.stdout);
   assert.notEqual(logPaths[0], logPaths[1]);
-  assert.match(waitForLog(logPaths[0]), /all passing/);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
   assert.match(waitForLog(logPaths[1]), /exit code: 0/);
 });
 
@@ -106,7 +106,7 @@ test("hook: a test command inside bash -c quotes is blocked too", () => {
   const hook = runHook(project, 'bash -c "npm test"');
   const logPaths = monitorLogPaths(hook.stdout);
   assert.equal(logPaths.length, 1, hook.stdout);
-  assert.match(waitForLog(logPaths[0]), /all passing/);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
 });
 
 test("hook: a cd into a folder that an earlier step makes lets the command run as typed", () => {
@@ -132,7 +132,7 @@ test("test_ctx_execute_shell_test_command_is_denied_like_bash", () => {
   const logPaths = monitorLogPaths(hook.stdout);
   assert.equal(logPaths.length, 1, hook.stdout);
   // The background run finishes, so no test run is left behind.
-  assert.match(waitForLog(logPaths[0]), /all passing/);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
 });
 
 test("test_ctx_execute_shell_code_without_test_command_passes", () => {
@@ -172,6 +172,5 @@ test("hook: returns immediately, and the full-suite test run finishes in the bac
   assert.ok(monitorCommand, reason);
   const monitor = spawnSync("bun", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
-  assert.match(monitor.stdout, /all passing/);
   assert.match(monitor.stdout, /exit code: 0/);
 });

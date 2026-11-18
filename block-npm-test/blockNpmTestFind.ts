@@ -2,6 +2,7 @@ import { splitSimpleCommands } from "./blockNpmTestSplit.ts";
 import { buildTestRun, type TestRun } from "./blockNpmTestFindHelpers.ts";
 
 const RUNNERS = new Set(["jest", "vitest", "mocha"]);
+const NODE_FLAGS_WITH_VALUE = new Set(["--import", "--require", "-r", "--loader", "--experimental-loader"]);
 
 // Leading VAR=value words are skipped; then the first words must be a JavaScript test runner.
 export function isRunner(words: string[]): boolean {
@@ -37,8 +38,23 @@ export function isRunner(words: string[]): boolean {
   const isNodeCommand = first === "node";
   const isTsxCommand = first === "tsx";
   const isNodeLikeCommand = isNodeCommand || isTsxCommand;
-  if (isNodeLikeCommand)
-    return second === "--test";
+  if (isNodeLikeCommand) {
+    // --test counts only before the script name, so node -e '... --test ...' stays untouched.
+    for (let i = 1; i < words.length; i++) {
+      const isTestFlag = words[i] === "--test";
+      if (isTestFlag)
+        return true;
+      const takesValue = NODE_FLAGS_WITH_VALUE.has(words[i]);
+      if (takesValue) {
+        i++;
+        continue;
+      }
+      const isFlag = words[i].startsWith("-");
+      if (!isFlag)
+        return false;
+    }
+    return false;
+  }
   if (first === "npx")
     return RUNNERS.has(second ?? "");
   return RUNNERS.has(first ?? "");

@@ -3,12 +3,46 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { findTestRun, findTestRuns } from "./blockNpmTestFind.ts";
 
+// The typed words are checked in blockNpmTestFindHelpers.test.ts; these tests compare the rest of the run.
+function findRunWithoutWords(command: string) {
+  const run = findTestRun(command);
+  if (run === undefined)
+    return undefined;
+  const { runnerWords, ...runWithoutWords } = run;
+  return runWithoutWords;
+}
+
 test("findTestRun: suite forms in context", () => {
-  assert.deepEqual(findTestRun("cd /x && npm test 2>&1 | tail -50"), { file: undefined, cwd: "/x", env: {} });
-  assert.deepEqual(findTestRun("npm run test:unit 2>&1 | tail -60"), { file: undefined, cwd: undefined, env: {} });
-  assert.deepEqual(findTestRun("(npm test)"), { file: undefined, cwd: undefined, env: {} });
-  assert.deepEqual(findTestRun("node --test *.test.ts"), { file: undefined, cwd: undefined, env: {} });
-  assert.deepEqual(findTestRun('node --test "tests/**/*.test.ts"'), { file: undefined, cwd: undefined, env: {} });
+  assert.deepEqual(findRunWithoutWords("cd /x && npm test 2>&1 | tail -50"), { file: undefined, cwd: "/x", env: {} });
+  assert.deepEqual(findRunWithoutWords("npm run test:unit 2>&1 | tail -60"), { file: undefined, cwd: undefined, env: {} });
+  assert.deepEqual(findRunWithoutWords("(npm test)"), { file: undefined, cwd: undefined, env: {} });
+  assert.deepEqual(findRunWithoutWords("node --test *.test.ts"), { file: undefined, cwd: undefined, env: {} });
+  assert.deepEqual(findRunWithoutWords('node --test "tests/**/*.test.ts"'), { file: undefined, cwd: undefined, env: {} });
+});
+
+test("test_findTestRun_blocks_node_with_import_flags_before_test_flag", () => {
+  // Scenario: node has its own flags (--import tsx) before --test, with a glob and a piped filter.
+  // Steps:
+  // the command is the one the user reported as not blocked.
+  const command = 'cd "/Users/x/jfred" && node --import tsx --test tests/engineV3_tui_*.test.ts tests/jfredTUI.test.ts 2>&1 | rg -n "^# (tests|pass|fail)|^not ok" | head -20';
+  // the hook must find one test run, with the cd folder.
+  const run = findTestRun(command);
+  assert.notEqual(run, undefined);
+  assert.equal(run?.cwd, "/Users/x/jfred");
+  // a node command that has no --test flag must still be ignored.
+  assert.equal(findTestRun("node --import tsx script.ts"), undefined);
+});
+
+test("test_findTestRun_keeps_quoted_cd_folder_with_spaces_in_one_piece", () => {
+  // Scenario: the cd folder is quoted and has spaces in its name.
+  // Steps:
+  // the command cds into a quoted folder with spaces, then runs a node test.
+  const command = 'cd "/Users/x/claude code src/RevEng/jfred" && node --import tsx --test tests/engineV3_tui_*.test.ts tests/jfredTUI.test.ts';
+  const run = findTestRun(command);
+  // the cwd must be the whole folder, not only its last piece.
+  assert.equal(run?.cwd, "/Users/x/claude code src/RevEng/jfred");
+  // the test file after the cd must stay in the typed command.
+  assert.equal(run?.file, "tests/jfredTUI.test.ts");
 });
 
 test("findTestRuns: every test command in the line counts, each with its own cd folder", () => {
@@ -34,8 +68,8 @@ test("heredoc bodies are skipped", () => {
   assert.equal(findTestRun("cat <<'EOF'\nnpx jest\nEOF"), undefined, "quoted tag");
   assert.equal(findTestRun('cat <<"EOF"\nvitest\nEOF'), undefined, "double quoted tag");
   assert.equal(findTestRun("cat <<-EOF\n\tnpm test\n\tEOF"), undefined, "dash tag with tabs");
-  assert.deepEqual(findTestRun("cat <<EOF\nhello\nEOF\nnpm test"), { file: undefined, cwd: undefined, env: {} }, "runner after the heredoc still counts");
-  assert.deepEqual(findTestRun("npm test <<EOF\nignored\nEOF"), { file: undefined, cwd: undefined, env: {} }, "runner before the heredoc still counts");
+  assert.deepEqual(findRunWithoutWords("cat <<EOF\nhello\nEOF\nnpm test"), { file: undefined, cwd: undefined, env: {} }, "runner after the heredoc still counts");
+  assert.deepEqual(findRunWithoutWords("npm test <<EOF\nignored\nEOF"), { file: undefined, cwd: undefined, env: {} }, "runner before the heredoc still counts");
 });
 
 test("findTestRun: quoted runner text is not a run", () => {

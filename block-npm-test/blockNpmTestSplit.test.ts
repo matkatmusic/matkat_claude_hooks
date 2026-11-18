@@ -34,8 +34,8 @@ test("splitSimpleCommands splits at unquoted separators only", () => {
     ["1"],
     ["tail", "-50"],
   ]);
-  assert.deepEqual(splitSimpleCommands('echo "a && npm test" ; ls'), [["echo", "a", "&&", "npm", "test"], ["ls"]]);
-  assert.deepEqual(splitSimpleCommands("echo 'x | jest' | cat"), [["echo", "x", "|", "jest"], ["cat"]]);
+  assert.deepEqual(splitSimpleCommands('echo "a && npm test" ; ls'), [["echo", "a && npm test"], ["ls"]]);
+  assert.deepEqual(splitSimpleCommands("echo 'x | jest' | cat"), [["echo", "x | jest"], ["cat"]]);
   assert.deepEqual(splitSimpleCommands("echo a\\;b"), [["echo", "a;b"]]);
   assert.deepEqual(splitSimpleCommands("run $(npm test)"), [["run", "$"], ["npm", "test"]]);
 });

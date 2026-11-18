@@ -5,21 +5,34 @@ import { homedir } from "node:os";
 import { splitSimpleCommands } from "./blockNpmTestSplit.ts";
 import { buildTestRun } from "./blockNpmTestFindHelpers.ts";
 
-function buildRunAt(command: string, index: number) {
+function buildRunWithWordsAt(command: string, index: number) {
   return buildTestRun(splitSimpleCommands(command), index);
 }
 
+// The typed words are checked in their own test; the other tests compare the rest of the run.
+function buildRunAt(command: string, index: number) {
+  const { runnerWords, ...runWithoutWords } = buildRunWithWordsAt(command, index);
+  return runWithoutWords;
+}
+
 test("buildTestRun: one named file", () => {
-  assert.deepEqual(buildRunAt("npm test -- tests/a.test.ts", 0), { file: "tests/a.test.ts", cwd: undefined, env: {}, runnerWords: ["npm", "test", "--", "tests/a.test.ts"] });
-  assert.deepEqual(buildRunAt("npx jest src/b.spec.js", 0), { file: "src/b.spec.js", cwd: undefined, env: {}, runnerWords: ["npx", "jest", "src/b.spec.js"] });
+  assert.deepEqual(buildRunAt("npm test -- tests/a.test.ts", 0), { file: "tests/a.test.ts", cwd: undefined, env: {} });
+  assert.deepEqual(buildRunAt("npx jest src/b.spec.js", 0), { file: "src/b.spec.js", cwd: undefined, env: {} });
   assert.deepEqual(buildRunAt('node --test "tests/c.test.ts"', 0), { file: "tests/c.test.ts", cwd: undefined, env: {} });
   assert.deepEqual(buildRunAt("cd /x && bun test tests/r.test.ts 2>&1 | tail -4", 1), { file: "tests/r.test.ts", cwd: "/x", env: {}, isBunTest: true });
 });
 
-test("buildTestRun: a named file keeps the runner Claude typed, without shell redirects", () => {
-  assert.deepEqual(buildRunAt("jest math.test.ts 2>&1 | tail -5", 0).runnerWords, ["jest", "math.test.ts"]);
-  assert.deepEqual(buildRunAt("CI=1 vitest run src/x.spec.ts", 0).runnerWords, ["vitest", "run", "src/x.spec.ts"]);
-  assert.equal(buildRunAt("node --test a.test.ts", 0).runnerWords, undefined, "node --test is run by the hook itself");
+test("test_buildTestRun_keeps_the_exact_typed_command_without_shell_redirects", () => {
+  // Scenario: every test command keeps the words the agent typed, with or without a named file.
+  // Steps:
+  // a named file keeps the typed words and drops the redirect and the pipe.
+  assert.deepEqual(buildRunWithWordsAt("jest math.test.ts 2>&1 | tail -5", 0).runnerWords, ["jest", "math.test.ts"]);
+  assert.deepEqual(buildRunWithWordsAt("CI=1 vitest run src/x.spec.ts", 0).runnerWords, ["vitest", "run", "src/x.spec.ts"]);
+  assert.deepEqual(buildRunWithWordsAt("node --test a.test.ts", 0).runnerWords, ["node", "--test", "a.test.ts"]);
+  // no named file keeps the typed words too.
+  assert.deepEqual(buildRunWithWordsAt("npm test", 0).runnerWords, ["npm", "test"]);
+  assert.deepEqual(buildRunWithWordsAt("bun test", 0).runnerWords, ["bun", "test"]);
+  assert.deepEqual(buildRunWithWordsAt("node --test *.test.ts", 0).runnerWords, ["node", "--test", "*.test.ts"]);
 });
 
 test("buildTestRun: bun test with a folder keeps the folder as an extra arg", () => {

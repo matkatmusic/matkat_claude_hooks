@@ -61,7 +61,8 @@ export function buildTestRun(commands: string[][], index: number): TestRun {
     if (rest.length > 0)
       extraArgs = rest;
   }
-  const keepsTypedRunner = file !== undefined && !takesExtraArgs;
+  // const keepsTypedRunner = file !== undefined && !takesExtraArgs;
+  const keepsTypedRunner = true;
 
   let cwd: string | undefined;
   for (let i = 0; i < index; i++) {

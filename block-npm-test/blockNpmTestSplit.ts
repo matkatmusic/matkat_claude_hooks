@@ -23,6 +23,9 @@ export function removeHeredocs(command: string): string {
   return kept.join("\n");
 }
 
+// Stands in for a space inside quotes, so the later whitespace split keeps the quoted text in one word.
+const SPACE_IN_QUOTE = "\u0000";
+
 // Splits a shell line into simple commands at unquoted separators or newlines; strips quotes, keeps their text.
 export function splitSimpleCommands(shellLine: string): string[][] {
   const command = removeHeredocs(shellLine);
@@ -43,6 +46,8 @@ export function splitSimpleCommands(shellLine: string): string[][] {
         quote = null;
       else if (isEscapeInsideDoubleQuote)
         current += command[++i] ?? "";
+      else if (/\s/.test(ch))
+        current += SPACE_IN_QUOTE;
       else
         current += ch;
     }
@@ -65,7 +70,7 @@ export function splitSimpleCommands(shellLine: string): string[][] {
     for (let j = 0; j < rawWords.length; j++) {
       const isEmpty = rawWords[j] === "";
       if (!isEmpty)
-        words.push(rawWords[j]);
+        words.push(rawWords[j].replaceAll(SPACE_IN_QUOTE, " "));
     }
     const hasWords = words.length > 0;
     if (hasWords)

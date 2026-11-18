@@ -16,7 +16,8 @@ function spawnTestRun(testRun: FoundTestRun, cwd: string, logPath: string, killA
   const isBunTest = testRun.isBunTest === true;
   const typedRunnerWords = testRun.runnerWords;
   const keepsTypedRunner = typedRunnerWords !== undefined;
-  const runsWithoutNpmTest = hasTestFile || isBunTest;
+  // const runsWithoutNpmTest = hasTestFile || isBunTest;
+  const runsWithoutNpmTest = true;
   if (runsWithoutNpmTest) {
 
     const extraArgs = testRun.extraArgs ?? [];
