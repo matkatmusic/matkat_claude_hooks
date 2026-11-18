@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+// import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const SETUP_SCRIPT_PATH = fileURLToPath(new URL("../../worktreeSetup/newWorktree.sh", import.meta.url));
 
 function executeCommand(workDirectory: string, command: string, args: string[]): string {
   const result = spawnSync(command, args, { cwd: workDirectory, encoding: "utf8" });
@@ -12,15 +15,16 @@ function buildSafeName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._]+/g, "-");
 }
 
-function executeSetupCommands(worktreePath: string, setupCommands: string[]): void {
-  for (const setupCommand of setupCommands) {
-    const result = spawnSync("sh", ["-c", setupCommand], { cwd: worktreePath, encoding: "utf8" });
-    if (result.status !== 0)
-      throw new Error(`setup command failed in ${worktreePath}: ${setupCommand}: ${result.stderr}`);
-  }
-}
+// function executeSetupCommands(worktreePath: string, setupCommands: string[]): void {
+//   for (const setupCommand of setupCommands) {
+//     const result = spawnSync("sh", ["-c", setupCommand], { cwd: worktreePath, encoding: "utf8" });
+//     if (result.status !== 0)
+//       throw new Error(`setup command failed in ${worktreePath}: ${setupCommand}: ${result.stderr}`);
+//   }
+// }
 
-export function addJobWorktree(workDirectory: string, worktreeDirectory: string, teamName: string, jobName: string, setupCommands: string[]): { worktreePath: string; branch: string; baseBranch: string } {
+// export function addJobWorktree(workDirectory: string, worktreeDirectory: string, teamName: string, jobName: string, setupCommands: string[]): { worktreePath: string; branch: string; baseBranch: string } {
+export function addJobWorktree(workDirectory: string, teamName: string, jobName: string): { worktreePath: string; branch: string; baseBranch: string } {
   const repositoryRoot = executeCommand(workDirectory, "git", ["rev-parse", "--show-toplevel"]);
   const baseBranch = executeCommand(workDirectory, "git", ["rev-parse", "--abbrev-ref", "HEAD"]);
   if (baseBranch === "HEAD")
@@ -29,14 +33,24 @@ export function addJobWorktree(workDirectory: string, worktreeDirectory: string,
   const safeJobName = buildSafeName(jobName);
   // const branch = `claude-team/${safeTeamName}/${safeJobName}`;
   const branch = `claude-tmux-team/${safeTeamName}/${safeJobName}`;
-  const worktreePath = `${repositoryRoot}/${worktreeDirectory}/${safeTeamName}-${safeJobName}`;
+  // const worktreePath = `${repositoryRoot}/${worktreeDirectory}/${safeTeamName}-${safeJobName}`;
   // old: always created the worktree and ran the setup commands
   // executeCommand(workDirectory, "git", ["worktree", "add", "-b", branch, worktreePath, baseBranch]);
   // executeSetupCommands(worktreePath, setupCommands);
-  const workFolderExists = existsSync(worktreePath);
-  if (!workFolderExists) {
-    executeCommand(workDirectory, "git", ["worktree", "add", "-b", branch, worktreePath, baseBranch]);
-    executeSetupCommands(worktreePath, setupCommands);
+  // const workFolderExists = existsSync(worktreePath);
+  // if (!workFolderExists) {
+  //   executeCommand(workDirectory, "git", ["worktree", "add", "-b", branch, worktreePath, baseBranch]);
+  //   executeSetupCommands(worktreePath, setupCommands);
+  // }
+  const worktreeLines = executeCommand(workDirectory, "git", ["worktree", "list", "--porcelain"]).split("\n");
+  let listedWorktreePath = "";
+  for (const worktreeLine of worktreeLines) {
+    if (worktreeLine.startsWith("worktree "))
+      listedWorktreePath = worktreeLine.slice("worktree ".length);
+    if (worktreeLine === `branch refs/heads/${branch}`)
+      return { worktreePath: listedWorktreePath, branch, baseBranch };
   }
+  const scriptOutputLines = executeCommand(workDirectory, SETUP_SCRIPT_PATH, [repositoryRoot, branch]).split("\n");
+  const worktreePath = scriptOutputLines[scriptOutputLines.length - 1];
   return { worktreePath, branch, baseBranch };
 }

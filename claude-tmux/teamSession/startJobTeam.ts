@@ -65,8 +65,9 @@ if (!isFirstJob) {
     throw new Error(`team ${jobTeamName} already exists`);
 }
 
-const setupCommands = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_SETUP_COMMANDS"].split("\n");
-const { worktreePath, branch, baseBranch } = addJobWorktree(team.workDirectory, values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_DIRECTORY"], team.teamName, jobName, setupCommands);
+// const setupCommands = values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_SETUP_COMMANDS"].split("\n");
+// const { worktreePath, branch, baseBranch } = addJobWorktree(team.workDirectory, values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_DIRECTORY"], team.teamName, jobName, setupCommands);
+const { worktreePath, branch, baseBranch } = addJobWorktree(team.workDirectory, team.teamName, jobName);
 const worktreeSection = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_WORKTREE_TEXT"], { worktreePath, branch, baseBranch });
 
 const jobTeamFilePath = buildTeamFilePath(stateDirectory, jobTeamName);
