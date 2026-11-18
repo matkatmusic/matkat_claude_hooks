@@ -57,6 +57,20 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dispatcher/dispatch.ts\"", "timeout": 120 }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/worktree-create/worktreeCreate.ts\"", "timeout": 600 }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/worktree-create/worktreeRemove.ts\"", "timeout": 120 }
+        ]
+      }
     ]
   }
 }
