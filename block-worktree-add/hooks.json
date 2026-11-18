@@ -4,7 +4,7 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/block-worktree-add/blockWorktreeAdd.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/block-worktree-add/blockWorktreeAdd.ts\"" }
         ]
       }
     ]

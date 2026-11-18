@@ -1,0 +1,117 @@
+#!/usr/bin/env bun
+import { after, test } from "node:test";
+import { strict as assert } from "node:assert";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+
+const WINDOW_MS = 86400000;
+const stateDir = mkdtempSync(`${tmpdir()}/idle-state-reader-state-`);
+after(() => rmSync(stateDir, { recursive: true, force: true }));
+const { buildStateContext, findIdleStateFolder } = await import("./idleStateReader.ts");
+
+test("a subfolder of the repo finds the .idleState folder at the repo root", () => {
+  const repo = mkdtempSync(`${tmpdir()}/idle-state-repo-`);
+  mkdirSync(`${repo}/.git`);
+  mkdirSync(`${repo}/.idleState`);
+  mkdirSync(`${repo}/src/deep`, { recursive: true });
+  assert.equal(findIdleStateFolder(`${repo}/src/deep`), `${repo}/.idleState`);
+});
+
+test("the search stops at the repo root and ignores folders above it", () => {
+  const outer = mkdtempSync(`${tmpdir()}/idle-state-outer-`);
+  mkdirSync(`${outer}/.idleState`);
+  mkdirSync(`${outer}/repo/.git`, { recursive: true });
+  mkdirSync(`${outer}/repo/src`);
+  assert.equal(findIdleStateFolder(`${outer}/repo/src`), `${outer}/repo/src/.idleState`);
+});
+
+test("lists only state files from the last 24 hours, without their contents", () => {
+  const folder = mkdtempSync(`${tmpdir()}/idle-state-`);
+  const nowMs = Date.now();
+  const recent = `${folder}/recent.json`;
+  const old = `${folder}/old.json`;
+  writeFileSync(recent, "recent-secret-text");
+  writeFileSync(old, "old-secret-text");
+  writeFileSync(`${folder}/.gitignore`, "ignored-secret-text");
+  utimesSync(recent, (nowMs - 60 * 60 * 1000) / 1000, (nowMs - 60 * 60 * 1000) / 1000);
+  utimesSync(old, (nowMs - 30 * 60 * 60 * 1000) / 1000, (nowMs - 30 * 60 * 60 * 1000) / 1000);
+  const result = buildStateContext(folder, nowMs, WINDOW_MS);
+  assert.ok(result.includes(recent));
+  assert.ok(!result.includes("recent-secret-text"));
+  assert.ok(!result.includes(old));
+  assert.ok(!result.includes("old-secret-text"));
+  assert.ok(!result.includes("ignored-secret-text"));
+});
+
+test("skips a recent merged file and keeps a recent normal file", () => {
+  const folder = mkdtempSync(`${tmpdir()}/idle-state-`);
+  const merged = `${folder}/2026-10-19-2200-merged.json`;
+  const normal = `${folder}/2026-10-19-2200.json`;
+  writeFileSync(merged, "{}");
+  writeFileSync(normal, "{}");
+  const result = buildStateContext(folder, Date.now(), WINDOW_MS);
+  assert.ok(!result.includes(merged));
+  assert.ok(result.includes(normal));
+});
+
+test("missing folder gives empty text", () => {
+  assert.equal(buildStateContext("/tmp/idle-state-missing-folder", Date.now(), WINDOW_MS), "");
+});
+
+function createPromptProject(): { repo: string; sessionId: string; transcriptPath: string; stateFilePath: string } {
+  const repo = mkdtempSync(`${tmpdir()}/idle-state-prompt-`);
+  mkdirSync(`${repo}/.git`);
+  mkdirSync(`${repo}/.idleState`);
+  const stateFilePath = `${repo}/.idleState/recent.json`;
+  writeFileSync(stateFilePath, "{}");
+  const sessionId = `session-abc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return { repo, sessionId, transcriptPath: `${repo}/${sessionId}.jsonl`, stateFilePath };
+}
+
+function runReader(project: { repo: string; transcriptPath: string }, prompt: string): string {
+  const result = spawnSync("bun", [new URL("./idleStateReader.ts", import.meta.url).pathname], {
+    input: JSON.stringify({
+      prompt,
+      cwd: project.repo,
+      transcript_path: project.transcriptPath,
+      settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" },
+    }),
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0);
+  return result.stdout;
+}
+
+function readSavedFiles(project: { sessionId: string }): string[] {
+  const statePath = `${stateDir}/${project.sessionId}.json`;
+  const savedFiles = JSON.parse(readFileSync(statePath, "utf8")).idleStateFiles;
+  rmSync(statePath);
+  return savedFiles;
+}
+
+test("the first plain prompt prints the state file and saves its path", () => {
+  const project = createPromptProject();
+  const output = runReader(project, "hello there");
+  assert.ok(output.includes(project.stateFilePath));
+  assert.deepEqual(readSavedFiles(project), [project.stateFilePath]);
+});
+
+test("a catch-up prompt prints nothing and saves an empty list", () => {
+  const project = createPromptProject();
+  assert.equal(runReader(project, "/catch-up"), "");
+  assert.deepEqual(readSavedFiles(project), []);
+});
+
+test("the plugin-named catch-up prompt with arguments prints nothing and saves an empty list", () => {
+  const project = createPromptProject();
+  assert.equal(runReader(project, "/matkat-hooks:catch-up now"), "");
+  assert.deepEqual(readSavedFiles(project), []);
+});
+
+test("the second prompt prints nothing and keeps the saved paths", () => {
+  const project = createPromptProject();
+  runReader(project, "hello there");
+  assert.equal(runReader(project, "and another thing"), "");
+  assert.deepEqual(readSavedFiles(project), [project.stateFilePath]);
+});

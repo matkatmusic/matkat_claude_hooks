@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/idle-state/idle-state-reader.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/idle-state/idleStateReader.ts\"" }
         ]
       }
     ]

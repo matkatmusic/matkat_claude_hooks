@@ -1,8 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Sets isCommitted on each done item of <root>/.idleState/<file>.json from git, then writes the file back.
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 
 function getNearestExistingFolder(path: string): string {
@@ -48,7 +47,7 @@ function setDoneItemCommittedFromGit(root: string, doneItem: any): void {
 }
 
 function getTranscriptPath(sessionId: string): string {
-  const projectsFolder = `${homedir()}/.claude/projects`;
+  const projectsFolder = `${process.env.HOME}/.claude/projects`;
   const transcriptPaths: string[] = [];
   for (const projectFolderName of readdirSync(projectsFolder)) {
     const candidatePath = `${projectsFolder}/${projectFolderName}/${sessionId}.jsonl`;

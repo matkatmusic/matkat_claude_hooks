@@ -1,6 +1,6 @@
 // PostToolUse: record the edited file path in session state for the Stop hook.
 import { existsSync, readFileSync } from "node:fs";
-import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/session-state.ts";
+import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/sessionState.ts";
 import { getSetting } from "../shared/settings.ts";
 
 const input = JSON.parse(readFileSync(0, "utf8"));

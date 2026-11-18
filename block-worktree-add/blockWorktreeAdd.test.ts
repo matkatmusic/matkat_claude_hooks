@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
@@ -10,7 +10,7 @@ const HOOK_CWD = "/work/myRepo";
 
 function runHook(command: string) {
   const input = JSON.stringify({ cwd: HOOK_CWD, tool_input: { command, description: "make a worktree" } });
-  const hook = spawnSync("node", [HOOK_FILE], { input, encoding: "utf8" });
+  const hook = spawnSync("bun", [HOOK_FILE], { input, encoding: "utf8" });
   const hasOutput = hook.stdout.trim() !== "";
   if (hasOutput)
     return JSON.parse(hook.stdout).hookSpecificOutput;

@@ -6,11 +6,12 @@
     "@types/bun": "^1.4.3",
     "@types/node": "^26.5.0",
     "eslint": "^10.11.0",
+    "eslint-plugin-check-file": "^3.3.2",
     "typescript-eslint": "^8.71.0"
   },
   "type": "module",
   "scripts": {
-    "test": "node --test \"!(tests|node_modules|idle-state|context-exit|ask-dont-dump|anything-for-me|prompt-intent|typesafe-template)/**/*.test.ts\" idle-state/idle-state-check.test.ts && npm run test:mods",
+    "test": "bun test --parallel --timeout=120000 --path-ignore-patterns 'tests/**' --path-ignore-patterns 'context-exit/**' --path-ignore-patterns 'ask-dont-dump/**' --path-ignore-patterns 'anything-for-me/**' --path-ignore-patterns 'prompt-intent/**' --path-ignore-patterns 'typesafe-template/**' --path-ignore-patterns 'idle-state/mod/**' --path-ignore-patterns 'idle-state/idleStateReader.test.ts' && bun run test:mods",
     "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod && ~/.local/bin/claude plugin test anything-for-me/mod && ~/.local/bin/claude plugin test prompt-intent/mod && ~/.local/bin/claude plugin test typesafe-template/mod"
   }
 }

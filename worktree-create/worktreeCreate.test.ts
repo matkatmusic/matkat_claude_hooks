@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { test, after } from "node:test";
 import { strict as assert } from "node:assert";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -34,7 +34,7 @@ function makeRepoWithSubmodule(): string {
 
 function runCreateHook(repoFolder: string, branchName: string) {
   const input = JSON.stringify({ hook_event_name: "WorktreeCreate", cwd: repoFolder, name: branchName });
-  return spawnSync("node", [HOOK_PATH], { input, encoding: "utf8" });
+  return spawnSync("bun", [HOOK_PATH], { input, encoding: "utf8" });
 }
 
 after(() => {

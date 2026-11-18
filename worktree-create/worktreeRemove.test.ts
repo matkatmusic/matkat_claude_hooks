@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { test, after } from "node:test";
 import { strict as assert } from "node:assert";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -35,14 +35,14 @@ function makeRepoWithSubmodule(): string {
 
 function makeWorktreeWithCreateHook(repoFolder: string, branchName: string): string {
   const input = JSON.stringify({ hook_event_name: "WorktreeCreate", cwd: repoFolder, name: branchName });
-  const result = spawnSync("node", [CREATE_HOOK_PATH], { input, encoding: "utf8" });
+  const result = spawnSync("bun", [CREATE_HOOK_PATH], { input, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim().split("\n").pop() as string;
 }
 
 function runRemoveHook(worktreePath: string) {
   const input = JSON.stringify({ hook_event_name: "WorktreeRemove", cwd: worktreePath, worktree_path: worktreePath });
-  return spawnSync("node", [REMOVE_HOOK_PATH], { input, encoding: "utf8" });
+  return spawnSync("bun", [REMOVE_HOOK_PATH], { input, encoding: "utf8" });
 }
 
 after(() => {

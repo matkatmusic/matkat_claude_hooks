@@ -32,7 +32,7 @@ Subagents in their own worktrees keep parallel work apart. The nudge tells Claud
 2. The hook looks for phrases such as "things to do", "starting on", "starting with", and "fanning out".
 3. If it finds no phrase, the hook prints nothing.
 4. If it finds a phrase, the hook prints a JSON object with `decision: "block"` and a `reason`. The reason is the nudge text.
-5. If `CLAUDE_CODE_TASK_LIST_ID` is not set, the hook calls `checkTaskListId` from `shared/task-list-id.ts`. It adds the setup help to the reason.
+5. If `CLAUDE_CODE_TASK_LIST_ID` is not set, the hook calls `checkTaskListId` from `shared/taskListId.ts`. It adds the setup help to the reason.
 
 ### The settings values
 
@@ -46,4 +46,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test nudge-task-list/nudge-task-list.test.ts` from the `claude_hooks` folder.
+Run `node --test nudge-task-list/nudgeTaskList.test.ts` from the `claude_hooks` folder.

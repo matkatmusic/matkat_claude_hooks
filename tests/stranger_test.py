@@ -47,15 +47,15 @@ SUBAGENT_LINE_RE = re.compile(r"\[[^\n]*:\w\] [^\n·]+ · [^\n·]+ · \d+:\d\d �
 
 # (row, hook, prompt, text the hook must produce, hook event or None for a tool error)
 SESSION_ONE_ROWS = [
-    (4, "block-bash-edits", "Use the Bash tool to run: echo hello > hello.txt", "Use the Edit/Write tools to modify files", None),
-    (5, "block-npm-test", "Use the Bash tool to run: npm test", "Test runners are blocked", None),
-    (6, "plan-file-reminder", "Write a file plans/test-plan.md that says: step 1.", "Conform the plan you're editing to", "PostToolUse"),
-    (7, "nudge-task-list", 'Reply with one sentence that has the words "starting on" in it, then stop.', "You are starting work on a task", "Stop"),
-    (8, "unlisted-items", 'Reply with one line only: "next step: build the login page". Do not make any task.', "These items are not on the task list", "Stop"),
+    (4, "blockBashEdits", "Use the Bash tool to run: echo hello > hello.txt", "Use the Edit/Write tools to modify files", None),
+    (5, "blockNpmTest", "Use the Bash tool to run: npm test", "Test runners are blocked", None),
+    (6, "planFileReminder", "Write a file plans/test-plan.md that says: step 1.", "Conform the plan you're editing to", "PostToolUse"),
+    (7, "nudgeTaskList", 'Reply with one sentence that has the words "starting on" in it, then stop.', "You are starting work on a task", "Stop"),
+    (8, "unlistedItems", 'Reply with one line only: "next step: build the login page". Do not make any task.', "These items are not on the task list", "Stop"),
 ]
 SESSION_TWO_ROWS = [
-    (12, "typecheck-on-stop", 'Use the Write tool to create bad.ts with this one line: const x: number = "hello";', "error TS2322", "Stop"),
-    (13, "debt-ratchet", "Use the Write tool to create add.ts with a function called add that adds two numbers. No test file.", "Style debt is", "Stop"),
+    (12, "typecheckOnStop", 'Use the Write tool to create bad.ts with this one line: const x: number = "hello";', "error TS2322", "Stop"),
+    (13, "debtRatchet", "Use the Write tool to create add.ts with a function called add that adds two numbers. No test file.", "Style debt is", "Stop"),
 ]
 
 
@@ -78,28 +78,28 @@ def one_line(text):
 
 def write_user_dispatch(clone, bed, config):
     enablements = {
-        "block-npm-test": {"PreToolUse": True},
-        "block-parent-edits": {"PreToolUse": True},
-        "block-bash-edits": {"PreToolUse": True},
-        "plan-file-reminder": {"PostToolUse": True},
-        "check-task-list-id": {"SessionStart": True},
-        "nudge-task-list": {"Stop": True},
-        "unlisted-items": {"Stop": True},
-        "turn-counter": {"SessionStart": True, "Stop": True, "StopFailure": True, "SessionEnd": True},
-        "ponytail-ultra-nudge": {"UserPromptSubmit": True},
-        "clarify-ambiguous": {"UserPromptSubmit": True},
-        "typecheck-on-stop": {"Stop": True, "SubagentStop": True},
-        "debt-ratchet": {"Stop": True, "SubagentStop": True},
-        "idle-state-reader": {"UserPromptSubmit": True},
-        "idle-state-check": {"Stop": True},
+        "blockNpmTest": {"PreToolUse": True},
+        "blockParentEdits": {"PreToolUse": True},
+        "blockBashEdits": {"PreToolUse": True},
+        "planFileReminder": {"PostToolUse": True},
+        "checkTaskListId": {"SessionStart": True},
+        "nudgeTaskList": {"Stop": True},
+        "unlistedItems": {"Stop": True},
+        "turnCounter": {"SessionStart": True, "Stop": True, "StopFailure": True, "SessionEnd": True},
+        "ponytailUltraNudge": {"UserPromptSubmit": True},
+        "clarifyAmbiguous": {"UserPromptSubmit": True},
+        "typecheckOnStop": {"Stop": True, "SubagentStop": True},
+        "debtRatchet": {"Stop": True, "SubagentStop": True},
+        "idleStateReader": {"UserPromptSubmit": True},
+        "idleStateCheck": {"Stop": True},
     }
     values = {
         "shared": {"CLAUDE_HOOKS_SESSION_STATE_DIR": str(bed / "state")},
-        "plan-file-reminder": {"CLAUDE_HOOKS_PLANNING_GUIDE_PATH": str(bed / "planning.md")},
-        "unlisted-items": {"CLAUDE_HOOKS_TASKS_DIR": f"{config}/tasks"},
-        "block-parent-edits": {"CLAUDE_HOOKS_BLOCKED_EDITS_DIR": str(bed / "blocked-edits")},
-        "block-npm-test": {"CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": str(bed / "npm-test-logs")},
-        "debt-ratchet": {"CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": str(bed / "array-debt")},
+        "planFileReminder": {"CLAUDE_HOOKS_PLANNING_GUIDE_PATH": str(bed / "planning.md")},
+        "unlistedItems": {"CLAUDE_HOOKS_TASKS_DIR": f"{config}/tasks"},
+        "blockParentEdits": {"CLAUDE_HOOKS_BLOCKED_EDITS_DIR": str(bed / "blocked-edits")},
+        "blockNpmTest": {"CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": str(bed / "npm-test-logs")},
+        "debtRatchet": {"CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": str(bed / "array-debt")},
     }
     (clone / "dispatcher" / "user-dispatch.json").write_text(json.dumps({"enablements": enablements, "values": values}, indent=2) + "\n")
 
@@ -358,7 +358,7 @@ def run_first_session(rows, bed, config):
     turns_before = pane_turns(name)
     records, _ = run_turn(session, "say hi")
     check_session_model(session, "claude-sonnet-5")
-    add_hook_row(rows, session, 1, "check-task-list-id", read_records(session), "CLAUDE_CODE_TASK_LIST_ID is not set", "SessionStart")
+    add_hook_row(rows, session, 1, "checkTaskListId", read_records(session), "CLAUDE_CODE_TASK_LIST_ID is not set", "SessionStart")
     time.sleep(6)
     turns_after = pane_turns(name)
     add_row(rows, 2, "status-line", session_model(session), turns_before == 0 and turns_after is not None and turns_after >= 1, f"turns on screen: before={turns_before} after={turns_after}")
@@ -381,13 +381,13 @@ def run_second_session(rows, bed, config):
     session = launch_session(SONNET, bed, config)
     records, _ = run_turn(session, "hello")
     check_session_model(session, "claude-sonnet-5")
-    add_hook_row(rows, session, 10, "ponytail-ultra-nudge", records, "Ponytail ultra has not been invoked yet", "UserPromptSubmit")
+    add_hook_row(rows, session, 10, "ponytailUltraNudge", records, "Ponytail ultra has not been invoked yet", "UserPromptSubmit")
 
     records, _ = run_turn(session, "fix it")
     gate_found = find_evidence(records, "AMBIGUITY GATE", "UserPromptSubmit")
     records, _ = run_turn(session, "fix it jdi")
     gate_in_opt_out = find_evidence(records, "AMBIGUITY GATE", "UserPromptSubmit")
-    add_row(rows, 11, "clarify-ambiguous", session_model(session), gate_found is not None and gate_in_opt_out is None, f"gate on 'fix it': {gate_found is not None}; gate on 'fix it jdi': {gate_in_opt_out is not None}")
+    add_row(rows, 11, "clarifyAmbiguous", session_model(session), gate_found is not None and gate_in_opt_out is None, f"gate on 'fix it': {gate_found is not None}; gate on 'fix it jdi': {gate_in_opt_out is not None}")
 
     for number, hook, prompt, needle, event in SESSION_TWO_ROWS:
         records, _ = run_turn(session, prompt)
@@ -417,7 +417,7 @@ def run_third_session(rows, bed, config, second, state_files, has_exited):
     model = check_session_model(session, "claude-opus-5")
     found = find_evidence(records, "Parent session must not edit files")
     blocked_files = list((bed / "blocked-edits").glob("*.json"))
-    add_row(rows, 15, "block-parent-edits", model, found is not None and len(blocked_files) > 0, f"{found}; saved calls: {len(blocked_files)}")
+    add_row(rows, 15, "blockParentEdits", model, found is not None and len(blocked_files) > 0, f"{found}; saved calls: {len(blocked_files)}")
 
     reader_found = find_evidence(read_records(session), "Tell me about the recent work", "UserPromptSubmit")
     idle_ok = len(state_files) > 0 and has_exited and reader_found is not None

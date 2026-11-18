@@ -23,7 +23,7 @@ function makeSessionId(): string {
 }
 
 function runScript(scriptPath: string, input: object) {
-  const result = spawnSync("node", [scriptPath], {
+  const result = spawnSync("bun", [scriptPath], {
     input: JSON.stringify(input),
     encoding: "utf8",
   });

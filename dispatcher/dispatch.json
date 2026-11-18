@@ -1,29 +1,29 @@
 {
   "debugLoggingEnabled": false,
   "enablements": {
-    "block-npm-test": { "PreToolUse": false },
+    "blockNpmTest": { "PreToolUse": false },
     "blockWorktreeAdd": { "PreToolUse": false },
-    "block-parent-edits": { "PreToolUse": false },
-    "block-bash-edits": { "PreToolUse": false },
-    "plan-file-reminder": { "PostToolUse": false },
+    "blockParentEdits": { "PreToolUse": false },
+    "blockBashEdits": { "PreToolUse": false },
+    "planFileReminder": { "PostToolUse": false },
     "commentCombiner": { "PostToolUse": false },
     "commentCombinerLogger": { "PostToolUse": false },
     "commentLengthLimiter": { "Stop": false },
-    "check-task-list-id": { "SessionStart": false },
-    "nudge-task-list": { "Stop": false },
-    "unlisted-items": { "Stop": false },
-    "committed-task-check": { "Stop": false },
-    "turn-counter": { "SessionStart": false, "Stop": false, "StopFailure": false, "SessionEnd": false },
-    "ponytail-ultra-nudge": { "UserPromptSubmit": false, "PostToolUse": false },
-    "clarify-ambiguous": { "UserPromptSubmit": false },
-    "task-details": { "UserPromptSubmit": false },
-    "tmux-helper": { "UserPromptSubmit": false },
-    "pending-task-list": { "UserPromptSubmit": false },
-    "in-progress-task-list": { "UserPromptSubmit": false },
-    "typecheck-on-stop": { "Stop": false, "SubagentStop": false },
-    "debt-ratchet": { "Stop": false, "SubagentStop": false },
-    "idle-state-reader": { "UserPromptSubmit": false },
-    "idle-state-check": { "Stop": false },
+    "checkTaskListId": { "SessionStart": false },
+    "nudgeTaskList": { "Stop": false },
+    "unlistedItems": { "Stop": false },
+    "committedTaskCheck": { "Stop": false },
+    "turnCounter": { "SessionStart": false, "Stop": false, "StopFailure": false, "SessionEnd": false },
+    "ponytailUltraNudge": { "UserPromptSubmit": false, "PostToolUse": false },
+    "clarifyAmbiguous": { "UserPromptSubmit": false },
+    "taskDetails": { "UserPromptSubmit": false },
+    "tmuxHelper": { "UserPromptSubmit": false },
+    "pendingTaskList": { "UserPromptSubmit": false },
+    "inProgressTaskList": { "UserPromptSubmit": false },
+    "typecheckOnStop": { "Stop": false, "SubagentStop": false },
+    "debtRatchet": { "Stop": false, "SubagentStop": false },
+    "idleStateReader": { "UserPromptSubmit": false },
+    "idleStateCheck": { "Stop": false },
     "anything-for-me": { "session.start": true },
     "ask-dont-dump": { "prompt.submit": true, "turn.complete": true, "session.end": true },
     "idle-state": { "session.start": true, "session.end": true, "prompt.submit": true, "turn.complete": true, "turn.start": true, "tool.call": true, "command.run": true },
@@ -35,16 +35,16 @@
   },
   "values": {
     "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },
-    "block-npm-test": {
+    "blockNpmTest": {
       "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR": "/tmp/tasktools-npm-test",
       "CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS": "3600",
       "CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS": "120000",
       "CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS": "604800000"
     },
-    "block-parent-edits": {
+    "blockParentEdits": {
       "CLAUDE_HOOKS_BLOCKED_EDITS_DIR": "~/.claude/claude_hooks/blocked-edits"
     },
-    "debt-ratchet": {
+    "debtRatchet": {
       "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR": "~/.claude/array-debt",
       "CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_MAX_AGE_MS": "604800000",
       "CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES": "1000",
@@ -52,7 +52,7 @@
       "CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE": "10",
       "CLAUDE_HOOKS_DEBT_RATCHET_MIN_FILE_DEBT": "10"
     },
-    "idle-state-reader": {
+    "idleStateReader": {
       "CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS": "86400000"
     },
     "idle-state": {
@@ -84,20 +84,20 @@
       "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap to a new chat failed. This chat stays open. The error is in {logPath}. The next swap starts after your next prompt."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
-    "plan-file-reminder": {
+    "planFileReminder": {
       "CLAUDE_HOOKS_PLANNING_GUIDE_PATH": "../plan-file-reminder/planning.md"
     },
-    "turn-counter": {
+    "turnCounter": {
       "CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT": "/tmp",
       "CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS": "14"
     },
     "commentLengthLimiter": {
       "CLAUDE_HOOKS_REFLOW_MAX_REWRITES": "2"
     },
-    "typecheck-on-stop": {
+    "typecheckOnStop": {
       "CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES": "20"
     },
-    "unlisted-items": {
+    "unlistedItems": {
       "CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH": "5",
       "CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS": "2",
       "CLAUDE_HOOKS_TASKS_DIR": "~/.claude/tasks"
@@ -301,34 +301,34 @@
     }
   },
   "hooks": [
-    { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-npm-test/block-npm-test.ts"], "timeout": 300 },
-    { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-worktree-add/blockWorktreeAdd.ts"] },
-    { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["node", "../block-parent-edits/block-parent-edits.ts"] },
-    { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-bash-edits/block-bash-edits.ts"] },
-    { "event": "PostToolUse", "matcher": "Write|Edit|MultiEdit|NotebookEdit", "command": ["node", "../plan-file-reminder/plan-file-reminder.ts"] },
-    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../comment-length-limiter/commentCombiner.ts"] },
-    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["node", "../comment-length-limiter/commentCombinerLogger.ts"] },
-    { "event": "Stop", "command": ["node", "../comment-length-limiter/commentLengthLimiter.ts"] },
-    { "event": "SessionStart", "command": ["node", "../check-task-list-id/check-task-list-id.ts"] },
-    { "event": "Stop", "command": ["node", "../nudge-task-list/nudge-task-list.ts"] },
-    { "event": "Stop", "command": ["node", "../unlisted-items/unlisted-items.ts"] },
-    { "event": "Stop", "command": ["node", "../committed-task-check/committed-task-check.ts"] },
-    { "event": "SessionStart", "command": ["node", "../status-line/turn-counter.ts"] },
-    { "event": "Stop", "command": ["node", "../status-line/turn-counter.ts"] },
-    { "event": "StopFailure", "command": ["node", "../status-line/turn-counter.ts"] },
-    { "event": "SessionEnd", "command": ["node", "../status-line/turn-counter.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../ponytail-ultra-nudge/ponytail-ultra-nudge.ts"] },
-    { "event": "PostToolUse", "matcher": "Skill", "command": ["node", "../ponytail-ultra-nudge/ponytail-ultra-nudge.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../clarify-ambiguous/clarify-ambiguous.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../task-details/task-details.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../claude-tmux/individualSession/tmux-helper.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../pending-task-list/pending-task-list.ts"] },
-    { "event": "UserPromptSubmit", "command": ["node", "../in-progress-task-list/in-progress-task-list.ts"] },
-    { "event": "Stop", "command": ["node", "../typecheck-on-stop/typecheck-on-stop.ts"], "timeout": 300 },
-    { "event": "SubagentStop", "command": ["node", "../typecheck-on-stop/typecheck-on-stop.ts"], "timeout": 300 },
-    { "event": "Stop", "command": ["node", "../debt-ratchet/debt-ratchet.ts"], "timeout": 300 },
-    { "event": "SubagentStop", "command": ["node", "../debt-ratchet/debt-ratchet.ts"], "timeout": 300 },
-    { "event": "UserPromptSubmit", "command": ["node", "../idle-state/idle-state-reader.ts"] },
-    { "event": "Stop", "command": ["node", "../idle-state/idle-state-check.ts"] }
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["bun","../block-npm-test/blockNpmTest.ts"], "timeout": 300 },
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["bun", "../block-worktree-add/blockWorktreeAdd.ts"] },
+    { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["bun","../block-parent-edits/blockParentEdits.ts"] },
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["bun","../block-bash-edits/blockBashEdits.ts"] },
+    { "event": "PostToolUse", "matcher": "Write|Edit|MultiEdit|NotebookEdit", "command": ["bun","../plan-file-reminder/planFileReminder.ts"] },
+    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["bun","../comment-length-limiter/commentCombiner.ts"] },
+    { "event": "PostToolUse", "matcher": "Edit|Write|NotebookEdit", "command": ["bun","../comment-length-limiter/commentCombinerLogger.ts"] },
+    { "event": "Stop", "command": ["bun","../comment-length-limiter/commentLengthLimiter.ts"] },
+    { "event": "SessionStart", "command": ["bun","../check-task-list-id/checkTaskListId.ts"] },
+    { "event": "Stop", "command": ["bun","../nudge-task-list/nudgeTaskList.ts"] },
+    { "event": "Stop", "command": ["bun","../unlisted-items/unlistedItems.ts"] },
+    { "event": "Stop", "command": ["bun","../committed-task-check/committedTaskCheck.ts"] },
+    { "event": "SessionStart", "command": ["bun","../status-line/turnCounter.ts"] },
+    { "event": "Stop", "command": ["bun","../status-line/turnCounter.ts"] },
+    { "event": "StopFailure", "command": ["bun","../status-line/turnCounter.ts"] },
+    { "event": "SessionEnd", "command": ["bun","../status-line/turnCounter.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../ponytail-ultra-nudge/ponytailUltraNudge.ts"] },
+    { "event": "PostToolUse", "matcher": "Skill", "command": ["bun","../ponytail-ultra-nudge/ponytailUltraNudge.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../clarify-ambiguous/clarifyAmbiguous.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../task-details/taskDetails.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../claude-tmux/individualSession/tmuxHelper.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../pending-task-list/pendingTaskList.ts"] },
+    { "event": "UserPromptSubmit", "command": ["bun","../in-progress-task-list/inProgressTaskList.ts"] },
+    { "event": "Stop", "command": ["bun","../typecheck-on-stop/typecheckOnStop.ts"], "timeout": 300 },
+    { "event": "SubagentStop", "command": ["bun","../typecheck-on-stop/typecheckOnStop.ts"], "timeout": 300 },
+    { "event": "Stop", "command": ["bun","../debt-ratchet/debtRatchet.ts"], "timeout": 300 },
+    { "event": "SubagentStop", "command": ["bun","../debt-ratchet/debtRatchet.ts"], "timeout": 300 },
+    { "event": "UserPromptSubmit", "command": ["bun","../idle-state/idleStateReader.ts"] },
+    { "event": "Stop", "command": ["bun","../idle-state/idleStateCheck.ts"] }
   ]
 }
