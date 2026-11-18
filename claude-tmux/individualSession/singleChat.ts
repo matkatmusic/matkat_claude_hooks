@@ -9,18 +9,35 @@ import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 
 export type SingleChatSwapRecord = { newChatName: string; newPane: string; isNewChatReady: boolean };
 
-export function parseSingleChatArguments(args: string[], defaultModel: string): { name: string; model: string } {
+// export function parseSingleChatArguments(args: string[], defaultModel: string): { name: string; model: string } {
+//   const parsed = parseArgs({
+//     args,
+//     options: {
+//       name: { type: "string" },
+//       model: { type: "string", default: defaultModel },
+//     },
+//   });
+//   const name = parsed.values.name;
+//   if (name === undefined)
+//     throw new Error('claude-tmux needs --name "NAME"');
+//   return { name, model: parsed.values.model };
+// }
+export function parseSingleChatArguments(args: string[], defaultModel: string): { name: string; model: string; helperCount: number } {
   const parsed = parseArgs({
     args,
     options: {
       name: { type: "string" },
       model: { type: "string", default: defaultModel },
+      numHelpers: { type: "string", default: "2" },
     },
   });
   const name = parsed.values.name;
   if (name === undefined)
     throw new Error('claude-tmux needs --name "NAME"');
-  return { name, model: parsed.values.model };
+  const isWholeNumber = /^\d+$/.test(parsed.values.numHelpers);
+  if (!isWholeNumber)
+    throw new Error(`--numHelpers needs a whole number of 0 or more, but got "${parsed.values.numHelpers}"`);
+  return { name, model: parsed.values.model, helperCount: Number(parsed.values.numHelpers) };
 }
 
 export function buildSingleChatName(name: string, chatNumber: number): string {

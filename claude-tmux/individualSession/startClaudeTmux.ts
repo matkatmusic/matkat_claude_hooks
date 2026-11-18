@@ -6,6 +6,7 @@ import { getGitRootOfWorkDirectory } from "../shared/chatSwap.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, openTrackerOfPane, parseSingleChatArguments, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
+import { startHelperChat } from "./tmuxHelper.ts";
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux");
 const singleChat = parseSingleChatArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TMUX_MODEL"]);
@@ -36,6 +37,13 @@ const trackerPath = openTrackerOfPane(firstPane, projectRoot);
 // the first chat already has number 1; this writes 1 into the new tracker
 updateTrackerWithNextChatNumber(trackerPath, singleChat.name, 0);
 console.log(`Started ${firstChatName} in the tmux session ${singleChat.name}.`);
+
+// startHelperChat names the helpers from CLAUDE_TMUX_NAME: a claude-tmux started inside another chat still has that chat's name
+process.env.CLAUDE_TMUX_NAME = singleChat.name;
+for (let helperIndex = 0; helperIndex < singleChat.helperCount; helperIndex++) {
+  const helperReadyText = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "");
+  console.log(helperReadyText);
+}
 
 if (process.stdout.isTTY) {
   const isInsideTmux = process.env.TMUX !== undefined;

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 // import { buildClaudeCommand, computeNextHelperNumber, stripHelperSuffix } from "./tmuxHelper.ts";
 // import { computeNextHelperNumberFromChatTitles, getHelperBaseName, getHelperModel, getLastCustomTitleOfEachTranscript, stripHelperSuffix } from "./tmuxHelper.ts";
-import { getHelperBaseName, getHelperModel, stripHelperSuffix } from "./tmuxHelper.ts";
+import { getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
 
 test("test_stripHelperSuffix_removes_trailing_helper_number", () => {
     // Chat name ends with ` helper 1`.
@@ -157,6 +157,42 @@ test("test_getHelperModel_uses_typed_model", () => {
     // A model word was typed.
     // The model is the typed model.
     assert.equal(getHelperModel("haiku", "sonnet"), "haiku");
+});
+
+test("test_parseNewHelperArguments_reads_number_only", () => {
+    // The text is only a number.
+    // The helper count is that number and the model is empty.
+    assert.deepEqual(parseNewHelperArguments("3"), { helperCount: 3, model: "" });
+});
+
+test("test_parseNewHelperArguments_reads_number_and_model", () => {
+    // The text is a number and then a model word.
+    // The helper count is the number and the model is the word.
+    assert.deepEqual(parseNewHelperArguments("3 opus"), { helperCount: 3, model: "opus" });
+});
+
+test("test_parseNewHelperArguments_reads_model_only", () => {
+    // The text is only a model word.
+    // The helper count is 1 and the model is the word.
+    assert.deepEqual(parseNewHelperArguments("opus"), { helperCount: 1, model: "opus" });
+});
+
+test("test_parseNewHelperArguments_reads_empty_text", () => {
+    // The text is empty.
+    // The helper count is 1 and the model is empty.
+    assert.deepEqual(parseNewHelperArguments(""), { helperCount: 1, model: "" });
+});
+
+test("test_parseNewHelperArguments_throws_for_model_then_number", () => {
+    // The text is a model word and then a number.
+    // The function throws.
+    assert.throws(() => parseNewHelperArguments("opus 3"));
+});
+
+test("test_parseNewHelperArguments_throws_for_zero", () => {
+    // The number is 0.
+    // The function throws.
+    assert.throws(() => parseNewHelperArguments("0"));
 });
 
 test("test_tmuxNewHelper_throws_outside_a_git_repository", () => {

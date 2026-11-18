@@ -63,7 +63,31 @@ function runTmux(args: string[]): string {
     return execFileSync("tmux", args, { encoding: "utf8" }).trim();
 }
 
-function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string): string {
+export function parseNewHelperArguments(argumentText: string): { helperCount: number; model: string } {
+    const words: string[] = [];
+    for (const word of argumentText.split(/\s+/)) {
+        if (word !== "")
+            words.push(word);
+    }
+    let helperCount = 1;
+    if (words.length > 0) {
+        const isFirstWordNumber = /^-?\d+$/.test(words[0]);
+        if (isFirstWordNumber) {
+            helperCount = Number(words[0]);
+            words.shift();
+        }
+    }
+    if (helperCount <= 0)
+        throw new Error(`/tmux-new-helper needs a number above 0, got ${helperCount}.`);
+    if (words.length > 1)
+        throw new Error("/tmux-new-helper takes [N] [model]: the number goes first, then one model word.");
+    let model = "";
+    if (words.length === 1)
+        model = words[0];
+    return { helperCount, model };
+}
+
+export function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string): string {
     // // session_title is the chat name in the hook payload.
     // const chatName = payload.session_title;
     // if (!chatName)
@@ -105,6 +129,9 @@ if (import.meta.main) {
         writeBlockDecision("Run this inside tmux.");
         process.exit(0);
     }
-    const model = prompt.slice("/tmux-new-helper".length).trim();
-    writeBlockDecision(startHelperChat(tmuxPane, payload, model));
+    const { helperCount, model } = parseNewHelperArguments(prompt.slice("/tmux-new-helper".length).trim());
+    const readyLines: string[] = [];
+    for (let helperIndex = 0; helperIndex < helperCount; helperIndex++)
+        readyLines.push(startHelperChat(tmuxPane, payload, model));
+    writeBlockDecision(readyLines.join("\n"));
 }

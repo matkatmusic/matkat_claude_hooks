@@ -49,6 +49,42 @@ test("test_parseSingleChatArguments_throws_for_an_unknown_flag", () => {
   assert.throws(() => parseSingleChatArguments(["--name", "bed", "--job", "x"], "fable"));
 });
 
+test("test_parseSingleChatArguments_defaults_to_two_helpers", () => {
+  // Scenario: the arguments hold no helper count.
+  // Step 1: parse the arguments with a name and no --numHelpers.
+  const parsedArguments = parseSingleChatArguments(["--name", "bed"], "fable");
+  // Step 2: check that the helper count is 2.
+  assert.equal(parsedArguments.helperCount, 2);
+});
+
+test("test_parseSingleChatArguments_uses_the_given_helper_count", () => {
+  // Scenario: the arguments hold --numHelpers 3.
+  // Step 1: parse the arguments.
+  const parsedArguments = parseSingleChatArguments(["--name", "bed", "--numHelpers", "3"], "fable");
+  // Step 2: check that the helper count is the number 3.
+  assert.equal(parsedArguments.helperCount, 3);
+});
+
+test("test_parseSingleChatArguments_accepts_zero_helpers", () => {
+  // Scenario: the arguments hold --numHelpers 0.
+  // Step 1: parse the arguments.
+  const parsedArguments = parseSingleChatArguments(["--name", "bed", "--numHelpers", "0"], "fable");
+  // Step 2: check that the helper count is 0.
+  assert.equal(parsedArguments.helperCount, 0);
+});
+
+test("test_parseSingleChatArguments_throws_for_a_negative_helper_count", () => {
+  // Scenario: the arguments hold --numHelpers -1.
+  // Step: parse them. Check that it throws.
+  assert.throws(() => parseSingleChatArguments(["--name", "bed", "--numHelpers", "-1"], "fable"));
+});
+
+test("test_parseSingleChatArguments_throws_for_a_helper_count_that_is_not_a_number", () => {
+  // Scenario: the arguments hold --numHelpers abc.
+  // Step: parse them. Check that it throws the helper count error.
+  assert.throws(() => parseSingleChatArguments(["--name", "bed", "--numHelpers", "abc"], "fable"), /--numHelpers needs a whole number/);
+});
+
 test("test_buildSingleChatName_joins_the_name_and_the_number", () => {
   // Scenario: a session name and a chat number.
   // Step: build the chat name. Check that the name and the number are joined with a space.
