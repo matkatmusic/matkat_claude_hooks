@@ -293,12 +293,14 @@
         "Its handoff file is: {handoffPath}",
         "Read the handoff file in full first. Read it in parts if the first read is cut off.",
         "To ask {oldHandle} a question, use the SendMessage tool with its @ handle.",
+        "Use the ListAgents tool to check chat names.",
+        "Do not create a task for this replacement.",
         "Items in the handoff file can be out of date. Ask {oldHandle} if an open question is already answered.",
         "When you need nothing more from {oldHandle}, close it with this command: bun {closeScript} {job}",
         "The command returns at once. {oldHandle} closes when it is idle. Errors go to the file {logPath}."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_LEAVING_NOTICE": "{newHandle} replaces you, because you are above the context limit. Do not start new work. {newHandle} has your handoff file and will send you questions with the SendMessage tool. Answer them. Pass on to {newHandle} any message that still reaches you. {newHandle} closes this chat when it needs nothing more.",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_REPLACED_NOTICE": "replaced teammate {oldHandle} with {newHandle}. No reply is necessary.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_LEAVING_NOTICE": "[claude-tmux-team] {newHandle} replaces you, because you are above the context limit. Do not start new work. {newHandle} has your handoff file and will send you questions with the SendMessage tool. Answer them. Pass on to {newHandle} any message that still reaches you. {newHandle} closes this chat when it needs nothing more. Use the ListAgents tool to check chat names. Do not create a task for this replacement.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_REPLACED_NOTICE": "[claude-tmux-team] {newHandle} replaces {oldHandle}. Use the ListAgents tool to check chat names. No task to track this swap is necessary. No reply is necessary.",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_SWAP_FAILED_NOTICE": "[claude-tmux-team] The swap of this chat failed. This chat stays active and gets the messages for the role {job}. The error is in the file {logPath}. Tell the user."
     }
   },

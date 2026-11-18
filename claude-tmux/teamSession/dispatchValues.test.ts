@@ -146,7 +146,7 @@ test("test_helper_role_prompts_use_send_message_and_send_questions_to_the_team_l
 test("test_replacedNotice_and_handleLine_have_the_given_shape", () => {
   // Scenario: the notice text and the handle line are fixed by the user.
   // Step: read both values. Check the exact text.
-  assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_REPLACED_NOTICE"), "replaced teammate {oldHandle} with {newHandle}. No reply is necessary.");
+  assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_REPLACED_NOTICE"), "[claude-tmux-team] {newHandle} replaces {oldHandle}. Use the ListAgents tool to check chat names. No task to track this swap is necessary. No reply is necessary.");
   assert.equal(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDLE_LINE"), '- @"{chatName}": {role}');
 });
 
@@ -154,6 +154,22 @@ test("test_leavingNotice_tells_the_old_chat_to_pass_on_messages", () => {
   // Scenario: a message can still reach the old chat while the handoff runs.
   // Step: read the notice. Check the pass-on sentence.
   assert.ok(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_LEAVING_NOTICE").includes("Pass on to {newHandle} any message that still reaches you."));
+});
+
+test("test_leavingNotice_has_the_prefix_and_the_list_agents_and_no_task_sentences", () => {
+  // Scenario: the old chat checks chat names and makes no task for the swap.
+  // Step: read the notice. Check the prefix and both sentences.
+  const leavingNotice = joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_LEAVING_NOTICE");
+  assert.ok(leavingNotice.startsWith("[claude-tmux-team] "));
+  assert.ok(leavingNotice.includes("Use the ListAgents tool to check chat names. Do not create a task for this replacement."));
+});
+
+test("test_takeoverPrompt_tells_the_new_chat_to_check_chat_names_and_make_no_task", () => {
+  // Scenario: the new chat checks chat names and makes no task for the swap.
+  // Step: read the prompt lines. Check both lines.
+  const takeoverPromptLines = joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TAKEOVER_PROMPT").split("\n");
+  assert.ok(takeoverPromptLines.includes("Use the ListAgents tool to check chat names."));
+  assert.ok(takeoverPromptLines.includes("Do not create a task for this replacement."));
 });
 
 test("test_prompts_do_not_name_the_send_script", () => {

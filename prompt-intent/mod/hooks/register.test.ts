@@ -6,6 +6,7 @@ const ALL_OFF = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": 
 const ASK_SENTENCE = "if anything I'm asking for is unclear, use AskUserQuestion to gain clarity and alignment before starting to build my request.";
 const TYPED = { text: 'the save button does nothing', wait: false, origin: { kind: 'composer' } } as const;
 const FROM_PLUGIN = { text: 'the save button does nothing', wait: false, origin: { kind: 'plugin', name: 'other-mod' } } as const;
+const CLAUDE_TMUX_NOTICE = { text: '[claude-tmux-team] @"a 2" replaces @"a 1". Use the ListAgents tool to check chat names. No task to track this swap is necessary. No reply is necessary.', wait: false, origin: { kind: 'composer' } } as const;
 const ALL_ON_WITH_DIRECTOR = '{ "debugLoggingEnabled": false, "enablements": { "bug-report": { "prompt.submit": true }, "feature-request": { "prompt.submit": true }, "change-request": { "prompt.submit": true }, "ask-if-unclear": { "prompt.submit": true } }, "values": { "claude-tmux-team": { "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_JOB": "Director" } } }';
 const YES = '{"yes": ["the save button does"]}';
 const NO = '{"no": []}';
@@ -101,6 +102,16 @@ async function assertPluginOriginPromptIsNotClassified($: any, on: any) {
   await $.prompt.submit(FROM_PLUGIN);
   expect(seen.context).toBeUndefined();
   expect(seen.modelCalls).toBe(0);
+}
+
+async function assertClaudeTmuxPrefixedPromptIsNotClassified($: any, on: any) {
+  // The prompt starts with [claude-tmux and comes from the composer.
+  const seen = setUpStubs(on, [YES, YES, YES]);
+  await $.prompt.submit(CLAUDE_TMUX_NOTICE);
+  // The hook asks no model, adds no context, and leaves the text as it was.
+  expect(seen.modelCalls).toBe(0);
+  expect(seen.context).toBeUndefined();
+  expect(seen.text).toBe(CLAUDE_TMUX_NOTICE.text);
 }
 
 // The engine skips a hook that throws, so a thrown error shows as a prompt with no context.
@@ -295,4 +306,5 @@ test('test_three_yes_answers_add_three_different_blocks', assertThreeYesAnswersA
 test('test_all_no_adds_no_context', assertAllNoAddsNoContext);
 test('test_disabled_hooks_add_no_context_and_ask_no_model', assertDisabledHooksAskNoModel);
 test('test_plugin_origin_prompt_is_not_classified', assertPluginOriginPromptIsNotClassified);
+test('test_prompt_starting_with_claude_tmux_is_skipped', assertClaudeTmuxPrefixedPromptIsNotClassified);
 test('test_model_with_no_answer_makes_the_hook_throw_and_adds_no_context', assertNoModelAnswerAddsNoContext);

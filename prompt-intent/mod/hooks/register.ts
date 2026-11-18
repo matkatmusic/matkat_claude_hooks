@@ -4,6 +4,7 @@ import { logAndRethrowHookFailure, wrapNextForDebugLog, getModelReplyWithDebugLo
 const CLASSIFIER_MODEL = 'claude-haiku-5-5';
 const CLASSIFIER_TIMEOUT_MS = 30 * 1000;
 const DISPATCHER_DIR = '../../dispatcher';
+const CLAUDE_TMUX_NOTICE_PREFIX = '[claude-tmux';
 
 const BUG_REPORT_TEXT = "The user is reporting a bug. Create a task in the session task list with TaskCreate to track the bug's resolution. Write a regression test for the behavior the user reports.";
 const FEATURE_REQUEST_TEXT = 'The user is stating a feature request. Create a task in the session task list with TaskCreate to track it. If the request is ambiguous, use AskUserQuestion first to clarify what the user wants and align on the exact want.';
@@ -54,6 +55,8 @@ async function getFlaggedItems($: EngineInterface, e: PromptSubmitInput, pluginN
   if (!enabled)
     return [];
   if (e.command !== undefined)
+    return [];
+  if (e.text.startsWith(CLAUDE_TMUX_NOTICE_PREFIX))
     return [];
   const isTypedByPerson = e.origin.kind === 'composer';
   if (!isTypedByPerson)
