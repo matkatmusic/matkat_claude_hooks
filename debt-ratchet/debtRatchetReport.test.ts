@@ -119,8 +119,8 @@ test("test_report_scans_untracked_file_inside_submodule", () => {
 test("test_report_names_file_over_line_limit", () => {
   // Steps: a repo has a clean 160 line subject.ts and a matching subject.test.ts, so it has no style debt.
   let longSource = "";
-  for (let i = 0; i < 160; i++)
-    longSource += `export const value${i} = ${i};\n`;
+  for (let i = 0; i < 40; i++)
+    longSource += `export function getValue${i}(): number {\n  const value = ${i};\n  return value;\n}\n`;
   const repo = setUpRepo(longSource);
   // The report names the file in a line that states the 150 line limit.
   const output = runReport(repo);
