@@ -259,6 +259,28 @@ test("test_lockTeamFile_takes_a_lock_at_once_when_its_owner_process_is_dead", ()
   assert.equal(existsSync(`${teamFilePath}.lock`), false);
 });
 
+test("test_lockTeamFile_removes_a_takeover_folder_left_by_a_dead_waiter", () => {
+  // Scenario: a waiter died after it made the takeover folder, so the folder stays for ever.
+  // Steps: run a short child process and keep its process id (dead after it returns).
+  const deadProcessId = spawnSync("sh", ["-c", "echo $$"]).stdout.toString().trim();
+  // Make the lock folder with a pid file that holds the dead process id.
+  const teamFilePath = join(mkdtempSync(join(tmpdir(), "team-")), "t.json");
+  mkdirSync(`${teamFilePath}.lock`);
+  writeFileSync(`${teamFilePath}.lock/pid`, deadProcessId);
+  // Make the takeover folder and set its time stamp to 60 seconds ago.
+  mkdirSync(`${teamFilePath}.lock/takeover`);
+  const oldSeconds = Date.now() / 1000 - 60;
+  utimesSync(`${teamFilePath}.lock/takeover`, oldSeconds, oldSeconds);
+  // Lock and measure the time.
+  const startedAt = Date.now();
+  lockTeamFile(teamFilePath);
+  // Check that the call returned in under 2 seconds and the pid file holds this process id.
+  assert.ok(Date.now() - startedAt < 2000);
+  assert.equal(readFileSync(`${teamFilePath}.lock/pid`, "utf8"), String(process.pid));
+  // Unlock.
+  unlockTeamFile(teamFilePath);
+});
+
 test("test_lockTeamFile_does_not_remove_a_lock_that_a_live_process_took_over", async () => {
   // Scenario: a dead owner's lock has a takeover folder, so another waiter is removing it.
   // Steps: make the lock folder with a dead process id and a takeover folder.
