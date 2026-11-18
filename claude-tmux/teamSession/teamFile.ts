@@ -318,6 +318,14 @@ export function lockTeamFile(teamFilePath: string): void {
           // only the waiter that makes the takeover folder may remove this lock
           const takeoverResult = spawnSync("mkdir", [takeoverPath]);
           if (takeoverResult.status !== 0) {
+            // a waiter that died mid-takeover leaves its takeover folder: remove an old one
+            const takeoverStat = statSync(takeoverPath, { throwIfNoEntry: false });
+            if (takeoverStat !== undefined) {
+              if ((Date.now() - takeoverStat.mtimeMs) / 1000 > LOCK_STALE_SECONDS) {
+                rmSync(takeoverPath, { recursive: true, force: true });
+                continue;
+              }
+            }
             sleepSeconds(LOCK_RETRY_SECONDS);
             continue;
           }
@@ -340,6 +348,14 @@ export function lockTeamFile(teamFilePath: string): void {
       // only the waiter that makes the takeover folder may remove this lock
       const takeoverResult = spawnSync("mkdir", [takeoverPath]);
       if (takeoverResult.status !== 0) {
+        // a waiter that died mid-takeover leaves its takeover folder: remove an old one
+        const takeoverStat = statSync(takeoverPath, { throwIfNoEntry: false });
+        if (takeoverStat !== undefined) {
+          if ((Date.now() - takeoverStat.mtimeMs) / 1000 > LOCK_STALE_SECONDS) {
+            rmSync(takeoverPath, { recursive: true, force: true });
+            continue;
+          }
+        }
         sleepSeconds(LOCK_RETRY_SECONDS);
         continue;
       }
