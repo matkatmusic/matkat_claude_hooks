@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Team, TeamChat } from "./teamFile.ts";
@@ -238,6 +238,66 @@ test("test_lockTeamFile_takes_stale_lock", () => {
   utimesSync(`${teamFilePath}.lock`, oldSeconds, oldSeconds);
   lockTeamFile(teamFilePath);
   assert.equal(existsSync(`${teamFilePath}.lock`), true);
+});
+
+test("test_lockTeamFile_takes_a_lock_at_once_when_its_owner_process_is_dead", () => {
+  // Scenario: a lock folder with a fresh time stamp names an owner process that has ended.
+  // Steps: run a short child process and keep its process id (dead after it returns).
+  const deadProcessId = spawnSync("sh", ["-c", "echo $$"]).stdout.toString().trim();
+  // Make the lock folder with a pid file that holds the dead process id.
+  const teamFilePath = join(mkdtempSync(join(tmpdir(), "team-")), "t.json");
+  mkdirSync(`${teamFilePath}.lock`);
+  writeFileSync(`${teamFilePath}.lock/pid`, deadProcessId);
+  // Lock and measure the time.
+  const startedAt = Date.now();
+  lockTeamFile(teamFilePath);
+  // Check that the call returned in under 2 seconds and the pid file holds this process id.
+  assert.ok(Date.now() - startedAt < 2000);
+  assert.equal(readFileSync(`${teamFilePath}.lock/pid`, "utf8"), String(process.pid));
+  // Unlock. Check the lock folder is gone.
+  unlockTeamFile(teamFilePath);
+  assert.equal(existsSync(`${teamFilePath}.lock`), false);
+});
+
+test("test_lockTeamFile_does_not_remove_a_lock_that_a_live_process_took_over", async () => {
+  // Scenario: a dead owner's lock has a takeover folder, so another waiter is removing it.
+  // Steps: make the lock folder with a dead process id and a takeover folder.
+  const deadProcessId = spawnSync("sh", ["-c", "echo $$"]).stdout.toString().trim();
+  const teamFilePath = join(mkdtempSync(join(tmpdir(), "team-")), "t.json");
+  mkdirSync(`${teamFilePath}.lock/takeover`, { recursive: true });
+  writeFileSync(`${teamFilePath}.lock/pid`, deadProcessId);
+  // Lock in a second process. Wait 1 second. Check that it still waits and the lock is unchanged.
+  const childCode = `const { lockTeamFile } = await import(${JSON.stringify(new URL("./teamFile.ts", import.meta.url).href)}); lockTeamFile(${JSON.stringify(teamFilePath)});`;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", childCode], { stdio: "inherit" });
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const childStillWaiting = child.exitCode === null;
+  child.kill();
+  assert.equal(childStillWaiting, true);
+  assert.equal(readFileSync(`${teamFilePath}.lock/pid`, "utf8"), deadProcessId);
+  // Remove the takeover folder. Check that a lock call takes the lock at once.
+  rmSync(`${teamFilePath}.lock/takeover`, { recursive: true });
+  const startedAt = Date.now();
+  lockTeamFile(teamFilePath);
+  assert.ok(Date.now() - startedAt < 2000);
+  assert.equal(readFileSync(`${teamFilePath}.lock/pid`, "utf8"), String(process.pid));
+});
+
+test("test_lockTeamFile_waits_while_its_owner_process_is_alive", async () => {
+  // Scenario: a lock folder with a fresh time stamp names an owner process that still runs.
+  // Steps: start a child process that sleeps. Make the lock folder with its process id.
+  const sleeper = spawn("sleep", ["5"]);
+  const teamFilePath = join(mkdtempSync(join(tmpdir(), "team-")), "t.json");
+  mkdirSync(`${teamFilePath}.lock`);
+  writeFileSync(`${teamFilePath}.lock/pid`, String(sleeper.pid));
+  // Lock in a second process. Wait 1 second. Check that it has not ended and the pid file is unchanged.
+  const childCode = `const { lockTeamFile } = await import(${JSON.stringify(new URL("./teamFile.ts", import.meta.url).href)}); lockTeamFile(${JSON.stringify(teamFilePath)});`;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", childCode], { stdio: "inherit" });
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const childStillWaiting = child.exitCode === null;
+  child.kill();
+  sleeper.kill();
+  assert.equal(childStillWaiting, true);
+  assert.equal(readFileSync(`${teamFilePath}.lock/pid`, "utf8"), String(sleeper.pid));
 });
 
 test("test_lockTeamFile_waits_until_unlock", async () => {
