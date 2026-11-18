@@ -76,7 +76,7 @@ export function writeTranscript(dir: string, filePath: string): string {
 }
 
 export function executeHook(input: object): string {
-  const run = spawnSync("node", [`${import.meta.dirname}/debtRatchet.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/debtRatchet.ts`], {
     input: JSON.stringify({ settings: DEBT_SETTINGS, ...input }),
     encoding: "utf8",
   });

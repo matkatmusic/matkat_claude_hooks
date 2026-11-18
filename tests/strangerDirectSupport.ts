@@ -63,7 +63,7 @@ export function buildHookSettings(context: DirectContext, script: string): Recor
 
 export function executeHook(context: DirectContext, script: string, input: object | string, cwd: string, extraEnv: Record<string, string> = {}): HookRun {
   const stdin = typeof input === "string" ? input : JSON.stringify({ ...input, settings: buildHookSettings(context, script) });
-  const result = spawnSync("node", [path.join(context.clone, script)], { input: stdin, cwd, env: buildHookEnv(context, extraEnv), encoding: "utf8" });
+  const result = spawnSync("bun", [path.join(context.clone, script)], { input: stdin, cwd, env: buildHookEnv(context, extraEnv), encoding: "utf8" });
   if (result.error)
     throw result.error;
   if (result.status === null)

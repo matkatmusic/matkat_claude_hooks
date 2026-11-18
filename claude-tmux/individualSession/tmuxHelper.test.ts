@@ -170,7 +170,7 @@ test("test_tmuxNewHelper_throws_outside_a_git_repository", () => {
     const environment: NodeJS.ProcessEnv = { ...process.env, TMUX_PANE: "%999" };
     delete environment.CLAUDE_TMUX_SWAP_PERCENT;
     delete environment.CLAUDE_TMUX_NAME;
-    const scriptResult = spawnSync("node", [`${import.meta.dirname}/tmuxHelper.ts`], {
+    const scriptResult = spawnSync("bun", [`${import.meta.dirname}/tmuxHelper.ts`], {
         encoding: "utf8",
         cwd: plainFolder,
         input: JSON.stringify({ prompt: "/tmux-new-helper", cwd: plainFolder, session_title: "t", transcript_path: join(plainFolder, "t.jsonl") }),
@@ -186,7 +186,7 @@ test("test_tmux_helper_ignores_the_tmux_switch_prompt", () => {
     const environment: NodeJS.ProcessEnv = { ...process.env };
     delete environment.TMUX_PANE;
     // Step 2: run the script with the /tmux-switch prompt.
-    const scriptResult = spawnSync("node", [`${import.meta.dirname}/tmuxHelper.ts`], {
+    const scriptResult = spawnSync("bun", [`${import.meta.dirname}/tmuxHelper.ts`], {
         encoding: "utf8",
         input: JSON.stringify({ prompt: "/tmux-switch", cwd: join(import.meta.dirname, "..", "..") }),
         env: environment,

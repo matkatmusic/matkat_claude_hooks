@@ -107,7 +107,7 @@ test("a Stop that follows a Stop-hook block is not counted", () => {
   const sessionId = `sess-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const settings = { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: SCRATCH_ROOT, CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14" };
   const runEvent = (input: object) =>
-    spawnSync("node", [`${import.meta.dirname}/turnCounter.ts`], {
+    spawnSync("bun", [`${import.meta.dirname}/turnCounter.ts`], {
       input: JSON.stringify({ session_id: sessionId, settings, ...input }),
       encoding: "utf8",
     });
@@ -125,7 +125,7 @@ test("SessionEnd keeps the tokens from the last Stop and sets end", async () => 
   const transcript = `${stateDir}/${sessionId}.jsonl`;
   const settings = { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT: SCRATCH_ROOT, CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS: "14" };
   const runEvent = (input: object) =>
-    spawnSync("node", [`${import.meta.dirname}/turnCounter.ts`], {
+    spawnSync("bun", [`${import.meta.dirname}/turnCounter.ts`], {
       input: JSON.stringify({ session_id: sessionId, transcript_path: transcript, settings, ...input }),
       encoding: "utf8",
     });

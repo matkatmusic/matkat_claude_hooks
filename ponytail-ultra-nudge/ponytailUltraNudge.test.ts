@@ -68,7 +68,7 @@ const stateDir = mkdtempSync(`${tmpdir()}/ponytail-nudge-state-`);
 after(() => rmSync(stateDir, { recursive: true, force: true }));
 
 const runHook = (home: string, input: object) =>
-  execFileSync("node", [`${import.meta.dirname}/ponytailUltraNudge.ts`], {
+  execFileSync("bun", [`${import.meta.dirname}/ponytailUltraNudge.ts`], {
     input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir }, ...input }),
   });
 

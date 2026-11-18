@@ -59,7 +59,7 @@ test("test_listHelperWindowJobs_returns_one_window_for_one_line", () => {
 });
 
 function runScriptAs(scriptName: string, scriptArguments: string[], job: string) {
-  return spawnSync("node", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: job, CLAUDE_TMUX_TEAM_CHAT_NAME: `t ${job} 1` } });
+  return spawnSync("bun", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: job, CLAUDE_TMUX_TEAM_CHAT_NAME: `t ${job} 1` } });
 }
 
 test("test_leadJobDirectly_throws_for_a_chat_that_is_not_the_director", () => {
@@ -97,7 +97,7 @@ test("test_startJobTeam_throws_without_exactly_two_arguments", () => {
 test("test_startTeamHelpers_throws_for_a_chat_that_is_not_the_director", () => {
   // Scenario: only the Director starts the helper chats.
   // Step 1: run the script as a Planner chat.
-  const result = spawnSync("node", [`${import.meta.dirname}/startTeamHelpers.ts`], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: "Planner" } });
+  const result = spawnSync("bun", [`${import.meta.dirname}/startTeamHelpers.ts`], { encoding: "utf8", env: { ...process.env, CLAUDE_TMUX_TEAM_NAME: "t", CLAUDE_TMUX_TEAM_JOB: "Planner" } });
   // Step 2: check that it fails with the message.
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /only the Director can start the helper chats/);

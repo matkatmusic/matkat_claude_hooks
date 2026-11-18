@@ -23,7 +23,7 @@ export function writeTranscript(model: string): string {
 }
 
 export function runHook(input: object, env: Record<string, string | undefined> = process.env): string {
-  const run = spawnSync("node", [`${import.meta.dirname}/blockParentEdits.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/blockParentEdits.ts`], {
     input: JSON.stringify({ settings: DEFAULT_SETTINGS, ...input }),
     encoding: "utf8",
     env,

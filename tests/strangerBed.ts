@@ -41,8 +41,8 @@ function writeSettings(config: string, clone: string): void {
   if (settingsExist) {
     settings = JSON.parse(readFileSync(settingsPath, "utf8"));
   }
-  settings.statusLine = { type: "command", command: `node "${clone}/status-line/status.ts"`, refreshInterval: 1 };
-  settings.subagentStatusLine = { type: "command", command: `node "${clone}/status-line/subagentStatusLine.ts"`, refreshInterval: 1 };
+  settings.statusLine = { type: "command", command: `bun "${clone}/status-line/status.ts"`, refreshInterval: 1 };
+  settings.subagentStatusLine = { type: "command", command: `bun "${clone}/status-line/subagentStatusLine.ts"`, refreshInterval: 1 };
   mkdirSync(config, { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
 }

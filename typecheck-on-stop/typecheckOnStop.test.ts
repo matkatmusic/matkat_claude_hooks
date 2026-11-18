@@ -33,7 +33,7 @@ function writeTranscript(dir: string, filePath: string): string {
 }
 
 function executeHook(input: { transcript_path: string; [key: string]: unknown }, maxErrorLines: string = "20", extraEnv: Record<string, string> = {}, keepsBlockCount: boolean = false): string {
-  const run = spawnSync("node", [`${import.meta.dirname}/typecheckOnStop.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/typecheckOnStop.ts`], {
     input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: maxErrorLines }, ...input }),
     encoding: "utf8",
     env: { ...process.env, ...extraEnv },
@@ -156,7 +156,7 @@ function assertMissingHelperLogMakesNoFile(): void {
   const { cwd } = setUpProject("good.ts", "const x: number = 1;\n");
   const missingDir = `${cwd}/subagents`;
   const agent_transcript_path = `${missingDir}/agent-side-call.jsonl`;
-  const run = spawnSync("node", [`${import.meta.dirname}/typecheckOnStop.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/typecheckOnStop.ts`], {
     input: JSON.stringify({ settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES: "20" }, cwd, agent_transcript_path, stop_hook_active: false }),
     encoding: "utf8",
   });

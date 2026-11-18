@@ -96,7 +96,7 @@ test("buildBackgroundTestScript: kills the whole run after killAfterSeconds and 
   const logPath = `${dir}/1.log`;
   const script = buildBackgroundTestScript("sleep 30", logPath, 1);
   spawn("bash", ["-c", script], { detached: true, stdio: "ignore" }).unref();
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, logPath, "10"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, logPath, "10"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
   assert.match(monitor.stdout, /killed after 1 seconds/);
 });
@@ -107,7 +107,7 @@ test("buildBackgroundTestScript: a finished run leaves no kill-timer sleep behin
   // 3577 is a unique sleep length so pgrep finds only this run's timer.
   const script = buildBackgroundTestScript("sleep 1", logPath, 3577);
   spawn("bash", ["-c", script], { detached: true, stdio: "ignore" }).unref();
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, logPath, "10"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, logPath, "10"], { encoding: "utf8" });
   assert.match(monitor.stdout, /exit code: 0/);
   const leftover = spawnSync("pgrep", ["-f", "sleep 3577"], { encoding: "utf8" });
   assert.equal(leftover.stdout, "");
@@ -116,7 +116,7 @@ test("buildBackgroundTestScript: a finished run leaves no kill-timer sleep behin
 test("monitorTestRun.ts: prints the done file when the test run is finished", () => {
   const dir = mkdtempSync(`${tmpdir()}/monitor-test-run-`);
   writeFileSync(`${dir}/1.log.done`, "all passing\nexit code: 0\n");
-  const run = spawnSync("node", [MONITOR_SCRIPT, `${dir}/1.log`, "5"], { encoding: "utf8" });
+  const run = spawnSync("bun", [MONITOR_SCRIPT, `${dir}/1.log`, "5"], { encoding: "utf8" });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /TEST RUN FINISHED/);
   assert.match(run.stdout, /all passing\nexit code: 0/);
@@ -124,7 +124,7 @@ test("monitorTestRun.ts: prints the done file when the test run is finished", ()
 
 test("monitorTestRun.ts: says still in progress when the wait limit passes", () => {
   const dir = mkdtempSync(`${tmpdir()}/monitor-test-run-`);
-  const run = spawnSync("node", [MONITOR_SCRIPT, `${dir}/1.log`, "1"], { encoding: "utf8" });
+  const run = spawnSync("bun", [MONITOR_SCRIPT, `${dir}/1.log`, "1"], { encoding: "utf8" });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /TEST RUN STILL IN PROGRESS/);
 });

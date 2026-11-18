@@ -6,7 +6,7 @@ import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from "n
 import { setUpRepo } from "./debtRatchetTestHelpers.ts";
 
 function runReport(repo: string): string {
-  const run = spawnSync("node", [`${import.meta.dirname}/debtRatchetReport.ts`], { cwd: repo, encoding: "utf8" });
+  const run = spawnSync("bun", [`${import.meta.dirname}/debtRatchetReport.ts`], { cwd: repo, encoding: "utf8" });
   return run.stdout.trim();
 }
 

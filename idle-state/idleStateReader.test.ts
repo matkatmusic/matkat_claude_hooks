@@ -70,7 +70,7 @@ function createPromptProject(): { repo: string; sessionId: string; transcriptPat
 }
 
 function runReader(project: { repo: string; transcriptPath: string }, prompt: string): string {
-  const result = spawnSync("node", [new URL("./idleStateReader.ts", import.meta.url).pathname], {
+  const result = spawnSync("bun", [new URL("./idleStateReader.ts", import.meta.url).pathname], {
     input: JSON.stringify({
       prompt,
       cwd: project.repo,

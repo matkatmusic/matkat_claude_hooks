@@ -10,7 +10,7 @@ function runHook(taskListId: string | undefined) {
   delete env.CLAUDE_CODE_TASK_LIST_ID;
   if (taskListId !== undefined)
     env.CLAUDE_CODE_TASK_LIST_ID = taskListId;
-  return spawnSync("node", [scriptPath], { encoding: "utf8", env });
+  return spawnSync("bun", [scriptPath], { encoding: "utf8", env });
 }
 
 test("id unset: prints a systemMessage naming the variable", () => {

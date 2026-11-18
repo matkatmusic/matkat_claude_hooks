@@ -71,7 +71,7 @@ function runHook(fixture: Fixture, overrides: object = {}, taskListId: string | 
         ...overrides,
     };
     const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: taskListId ?? undefined, CLAUDE_TMUX_TEAM_JOB: teamJob };
-    const result = spawnSync("node", [`${import.meta.dirname}/committedTaskCheck.ts`], {
+    const result = spawnSync("bun", [`${import.meta.dirname}/committedTaskCheck.ts`], {
         input: JSON.stringify(payload),
         encoding: "utf8",
         env: environment,
@@ -89,7 +89,7 @@ function runHookAndGetExitStatus(fixture: Fixture, teamJob: string | undefined):
         settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: fixture.stateDir },
     };
     const environment: Record<string, string | undefined> = { ...process.env, HOME: fixture.home, CLAUDE_CODE_TASK_LIST_ID: TASK_LIST_ID, CLAUDE_TMUX_TEAM_JOB: teamJob };
-    const result = spawnSync("node", [`${import.meta.dirname}/committedTaskCheck.ts`], {
+    const result = spawnSync("bun", [`${import.meta.dirname}/committedTaskCheck.ts`], {
         input: JSON.stringify(payload),
         encoding: "utf8",
         env: environment,

@@ -24,7 +24,7 @@ function assertMissingHelperLogMakesNoFile(): void {
   const rootDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-missing-log-`);
   const missingDir = `${rootDir}/subagents`;
   const agent_transcript_path = `${missingDir}/agent-side-call.jsonl`;
-  const run = spawnSync("node", [`${import.meta.dirname}/debtRatchet.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/debtRatchet.ts`], {
     input: JSON.stringify({ settings: { ...DEBT_SETTINGS, CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR: ledgerDir }, agent_transcript_path, session_id: "e2e-side-call", stop_hook_active: false }),
     encoding: "utf8",
   });
@@ -43,7 +43,7 @@ function assertDeletedEditedFilesAreSkipped(): void {
   const sourceEdit = { type: "tool_use", id: "t2", name: "Edit", input: { file_path: `${transcriptDir}/zz-scratch-repro.ts` } };
   const editLine = JSON.stringify({ type: "assistant", message: { content: [testEdit, sourceEdit] } });
   writeFileSync(transcript_path, `${JSON.stringify({ type: "user", message: { content: "hello" } })}\n${editLine}\n`);
-  const run = spawnSync("node", [`${import.meta.dirname}/debtRatchet.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/debtRatchet.ts`], {
     input: JSON.stringify({ settings: DEBT_SETTINGS, transcript_path, session_id: "e2e-deleted-files", stop_hook_active: false }),
     encoding: "utf8",
   });
@@ -76,7 +76,7 @@ test("a .spec.ts file edited with its source file is not reported as no test fil
 function assertMissingLedgerDirFailsHook(): void {
   const settings = { ...DEBT_SETTINGS } as Record<string, string>;
   delete settings.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR;
-  const run = spawnSync("node", [`${import.meta.dirname}/debtRatchet.ts`], {
+  const run = spawnSync("bun", [`${import.meta.dirname}/debtRatchet.ts`], {
     input: JSON.stringify({ settings, transcript_path: "/unused", session_id: "e2e-missing", stop_hook_active: false }),
     encoding: "utf8",
   });

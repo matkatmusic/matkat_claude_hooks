@@ -29,7 +29,7 @@ test("ignores phrases inside quotes or backticks", () => {
 });
 
 function runHook(input: object, taskListId = "test"): string {
-  const result = spawnSync("node", [new URL("./nudgeTaskList.ts", import.meta.url).pathname], {
+  const result = spawnSync("bun", [new URL("./nudgeTaskList.ts", import.meta.url).pathname], {
     input: JSON.stringify(input),
     encoding: "utf8",
     env: { ...process.env, CLAUDE_CODE_TASK_LIST_ID: taskListId },

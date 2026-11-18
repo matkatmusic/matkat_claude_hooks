@@ -64,7 +64,7 @@ const HOOK_SETTINGS = {
 };
 
 function runHook(input: object): string {
-  const result = spawnSync("node", [new URL("./unlistedItems.ts", import.meta.url).pathname], {
+  const result = spawnSync("bun", [new URL("./unlistedItems.ts", import.meta.url).pathname], {
     input: JSON.stringify({ settings: HOOK_SETTINGS, ...input }),
     encoding: "utf8",
   });

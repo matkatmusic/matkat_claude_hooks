@@ -10,7 +10,7 @@ const modulePath = `${import.meta.dirname}/sessionTasks.ts`;
 
 function runModuleSnippet(snippet: string, input: string) {
     const code = `import * as sessionTasks from ${JSON.stringify(modulePath)};\n${snippet}`;
-    return spawnSync("node", ["--input-type=module", "-e", code], { encoding: "utf8", input });
+    return spawnSync("bun", ["-e", code], { encoding: "utf8", input });
 }
 
 function makeTaskFolder(tasks: Record<string, unknown>[]): string {

@@ -14,7 +14,7 @@ function runHook(prompt: string, home: string, taskListId: string | undefined) {
     if (taskListId !== undefined)
         env.CLAUDE_CODE_TASK_LIST_ID = taskListId;
     const input = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt, cwd: home });
-    return spawnSync("node", [scriptPath], { encoding: "utf8", env, input });
+    return spawnSync("bun", [scriptPath], { encoding: "utf8", env, input });
 }
 
 function makeHomeWithTasks(tasks: Record<string, unknown>[]): string {

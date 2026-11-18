@@ -15,7 +15,7 @@ function runStop(editedFiles: string[], extra: object): string {
   const home = mkdtempSync(join(tmpdir(), "reflow-stop-home-"));
   const stateDir = mkdtempSync(join(tmpdir(), "reflow-stop-state-"));
   writeFileSync(join(stateDir, "stop-session.json"), JSON.stringify({ editedFiles }));
-  return execFileSync("node", ["--no-inspect", SCRIPT], {
+  return execFileSync("bun", [SCRIPT], {
     input: JSON.stringify({
       hook_event_name: "Stop", session_id: "stop-session", transcript_path: "/t/stop-session.jsonl",
       settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: stateDir, CLAUDE_HOOKS_REFLOW_MAX_REWRITES: "2" }, ...extra,
