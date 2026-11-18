@@ -8,6 +8,7 @@ import { sendTextToChat } from "../shared/chatSend.ts";
 // import { fillTemplate } from "../shared/chatSwap.ts";
 import { fillTemplate, getGitRootOfWorkDirectory } from "../shared/chatSwap.ts";
 import { startHelperChats } from "./teamStart.ts";
+import { isTmuxSessionNameTaken } from "../individualSession/singleChat.ts";
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
 const team = parseTeamArguments(process.argv.slice(2), values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIRECTOR_MODEL"]);
@@ -18,8 +19,9 @@ const directorChatName = buildChatName(team.name, directorJob, 1);
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], team.name);
 
 if (existsSync(teamFilePath)) {
-  const hasSessionCode = tmux_lib.tmux_hasSession(team.name);
-  if (hasSessionCode === 0)
+  // const hasSessionCode = tmux_lib.tmux_hasSession(team.name);
+  // if (hasSessionCode === 0)
+  if (isTmuxSessionNameTaken(team.name))
     throw new Error(`team ${team.name} already exists: ${teamFilePath}`);
 }
 

@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 // import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, writeFileSync } from "node:fs";
-import { mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fillTemplate } from "../shared/chatSwap.ts";
 import { buildChatName } from "./teamCommand.ts";
@@ -295,16 +295,65 @@ export function lockTeamFile(teamFilePath: string): void {
   const startedAt = Date.now();
   while (Date.now() - startedAt < LOCK_GIVE_UP_SECONDS * 1000) {
     const mkdirResult = spawnSync("mkdir", [lockPath]);
-    if (mkdirResult.status === 0)
+    if (mkdirResult.status === 0) {
+      writeFileSync(`${lockPath}/pid`, String(process.pid));
       return;
+    }
     // const lockAgeSeconds = (Date.now() - statSync(lockPath).mtimeMs) / 1000;
     const lockStat = statSync(lockPath, { throwIfNoEntry: false });
     // the other writer removed the lock between mkdir and stat
     if (lockStat === undefined)
       continue;
+    const pidPath = `${lockPath}/pid`;
+    const takeoverPath = `${lockPath}/takeover`;
+    // cat fails when there is no pid file yet (owner between mkdir and pid write) or the lock is gone
+    const ownerPidResult = spawnSync("cat", [pidPath], { encoding: "utf8" });
+    // if (existsSync(pidPath)) {
+    //   const ownerPidText = readFileSync(pidPath, "utf8");
+    if (ownerPidResult.status === 0) {
+      const ownerPidText = ownerPidResult.stdout;
+      if (ownerPidText !== "") {
+        const ownerCheckResult = spawnSync("kill", ["-0", ownerPidText]);
+        if (ownerCheckResult.status !== 0) {
+          // only the waiter that makes the takeover folder may remove this lock
+          const takeoverResult = spawnSync("mkdir", [takeoverPath]);
+          if (takeoverResult.status !== 0) {
+            sleepSeconds(LOCK_RETRY_SECONDS);
+            continue;
+          }
+          const ownerRecheckResult = spawnSync("cat", [pidPath], { encoding: "utf8" });
+          if (ownerRecheckResult.status === 0) {
+            if (ownerRecheckResult.stdout === ownerPidText) {
+              rmSync(lockPath, { recursive: true });
+              continue;
+            }
+          }
+          // a new owner took the lock: leave it
+          rmSync(takeoverPath, { recursive: true, force: true });
+          continue;
+        }
+      }
+    }
     const lockAgeSeconds = (Date.now() - lockStat.mtimeMs) / 1000;
     if (lockAgeSeconds > LOCK_STALE_SECONDS) {
-      rmdirSync(lockPath);
+      // rmdirSync(lockPath);
+      // only the waiter that makes the takeover folder may remove this lock
+      const takeoverResult = spawnSync("mkdir", [takeoverPath]);
+      if (takeoverResult.status !== 0) {
+        sleepSeconds(LOCK_RETRY_SECONDS);
+        continue;
+      }
+      // making the takeover folder renews the lock mtime, so check that it is still the same folder
+      const lockRecheckStat = statSync(lockPath, { throwIfNoEntry: false });
+      if (lockRecheckStat !== undefined) {
+        if (lockRecheckStat.ino === lockStat.ino) {
+          if (lockRecheckStat.birthtimeMs === lockStat.birthtimeMs) {
+            rmSync(lockPath, { recursive: true });
+            continue;
+          }
+        }
+      }
+      rmSync(takeoverPath, { recursive: true, force: true });
       continue;
     }
     sleepSeconds(LOCK_RETRY_SECONDS);
@@ -313,7 +362,8 @@ export function lockTeamFile(teamFilePath: string): void {
 }
 
 export function unlockTeamFile(teamFilePath: string): void {
-  rmdirSync(`${teamFilePath}.lock`);
+  // rmdirSync(`${teamFilePath}.lock`);
+  rmSync(`${teamFilePath}.lock`, { recursive: true });
 }
 
 // export function inputBoxHoldsMessage(screen: string, text: string): boolean {
