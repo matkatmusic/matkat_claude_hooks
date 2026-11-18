@@ -2,6 +2,7 @@ import tseslint from 'typescript-eslint';
 import stylistic from '@stylistic/eslint-plugin';
 import css from '@eslint/css';
 import html from '@html-eslint/eslint-plugin';
+import checkFile from 'eslint-plugin-check-file';
 
 const FUNCTION_VERBS = [
   'get', 'read', 'load', 'fetch', 'collect', 'extract', 'open',
@@ -220,6 +221,14 @@ export default [
       '@typescript-eslint/explicit-member-accessibility': 'error',
       'no-var': 'error',
       'prefer-destructuring': ['error', { VariableDeclarator: { array: false, object: true }, AssignmentExpression: { array: false, object: true } }],
+    },
+  },
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { 'check-file': checkFile },
+    rules: {
+      'check-file/filename-naming-convention': ['error', { '**/*.ts': 'CAMEL_CASE' }, { ignoreMiddleExtensions: true }],
     },
   },
   buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
