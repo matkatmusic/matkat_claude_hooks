@@ -2,12 +2,15 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
 // import { mkdtempSync } from "node:fs";
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+// import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 
 const { startHelperChats, listHelperWindowJobs } = await import("./teamStart.ts");
-const { writeTeamFile } = await import("./teamFile.ts");
+// const { writeTeamFile } = await import("./teamFile.ts");
+const { writeTeamFile, buildTeamFilePath } = await import("./teamFile.ts");
 
 test("test_startHelperChats_throws_when_a_helper_chat_exists", () => {
   // Scenario: the team file already has a chat for one of the helper roles.
@@ -114,4 +117,26 @@ test("test_startClaudeTeam_throws_outside_a_git_repository", () => {
   // Step 4: check that it fails with the message.
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /must start inside a git repository/);
+});
+
+test("test_startClaudeTeam_stops_when_a_team_with_a_dotted_name_is_running", (t) => {
+  // Scenario: a team file exists and a tmux session with the same dotted name is running. The script must say the team already exists.
+  // Step 1: start a tmux session named with a dot. Kill it by session id after the test: the dot breaks a name target.
+  const teamName = `ct.dot ${process.pid}-${Date.now()}`;
+  const newSession = spawnSync("tmux", ["new-session", "-d", "-P", "-F", "#{session_id}", "-s", teamName, "sleep", "60"], { encoding: "utf8" });
+  assert.equal(newSession.status, 0, newSession.stderr);
+  const dotSessionId = newSession.stdout.trim();
+  // Step 2: write the team file for that name. Remove it after the test.
+  const stateDirectory = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team")["CLAUDE_HOOKS_SESSION_STATE_DIR"];
+  const teamFilePath = buildTeamFilePath(stateDirectory, teamName);
+  writeTeamFile(teamFilePath, { teamName, workDirectory: "/w", chats: [] });
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", dotSessionId]);
+    rmSync(teamFilePath, { force: true });
+  });
+  // Step 3: run the start script from inside this git repository.
+  const result = spawnSync("bun", [`${import.meta.dirname}/startClaudeTeam.ts`, "--team", "--name", teamName], { encoding: "utf8", cwd: import.meta.dirname, env: { ...process.env, BUN_JSC_useTailCalls: "0" } });
+  // Step 4: check that it fails with the message.
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /already exists/);
 });
