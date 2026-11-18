@@ -25,7 +25,7 @@ const FUNCTION_NAME_SELECTOR = [
   `MethodDefinition[kind="method"] > Identifier.key[name!=/${VERB_WORD}/]`,
 ].join(', ');
 
-export default [
+const BASE_CONFIG = [
   {
     basePath: '/',
     ignores: [
@@ -131,4 +131,53 @@ export default [
       '@html-eslint/require-attrs': ['error', { tag: 'script', attr: 'src', message: 'Move the script block to a separate .js file.' }],
     },
   },
+];
+
+const BASE_SELECTORS = BASE_CONFIG[1].rules['no-restricted-syntax'].slice(1);
+const TEST_FILES = ['**/*.test.ts', '**/*.spec.ts'];
+const REGISTER_FILES = ['**/register.ts'];
+const ALLOWED_TOP_LEVEL_NODE_TYPES = [
+  'ImportDeclaration', 'ExportNamedDeclaration', 'ExportDefaultDeclaration', 'ExportAllDeclaration',
+  'TSTypeAliasDeclaration', 'TSInterfaceDeclaration', 'TSEnumDeclaration',
+  'FunctionDeclaration', 'TSDeclareFunction', 'ClassDeclaration', 'VariableDeclaration',
+];
+const MAIN_GUARD_SELECTOR = 'IfStatement[test.type="MemberExpression"][test.object.type="MetaProperty"][test.property.name="main"]:not([alternate])';
+const TEST_CALL_SELECTOR = 'ExpressionStatement[expression.type="CallExpression"][expression.callee.name=/^(test|describe)$/]';
+const AWAIT_IMPORT_SELECTOR = 'ExpressionStatement[expression.type="AwaitExpression"][expression.argument.type="ImportExpression"]';
+const HOOK_DECLARATION_EXEMPTION = ':not([declarations.0.id.typeAnnotation.typeAnnotation.typeName.name=/^(Hook|Register)$/])';
+const GLOBAL_VARIABLE_MESSAGE = 'No global variables: move the value into a function, or into a static member of a class that has a private constructor and a getInstance() method.';
+const TOP_LEVEL_CODE_MESSAGE = 'Write code inside functions. The top level allows only imports, exports, type, interface, enum, function and class declarations, and one `if (import.meta.main) { main(); }` block.';
+
+function buildTopLevelSelectors(extraAllowedSelectors, variableExemption) {
+  const allowedSelectors = [...ALLOWED_TOP_LEVEL_NODE_TYPES, MAIN_GUARD_SELECTOR, ...extraAllowedSelectors];
+  return [
+    {
+      selector: `Program > VariableDeclaration${variableExemption}, Program > ExportNamedDeclaration > VariableDeclaration${variableExemption}`,
+      message: GLOBAL_VARIABLE_MESSAGE,
+    },
+    {
+      selector: `Program > :not(${allowedSelectors.join(', ')})`,
+      message: TOP_LEVEL_CODE_MESSAGE,
+    },
+    {
+      selector: `Program > ${MAIN_GUARD_SELECTOR} > BlockStatement > :not(ExpressionStatement[expression.callee.name="main"])`,
+      message: TOP_LEVEL_CODE_MESSAGE,
+    },
+  ];
+}
+
+function buildRestrictedSyntaxConfig(files, ignores, topLevelSelectors) {
+  return {
+    basePath: '/',
+    files,
+    ignores,
+    rules: { 'no-restricted-syntax': ['error', ...BASE_SELECTORS, ...topLevelSelectors] },
+  };
+}
+
+export default [
+  ...BASE_CONFIG,
+  buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
+  buildRestrictedSyntaxConfig(TEST_FILES, [], buildTopLevelSelectors([TEST_CALL_SELECTOR, AWAIT_IMPORT_SELECTOR], '')),
+  buildRestrictedSyntaxConfig(REGISTER_FILES, [], buildTopLevelSelectors([], HOOK_DECLARATION_EXEMPTION)),
 ];
