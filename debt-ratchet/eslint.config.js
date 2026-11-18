@@ -175,8 +175,40 @@ function buildRestrictedSyntaxConfig(files, ignores, topLevelSelectors) {
   };
 }
 
+const SHEBANG_MAIN_MESSAGE = 'A file with a #! first line needs a main() function.';
+const FIRST_LINE_START = { line: 1, column: 0 };
+const FIRST_LINE_SHEBANG_END = { line: 1, column: 2 };
+
+const shebangRequiresMainRule = {
+  meta: { type: 'problem', schema: [] },
+  create(context) {
+    return {
+      Program(program) {
+        const startsWithShebang = context.sourceCode.text.startsWith('#!');
+        if (!startsWithShebang)
+          return;
+        let hasMainFunction = false;
+        for (const statement of program.body) {
+          const declaration = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+          const isMainFunction = declaration?.type === 'FunctionDeclaration' && declaration.id?.name === 'main';
+          if (isMainFunction)
+            hasMainFunction = true;
+        }
+        if (!hasMainFunction)
+          context.report({ loc: { start: FIRST_LINE_START, end: FIRST_LINE_SHEBANG_END }, message: SHEBANG_MAIN_MESSAGE });
+      },
+    };
+  },
+};
+
 export default [
   ...BASE_CONFIG,
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { local: { rules: { 'shebang-requires-main': shebangRequiresMainRule } } },
+    rules: { 'local/shebang-requires-main': 'error' },
+  },
   buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
   buildRestrictedSyntaxConfig(TEST_FILES, [], buildTopLevelSelectors([TEST_CALL_SELECTOR, AWAIT_IMPORT_SELECTOR], '')),
   buildRestrictedSyntaxConfig(REGISTER_FILES, [], buildTopLevelSelectors([], HOOK_DECLARATION_EXEMPTION)),
