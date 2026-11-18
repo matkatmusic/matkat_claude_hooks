@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -34,11 +34,11 @@ function spawnTestRun(testRun: FoundTestRun, cwd: string, logPath: string, killA
     }
     // ponytail: kill -KILL 0 needs detached:true so this bash leads its own process group.
     spawn("bash", ["-c", buildBackgroundTestScript(testCommand, logPath, killAfterSeconds), "bash", ...testArgs], { cwd, env, detached: true, stdio: "ignore" }).unref();
-    return `${runnerName} ${testArgs.join(" ")} runs in the background in ${cwd}.\nRun this command with a Bash timeout of 300000 to be notified when the test run is finished:\nnode ${import.meta.dirname}/monitor-test-run.ts ${logPath}\nThen read the log: ${logPath}`;
+    return `${runnerName} ${testArgs.join(" ")} runs in the background in ${cwd}.\nRun this command with a Bash timeout of 300000 to be notified when the test run is finished:\nbun ${import.meta.dirname}/monitor-test-run.ts ${logPath}\nThen read the log: ${logPath}`;
   }
 
   spawn("bash", ["-c", buildBackgroundTestScript(buildInitialPass(logPath), logPath, killAfterSeconds)], { cwd, env, detached: true, stdio: "ignore" }).unref();
-  return `The Full Suite Testing command runs in the background in ${cwd}.\nRun this command with a Bash timeout of 300000 to be notified when the test run is finished:\nnode ${import.meta.dirname}/monitor-test-run.ts ${logPath}\nThen read the log: ${logPath}`;
+  return `The Full Suite Testing command runs in the background in ${cwd}.\nRun this command with a Bash timeout of 300000 to be notified when the test run is finished:\nbun ${import.meta.dirname}/monitor-test-run.ts ${logPath}\nThen read the log: ${logPath}`;
 }
 
 if (import.meta.main) {
@@ -82,7 +82,7 @@ if (import.meta.main) {
       runsFullSuite = true;
   }
   if (runsFullSuite)
-    permissionDecisionReason += "\n\nTo run one test file, name it: node --test path/to/file.test.ts";
+    permissionDecisionReason += "\n\nTo run one test file, name it: bun test path/to/file.test.ts";
   console.log(
     JSON.stringify({
       hookSpecificOutput: {

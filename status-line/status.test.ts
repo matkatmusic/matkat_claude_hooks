@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { strict as assert } from "node:assert";
 
 const { ANNOYANCE_COLORS, DASH, computeAnnoyanceLevel, formatBar, selectBudgetColor, formatCountdown, countTurns, computeDayOfWeek, formatTokens, formatOrDash, selectColor, resetColor, computeSecondsUntilNextDay, computeSecondsUntilReset, getSessionTokens, computeWeeklyBudget, formatWeeklyResetSuffix, selectWeeklyUsageColor } = await import("./status.ts");

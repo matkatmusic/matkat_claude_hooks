@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // First prompt only: hands the model the recent .idleState files; skips when the prompt runs catch-up.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname } from "node:path";

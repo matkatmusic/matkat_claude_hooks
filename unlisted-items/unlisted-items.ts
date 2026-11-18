@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { getSetting } from "../shared/settings.ts";
 // Stop hook: blocks when the reply names work still to build that isn't on the task list.

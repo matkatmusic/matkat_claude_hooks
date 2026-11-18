@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // UserPromptSubmit gate: flags ambiguous prompts. Tune knobs below; add "jdi" to opt out.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";

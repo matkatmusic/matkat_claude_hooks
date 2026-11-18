@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Stop hook: on the first turn, blocks until the model read and named each idle-state file.
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";

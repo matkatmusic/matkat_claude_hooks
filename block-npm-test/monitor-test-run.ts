@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { existsSync, readFileSync } from "node:fs";
 import { setTimeout } from "node:timers/promises";
 // Default wait: a sub-agent's prompt cache lives 5 minutes, so each wait must end before that.
@@ -22,5 +22,5 @@ while (elapsedSeconds < waitLimitSeconds) {
   await setTimeout(pollSeconds * 1000);
   elapsedSeconds += pollSeconds;
 }
-console.log(`TEST RUN STILL IN PROGRESS. Run this command again: node ${process.argv[1]} ${logPath}`);
+console.log(`TEST RUN STILL IN PROGRESS. Run this command again: bun ${process.argv[1]} ${logPath}`);
 process.exit(0);

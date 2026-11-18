@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Claude Code status line. Docs: code.claude.com/docs/en/statusline
 import { existsSync, readFileSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";

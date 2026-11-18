@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -24,12 +24,12 @@ test("hook: returns immediately, and the one-file test run finishes in the backg
   writeFileSync(`${project}/slow.test.js`, 'require("node:test").test("slow", async () => { await new Promise((r) => setTimeout(r, 3000)); });');
   const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test slow.test.js" }, settings: HOOK_SETTINGS });
   const start = Date.now();
-  const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   assert.ok(Date.now() - start < 2500, "the hook does not wait for the 3 second test");
   const reason: string = JSON.parse(hook.stdout).hookSpecificOutput.permissionDecisionReason;
-  const monitorCommand = reason.match(/node \S+monitor-test-run\.ts (\S+\.log)/);
+  const monitorCommand = reason.match(/bun \S+monitor-test-run\.ts (\S+\.log)/);
   assert.ok(monitorCommand, reason);
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
   assert.match(monitor.stdout, /exit code: 0/);
   assert.match(readFileSync(monitorCommand[1], "utf8"), /pass 1/);
@@ -43,11 +43,11 @@ test("hook: a --test-name-pattern flag scopes the background run to one test in 
     'const { test } = require("node:test"); test("keep", () => {}); test("skip", () => { throw new Error("should not run"); });',
   );
   const input = JSON.stringify({ cwd: project, tool_input: { command: "node --test --test-name-pattern=^keep$ two.test.js" }, settings: HOOK_SETTINGS });
-  const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   const reason: string = JSON.parse(hook.stdout).hookSpecificOutput.permissionDecisionReason;
-  const monitorCommand = reason.match(/node \S+monitor-test-run\.ts (\S+\.log)/);
+  const monitorCommand = reason.match(/bun \S+monitor-test-run\.ts (\S+\.log)/);
   assert.ok(monitorCommand, reason);
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
   assert.match(monitor.stdout, /exit code: 0/);
   const log = readFileSync(monitorCommand[1], "utf8");
@@ -57,19 +57,19 @@ test("hook: a --test-name-pattern flag scopes the background run to one test in 
 
 function runHook(project: string, command: string, env = HOOK_TEST_ENV) {
   const input = JSON.stringify({ cwd: project, tool_input: { command }, settings: HOOK_SETTINGS });
-  return spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env });
+  return spawnSync("bun", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env });
 }
 
 function monitorLogPaths(hookStdout: string): string[] {
   const reason: string = JSON.parse(hookStdout).hookSpecificOutput.permissionDecisionReason;
   const logPaths: string[] = [];
-  for (const match of reason.matchAll(/node \S+monitor-test-run\.ts (\S+\.log)/g))
+  for (const match of reason.matchAll(/bun \S+monitor-test-run\.ts (\S+\.log)/g))
     logPaths.push(match[1]);
   return logPaths;
 }
 
 function waitForLog(logPath: string): string {
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, logPath, "30"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, logPath, "30"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
   return monitor.stdout;
 }
@@ -123,12 +123,12 @@ test("hook: returns immediately, and the full-suite test run finishes in the bac
   writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
   const input = JSON.stringify({ cwd: project, tool_input: { command: "npm test" }, settings: HOOK_SETTINGS });
   const start = Date.now();
-  const hook = spawnSync("node", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/block-npm-test.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
   assert.ok(Date.now() - start < 2500, "the hook does not wait for the suite to finish");
   const reason: string = JSON.parse(hook.stdout).hookSpecificOutput.permissionDecisionReason;
-  const monitorCommand = reason.match(/node \S+monitor-test-run\.ts (\S+\.log)/);
+  const monitorCommand = reason.match(/bun \S+monitor-test-run\.ts (\S+\.log)/);
   assert.ok(monitorCommand, reason);
-  const monitor = spawnSync("node", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
+  const monitor = spawnSync("bun", [MONITOR_SCRIPT, monitorCommand[1], "30"], { encoding: "utf8" });
   assert.match(monitor.stdout, /TEST RUN FINISHED/);
   assert.match(monitor.stdout, /all passing/);
   assert.match(monitor.stdout, /exit code: 0/);

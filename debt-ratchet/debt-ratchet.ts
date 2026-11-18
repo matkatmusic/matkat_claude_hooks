@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, basename } from "node:path";
 import { findEditedFilePaths, findSubagentEditedFilePaths } from "../shared/debt-transcript.ts";

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Counts turns per conversation into the session state file's sittings list.
 
 import { mkdir, readdir, readFile, stat, unlink } from "node:fs/promises";

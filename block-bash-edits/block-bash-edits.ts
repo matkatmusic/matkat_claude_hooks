@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { isBashContentWrite } from "../shared/bash-content-write.ts";
 // PreToolUse: blocks Bash commands that write file content, in every session. Use Edit/Write instead.

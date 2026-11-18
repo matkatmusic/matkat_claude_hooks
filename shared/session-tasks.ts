@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 
 export const TASK_LIST_ID_NOT_SET_REASON = "CLAUDE_CODE_TASK_LIST_ID is not set, so the task list is unknown.";
 
@@ -17,7 +16,7 @@ export function findTaskFolder(): string | undefined {
     const taskListId = process.env.CLAUDE_CODE_TASK_LIST_ID;
     if (!taskListId)
         return undefined;
-    return `${homedir()}/.claude/tasks/${taskListId}`;
+    return `${process.env.HOME}/.claude/tasks/${taskListId}`;
 }
 
 function compareTaskNumbers(first: { taskNumber: number }, second: { taskNumber: number }): number {

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Splits the debt log files into files to split first (one at a time) and files to fix after (in parallel).
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";

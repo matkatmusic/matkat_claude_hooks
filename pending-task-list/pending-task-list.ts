@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { buildSubjectListForStatus, findTaskFolder, readPromptFromStdin, TASK_LIST_ID_NOT_SET_REASON, writeBlockDecision } from "../shared/session-tasks.ts";
 
 // UserPromptSubmit hook: /pending-task-list blocks the prompt and shows the subject of each pending session task.

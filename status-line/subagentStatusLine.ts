@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Claude Code subagent status line. Docs: code.claude.com/docs/en/statusline#subagent-status-lines
 import { readFileSync } from "node:fs";
 import { CYAN, RED, RESET, formatTokens, formatOrDash } from "./status.ts";

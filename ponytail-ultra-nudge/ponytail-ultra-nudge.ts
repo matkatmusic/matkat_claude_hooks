@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { existsSync, readFileSync } from "node:fs";
 import { getSessionStatePath, readSessionState, writeSessionState, type SessionState } from "../shared/session-state.ts";
 import { getSetting } from "../shared/settings.ts";

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync, readdirSync, utimesSync } from "node:fs";

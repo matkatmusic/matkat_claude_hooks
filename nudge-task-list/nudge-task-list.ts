@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { checkTaskListId } from "../shared/task-list-id.ts";
 // Stop hook: when the reply announces work is starting, tell the agent to use the task list.
