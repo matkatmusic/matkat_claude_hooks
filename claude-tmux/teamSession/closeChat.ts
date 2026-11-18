@@ -7,7 +7,9 @@ import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 import { buildHandle, buildTeamFilePath, findChatWithStatus, listReplacedNoticeChats, lockTeamFile, readTeamFile, removeChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 import type { Team } from "./teamFile.ts";
 // import { removeHandoffDoneMarker, waitForIdleChat } from "../chat-swap/chatSwap.ts";
-import { fillTemplate, removeHandoffDoneMarker, waitForIdleChat } from "../shared/chatSwap.ts";
+// import { fillTemplate, removeHandoffDoneMarker, waitForIdleChat } from "../shared/chatSwap.ts";
+// import { fillTemplate, removeHandoffDoneMarker, waitForIdleChatAndClearInputBox } from "../shared/chatSwap.ts";
+import { fillTemplate, removeHandoffDoneMarker, waitForIdleChatAndClearInputBox, wrapShellWord } from "../shared/chatSwap.ts";
 // import { sendExitToChat, sendTextToChat } from "./teamSend.ts";
 import { sendExitToChat, sendTextToChat } from "../shared/chatSend.ts";
 
@@ -24,6 +26,16 @@ if (ownJob === undefined)
   throw new Error("closeChat.ts must run inside a claude-tmux team chat");
 if (ownJob !== job)
   throw new Error(`only the chat of job ${job} can close its old chat`);
+
+const isBackgroundRun = process.env.CLAUDE_TMUX_TEAM_CLOSE_IN_BACKGROUND === "1";
+if (!isBackgroundRun) {
+  const logPath = `${DISPATCHER_DIR}/claude-tmux-team-swap.log`;
+  const environmentWords = `CLAUDE_TMUX_TEAM_NAME=${wrapShellWord(teamName)} CLAUDE_TMUX_TEAM_JOB=${wrapShellWord(ownJob)} CLAUDE_TMUX_TEAM_CLOSE_IN_BACKGROUND=1`;
+  const backgroundCommand = `${environmentWords} bun ${wrapShellWord(import.meta.filename)} ${wrapShellWord(job)} >> ${wrapShellWord(logPath)} 2>&1`;
+  tmux_lib.run(["tmux", "run-shell", "-b", backgroundCommand], { capture_output: true, text: true, check: true });
+  console.log(`the close of the old chat of job ${job} runs in the background. The old chat closes when it is idle. Errors go to the file ${logPath}`);
+  process.exit(0);
+}
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
 const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], teamName);
@@ -91,7 +103,9 @@ for (const noticeChat of listReplacedNoticeChats(team, oldChat, newChat.chatName
 //   if (!isOldChatReadyForExit)
 //     tmux_lib.sleep(1);
 // }
-waitForIdleChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds);
+// waitForIdleChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds);
+// closeChat.ts runs in the background, so wait as long as the old chat needs; a closed pane still throws at once
+waitForIdleChatAndClearInputBox(oldChat.pane, oldChat.chatName, Number.POSITIVE_INFINITY);
 sendExitToChat(oldChat.pane, oldChat.chatName, handoffWaitSeconds, closeWaitSeconds);
 // sendTextToChat(oldChat.pane, oldChat.chatName, "/exit", dialogWaitSeconds);
 
