@@ -41,7 +41,7 @@ function executeSubagentTurn(session: Session, prompt: string): JsonRecord[] {
 }
 
 function setSubagentHooksEnabled(clone: string, on: boolean): void {
-  for (const hook of ["typecheck-on-stop", "debt-ratchet"]) {
+  for (const hook of ["typecheckOnStop", "debtRatchet"]) {
     setEnablement(clone, hook, "Stop", on);
     setEnablement(clone, hook, "SubagentStop", on);
   }
@@ -50,49 +50,49 @@ function setSubagentHooksEnabled(clone: string, on: boolean): void {
 // Rows 54 and 55: the Stop switches stay off, so only SubagentStop can make the message.
 export function executeSubagentStopRows(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
-  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  setEnablement(clone, "clarifyAmbiguous", "UserPromptSubmit", false);
   setSubagentHooksEnabled(clone, false);
   const typecheckRow = executeOffOnPair(rows, session, bed, TYPECHECK_SUBAGENT_ROW, executeSubagentTurn);
-  typecheckRow.hook = "typecheck-on-stop (subagent)";
+  typecheckRow.hook = "typecheckOnStop (subagent)";
   removePromptFiles(bed);
-  setEnablement(clone, "typecheck-on-stop", "SubagentStop", false);
+  setEnablement(clone, "typecheckOnStop", "SubagentStop", false);
   const debtRow = executeOffOnPair(rows, session, bed, DEBT_SUBAGENT_ROW, executeSubagentTurn);
-  debtRow.hook = "debt-ratchet (subagent)";
+  debtRow.hook = "debtRatchet (subagent)";
   removePromptFiles(bed);
   setSubagentHooksEnabled(clone, true);
-  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", true);
+  setEnablement(clone, "clarifyAmbiguous", "UserPromptSubmit", true);
 }
 
 function addTypeChainRow(rows: Row[], session: Session, bed: string, clone: string): void {
-  setEnablement(clone, "debt-ratchet", "Stop", false);
+  setEnablement(clone, "debtRatchet", "Stop", false);
   const typeRecords = executeFullTurn(session, CHAIN_TYPE_PROMPT);
-  setEnablement(clone, "debt-ratchet", "Stop", true);
+  setEnablement(clone, "debtRatchet", "Stop", true);
   removePromptFiles(bed);
   const typeBlocks = countEvidence(typeRecords, 'blockingError":"Type errors remain');
   const hasPassNote = findEvidence(typeRecords, "already blocked 3 times") !== undefined;
   const typeOk = typeBlocks === CHAIN_BLOCKS && hasPassNote;
-  addRow(rows, 65, "typecheck-on-stop (repeat)", getSessionModel(session), typeOk, `stops blocked while the model ignored the hook: ${typeBlocks} of ${CHAIN_BLOCKS}; next stop passes with the note: ${hasPassNote ? "True" : "False"}`);
+  addRow(rows, 65, "typecheckOnStop (repeat)", getSessionModel(session), typeOk, `stops blocked while the model ignored the hook: ${typeBlocks} of ${CHAIN_BLOCKS}; next stop passes with the note: ${hasPassNote ? "True" : "False"}`);
 }
 
 function addDebtChainRow(rows: Row[], session: Session, bed: string, clone: string): void {
   const ledgerPath = path.join(bed, "array-debt", `${session.id}.json`);
-  setEnablement(clone, "typecheck-on-stop", "Stop", false);
+  setEnablement(clone, "typecheckOnStop", "Stop", false);
   rmSync(ledgerPath, { force: true });
   const debtRecords = executeFullTurn(session, CHAIN_DEBT_PROMPT);
-  setEnablement(clone, "typecheck-on-stop", "Stop", true);
+  setEnablement(clone, "typecheckOnStop", "Stop", true);
   removePromptFiles(bed);
   const debtBlocks = countEvidence(debtRecords, "Style debt is");
   const saysOrFewer = findEvidence(debtRecords, "or fewer") !== undefined;
   const ledgerSaved = existsSync(ledgerPath);
   const debtOk = debtBlocks === CHAIN_BLOCKS && saysOrFewer && ledgerSaved;
-  addRow(rows, 66, "debt-ratchet (chain)", getSessionModel(session), debtOk, `stops blocked while the model ignored the hook: ${debtBlocks} of ${CHAIN_BLOCKS}; text says "or fewer": ${saysOrFewer ? "True" : "False"}; ledger saved on the block: ${ledgerSaved ? "True" : "False"}`);
+  addRow(rows, 66, "debtRatchet (chain)", getSessionModel(session), debtOk, `stops blocked while the model ignored the hook: ${debtBlocks} of ${CHAIN_BLOCKS}; text says "or fewer": ${saysOrFewer ? "True" : "False"}; ledger saved on the block: ${ledgerSaved ? "True" : "False"}`);
 }
 
 // Rows 65 and 66: the model ignores each hook, so it blocks three stops, then passes the fourth.
 export function executeChainRows(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
-  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  setEnablement(clone, "clarifyAmbiguous", "UserPromptSubmit", false);
   addTypeChainRow(rows, session, bed, clone);
   addDebtChainRow(rows, session, bed, clone);
-  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", true);
+  setEnablement(clone, "clarifyAmbiguous", "UserPromptSubmit", true);
 }

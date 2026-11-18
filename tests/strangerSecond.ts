@@ -22,20 +22,20 @@ interface IdleProgram {
 function addSessionOffRows(rows: Row[], session: Session): void {
   const startMessage = findEvidence(readRecords(session), TASK_LIST_ID_MESSAGE, "SessionStart");
   const hasStartMessage = startMessage !== undefined;
-  addRow(rows, 47, "check-task-list-id (off)", getSessionModel(session), !hasStartMessage, `session started with the hook off: message ${hasStartMessage ? "PRESENT" : "absent"}`);
+  addRow(rows, 47, "checkTaskListId (off)", getSessionModel(session), !hasStartMessage, `session started with the hook off: message ${hasStartMessage ? "PRESENT" : "absent"}`);
   const screen = tmux_lib.tmux_capturePane(session.name);
   const turnsMatch = TURNS_RE.exec(screen);
   const hasTurnCount = turnsMatch !== null;
   const hasNotWiredText = screen.includes(NOT_WIRED_TEXT);
   const turnCounterOff = !hasTurnCount && hasNotWiredText;
-  addRow(rows, 48, "turn-counter (off)", getSessionModel(session), turnCounterOff, `session ran with the hook off: turn count on screen: ${hasTurnCount ? "PRESENT" : "absent"}; not-wired note on screen: ${hasNotWiredText ? "present" : "ABSENT"}`);
+  addRow(rows, 48, "turnCounter (off)", getSessionModel(session), turnCounterOff, `session ran with the hook off: turn count on screen: ${hasTurnCount ? "PRESENT" : "absent"}; not-wired note on screen: ${hasNotWiredText ? "present" : "ABSENT"}`);
 }
 
 // Rows 51 and 52: a missing enablement and an unknown hook name must show their errors in the session.
 function executeDispatchErrorRows(rows: Row[], session: Session, bed: string): void {
   const clone = path.join(bed, "claude_hooks");
   const savedTexts = readDispatchTexts(clone);
-  removeEnablement(clone, "idle-state-reader", "UserPromptSubmit");
+  removeEnablement(clone, "idleStateReader", "UserPromptSubmit");
   const missingRecords = executePromptOnlyTurn(session, "say hello");
   writeDispatchTexts(clone, savedTexts);
   addHookRow(rows, session, 51, "dispatcher (no enablement)", missingRecords, NO_ENABLEMENT_MESSAGE, "UserPromptSubmit");
@@ -75,9 +75,9 @@ function launchIdleProgram(session: Session, project: string): void {
 
 export function executeSecondSession(rows: Row[], bed: string, config: string): Session {
   const clone = path.join(bed, "claude_hooks");
-  setEnablement(clone, "check-task-list-id", "SessionStart", false);
+  setEnablement(clone, "checkTaskListId", "SessionStart", false);
   for (const turnCounterEvent of TURN_COUNTER_EVENTS) {
-    setEnablement(clone, "turn-counter", turnCounterEvent, false);
+    setEnablement(clone, "turnCounter", turnCounterEvent, false);
   }
   const session = launchSession(SONNET, bed, config);
   executeOffOnPair(rows, session, bed, PONYTAIL_ROW, executeFullTurn);

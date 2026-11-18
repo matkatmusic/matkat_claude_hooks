@@ -18,7 +18,7 @@ test("validateUnlistedSharedWords passes on a copy of the repo with the unlisted
   const bed = mkdtempSync(path.join(tmpdir(), "direct-stop-"));
   const clone = path.join(bed, "claude_hooks");
   cpSync(REPO, clone, { recursive: true, filter: isCopiedPath });
-  const userDispatch = { enablements: {}, values: { "unlisted-items": { CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS: "2", CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH: "5" } } };
+  const userDispatch = { enablements: {}, values: { "unlistedItems": { CLAUDE_HOOKS_UNLISTED_MIN_SHARED_WORDS: "2", CLAUDE_HOOKS_UNLISTED_MIN_WORD_LENGTH: "5" } } };
   writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify(userDispatch));
   const context = { ...createContext(bed, bed), clone };
   const result = validateUnlistedSharedWords(context);

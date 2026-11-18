@@ -63,16 +63,16 @@ function executeCancelExitRow(rows: Row[], session: Session, bed: string, model:
 // Row 57: a nonexistent model name fails every turn, so only StopFailure can count turns.
 export function executeStopFailureRow(rows: Row[], bed: string, config: string): void {
   const clone = path.join(bed, "claude_hooks");
-  setEnablement(clone, "turn-counter", "StopFailure", false);
+  setEnablement(clone, "turnCounter", "StopFailure", false);
   const session = launchSession(BOGUS_MODEL, bed, config);
   executeTurn(session, "say hi");
   const turnsOff = readSittingTurns(bed, session);
-  setEnablement(clone, "turn-counter", "StopFailure", true);
+  setEnablement(clone, "turnCounter", "StopFailure", true);
   executeTurn(session, "say hi again");
   const turnsOn = readSittingTurns(bed, session);
   tmux_lib.tmux_killPane(session.name);
   const countOk = turnsOff === 0 && turnsOn === 1;
-  addRow(rows, 57, "turn-counter (StopFailure)", null, countOk, `failed turn with StopFailure off: counted turns ${turnsOff}; failed turn with StopFailure on: counted turns ${turnsOn}`);
+  addRow(rows, 57, "turnCounter (StopFailure)", null, countOk, `failed turn with StopFailure off: counted turns ${turnsOff}; failed turn with StopFailure on: counted turns ${turnsOn}`);
 }
 
 // Rows 56, 58, 59: the state prompt denies tool calls, /exit writes the state file, SessionEnd fires.
@@ -82,5 +82,5 @@ export function executeExitRows(rows: Row[], session: Session, bed: string): voi
   executeCancelExitRow(rows, session, bed, model, keptOpen);
   const endTime = readSittingEnd(bed, session);
   const hasEndTime = endTime !== "";
-  addRow(rows, 56, "turn-counter (SessionEnd)", model, hasEndTime, `session state file after exit: end time ${hasEndTime ? "set (" + endTime + ")" : "EMPTY"}`);
+  addRow(rows, 56, "turnCounter (SessionEnd)", model, hasEndTime, `session state file after exit: end time ${hasEndTime ? "set (" + endTime + ")" : "EMPTY"}`);
 }

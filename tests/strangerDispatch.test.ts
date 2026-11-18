@@ -9,10 +9,10 @@ test("writeUserDispatch writes the enablements and the bed state folder, and set
   const clone = mkdtempSync(path.join(tmpdir(), "stranger-dispatch-"));
   mkdirSync(path.join(clone, "dispatcher"));
   writeUserDispatch(clone, "/bed", "/config");
-  setEnablement(clone, "turn-counter", "Stop", false);
+  setEnablement(clone, "turnCounter", "Stop", false);
   setValue(clone, "shared", "CLAUDE_HOOKS_SESSION_STATE_DIR", "/other");
   const written = JSON.parse(readFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), "utf8"));
-  assert.equal(written.enablements["turn-counter"].Stop, false);
+  assert.equal(written.enablements["turnCounter"].Stop, false);
   assert.equal(written.values.shared.CLAUDE_HOOKS_SESSION_STATE_DIR, "/other");
-  assert.equal(written.values["unlisted-items"].CLAUDE_HOOKS_TASKS_DIR, "/config/tasks");
+  assert.equal(written.values["unlistedItems"].CLAUDE_HOOKS_TASKS_DIR, "/config/tasks");
 });

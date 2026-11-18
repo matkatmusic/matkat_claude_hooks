@@ -58,7 +58,7 @@ function executeStartRows(rows: Row[], session: Session, bed: string, config: st
   const turnsBefore = getPaneTurns(session.name);
   executeTurn(session, "say hi");
   validateSessionModel(session, "claude-sonnet-5");
-  addHookRow(rows, session, 1, "check-task-list-id", readRecords(session), "CLAUDE_CODE_TASK_LIST_ID is not set", "SessionStart");
+  addHookRow(rows, session, 1, "checkTaskListId", readRecords(session), "CLAUDE_CODE_TASK_LIST_ID is not set", "SessionStart");
   writeTaskListSettings(bed, config);
   tmux_lib.sleep(6);
   const turnsAfter = getPaneTurns(session.name);

@@ -25,7 +25,7 @@ export function validateNudgeQuotedWords(context: DirectContext): DirectResult {
   const ignoresRepeat = !isHookBlocked(repeated);
   const stillBlocks = isHookBlocked(real);
   const ok = ignoresQuote && ignoresInWord && ignoresRepeat && stillBlocks;
-  return buildResult(25, "nudge-task-list (words)", ok, `quoted phrase passes: ${formatFlag(ignoresQuote)}; "Restarting" passes: ${formatFlag(ignoresInWord)}; stop_hook_active passes: ${formatFlag(ignoresRepeat)}; real "starting on" blocks: ${formatFlag(stillBlocks)}`);
+  return buildResult(25, "nudgeTaskList (words)", ok, `quoted phrase passes: ${formatFlag(ignoresQuote)}; "Restarting" passes: ${formatFlag(ignoresInWord)}; stop_hook_active passes: ${formatFlag(ignoresRepeat)}; real "starting on" blocks: ${formatFlag(stillBlocks)}`);
 }
 
 function executePlanEdit(context: DirectContext, project: string, extra: object) {
@@ -44,7 +44,7 @@ export function validatePlanFileReminder(context: DirectContext): DirectResult {
   const ignoresForeign = foreignPlans.stdout.trim() === "";
   const matchesNotebook = notebookPlan.stdout.includes(REMINDER_TEXT);
   const ok = ignoresPlanMode && matchesRelative && ignoresForeign && matchesNotebook;
-  return buildResult(26, "plan-file-reminder", ok, `plan mode on a non-plan file: silent ${formatFlag(ignoresPlanMode)}; plans/brief-3.md reminds: ${formatFlag(matchesRelative)}; plans folder outside the project: silent ${formatFlag(ignoresForeign)}; notebook_path in plans reminds: ${formatFlag(matchesNotebook)}`);
+  return buildResult(26, "planFileReminder", ok, `plan mode on a non-plan file: silent ${formatFlag(ignoresPlanMode)}; plans/brief-3.md reminds: ${formatFlag(matchesRelative)}; plans folder outside the project: silent ${formatFlag(ignoresForeign)}; notebook_path in plans reminds: ${formatFlag(matchesNotebook)}`);
 }
 
 function readUltraFlag(context: DirectContext, name: string): boolean {
@@ -70,5 +70,5 @@ export function validatePonytailSkillCall(context: DirectContext): DirectResult 
   const flagSet = readUltraFlag(context, "pt-skill");
   const quietAfter = !nextPrompt.stdout.includes(NUDGE_TEXT);
   const ok = flagSet && quietAfter;
-  return buildResult(28, "ponytail-ultra-nudge (skill)", ok, `Skill call with ultra sets the flag: ${formatFlag(flagSet)}; next prompt gets no nudge: ${formatFlag(quietAfter)}`);
+  return buildResult(28, "ponytailUltraNudge (skill)", ok, `Skill call with ultra sets the flag: ${formatFlag(flagSet)}; next prompt gets no nudge: ${formatFlag(quietAfter)}`);
 }

@@ -136,7 +136,7 @@ export function executeSubfolderSession(rows: Row[], bed: string, config: string
   const project = path.join(bed, "project");
   const deepDir = path.join(project, "src", "deep");
   mkdirSync(deepDir, { recursive: true });
-  setEnablement(path.join(bed, "claude_hooks"), "clarify-ambiguous", "UserPromptSubmit", false);
+  setEnablement(path.join(bed, "claude_hooks"), "clarifyAmbiguous", "UserPromptSubmit", false);
   const session = launchSession(SONNET, bed, config, deepDir, UNKNOWN_MODEL_ID);
   const records = executeFullTurn(session, SUBFOLDER_PROMPT);
   const model = getSessionModel(session);

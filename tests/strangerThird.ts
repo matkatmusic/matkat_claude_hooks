@@ -11,9 +11,9 @@ import { launchSession, readRecords } from "./strangerSession.ts";
 import { executeFullTurn, getSessionModel, validateSessionModel } from "./strangerTurn.ts";
 
 function enableSessionThreeHooks(clone: string): void {
-  setEnablement(clone, "check-task-list-id", "SessionStart", true);
+  setEnablement(clone, "checkTaskListId", "SessionStart", true);
   for (const turnCounterEvent of TURN_COUNTER_EVENTS) {
-    setEnablement(clone, "turn-counter", turnCounterEvent, true);
+    setEnablement(clone, "turnCounter", turnCounterEvent, true);
   }
 }
 
@@ -28,12 +28,12 @@ function executeParentRow(rows: Row[], session: Session, bed: string): string[] 
 function addThirdStartRows(rows: Row[], session: Session, model: string, turnsBefore: number | null): void {
   const startMessage = findEvidence(readRecords(session), TASK_LIST_ID_MESSAGE, "SessionStart");
   const hasStartMessage = startMessage !== undefined;
-  addRow(rows, 49, "check-task-list-id (on)", model, hasStartMessage, `next session started with the hook on: message ${hasStartMessage ? "present" : "ABSENT"}`);
+  addRow(rows, 49, "checkTaskListId (on)", model, hasStartMessage, `next session started with the hook on: message ${hasStartMessage ? "present" : "ABSENT"}`);
   tmux_lib.sleep(6);
   const turnsAfter = getPaneTurns(session.name);
   const startedAtZero = turnsBefore === 0;
   const hasTurnsAfter = turnsAfter !== null && turnsAfter >= 1;
-  addRow(rows, 50, "turn-counter (on)", model, startedAtZero && hasTurnsAfter, `next session ran with the hook on: turns on screen: before=${turnsBefore} after=${turnsAfter}`);
+  addRow(rows, 50, "turnCounter (on)", model, startedAtZero && hasTurnsAfter, `next session ran with the hook on: turns on screen: before=${turnsBefore} after=${turnsAfter}`);
 }
 
 function addIdleStateRow(rows: Row[], session: Session, second: Session, stateFiles: string[], hasExited: boolean): void {
@@ -45,12 +45,12 @@ function addIdleStateRow(rows: Row[], session: Session, second: Session, stateFi
 // Row 53: a value changed mid-session moves the next saved call to the new folder.
 function addBlockedValueRow(rows: Row[], session: Session, bed: string, model: string, blockedFiles: string[]): void {
   const movedFolder = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER);
-  setValue(path.join(bed, "claude_hooks"), "block-parent-edits", "CLAUDE_HOOKS_BLOCKED_EDITS_DIR", movedFolder);
+  setValue(path.join(bed, "claude_hooks"), "blockParentEdits", "CLAUDE_HOOKS_BLOCKED_EDITS_DIR", movedFolder);
   executeFullTurn(session, "Use the Write tool to create a file other.txt that says hello. Do not use a subagent.");
   const oldFolderCount = listFilesWithSuffix(path.join(bed, "blocked-edits"), ".json").length;
   const movedFiles = listFilesWithSuffix(movedFolder, ".json");
   const landedInNewFolder = movedFiles.length > 0 && oldFolderCount === blockedFiles.length;
-  addRow(rows, 53, "block-parent-edits (value)", model, landedInNewFolder, `value changed mid-session: saved calls in the new folder: ${movedFiles.length}; saved calls in the old folder: ${oldFolderCount} (was ${blockedFiles.length})`);
+  addRow(rows, 53, "blockParentEdits (value)", model, landedInNewFolder, `value changed mid-session: saved calls in the new folder: ${movedFiles.length}; saved calls in the old folder: ${oldFolderCount} (was ${blockedFiles.length})`);
 }
 
 export function executeThirdSession(rows: Row[], bed: string, config: string, second: Session, stateFiles: string[], hasExited: boolean): Session {
@@ -58,9 +58,9 @@ export function executeThirdSession(rows: Row[], bed: string, config: string, se
   enableSessionThreeHooks(clone);
   const session = launchSession(OPUS, bed, config);
   const turnsBefore = getPaneTurns(session.name);
-  setEnablement(clone, "clarify-ambiguous", "UserPromptSubmit", false);
+  setEnablement(clone, "clarifyAmbiguous", "UserPromptSubmit", false);
   const idleCheckRecords = executeFullTurn(session, IDLE_CHECK_PROMPT);
-  addHookRow(rows, session, 60, "idle-state-check", idleCheckRecords, "Before you end your first turn", "Stop");
+  addHookRow(rows, session, 60, "idleStateCheck", idleCheckRecords, "Before you end your first turn", "Stop");
   const blockedFiles = executeParentRow(rows, session, bed);
   const model = validateSessionModel(session, "claude-opus-5");
   addThirdStartRows(rows, session, model, turnsBefore);
@@ -97,12 +97,12 @@ export function executeParentFilesRow(rows: Row[], session: Session, bed: string
   const oldSavedEdit = path.join(bed, MOVED_BLOCKED_EDITS_FOLDER, "old-session-1.json");
   const redirectFile = path.join(bed, "project", ".idleState", REDIRECT_FILE);
   writeOldSavedEdit(oldSavedEdit, redirectFile);
-  setEnablement(clone, "block-bash-edits", "PreToolUse", false);
+  setEnablement(clone, "blockBashEdits", "PreToolUse", false);
   const [allowsRedirect, keptOldEdit] = executeAllowedRedirect(session, redirectFile, oldSavedEdit);
   const [deniesOther, removedOldEdit] = executeDeniedRedirect(session, oldSavedEdit);
-  setEnablement(clone, "block-bash-edits", "PreToolUse", true);
+  setEnablement(clone, "blockBashEdits", "PreToolUse", true);
   rmSync(redirectFile, { force: true });
   removePromptFiles(bed);
   const ok = allowsRedirect && keptOldEdit && deniesOther && removedOldEdit;
-  addRow(rows, 61, "block-parent-edits (files)", getSessionModel(session), ok, `redirect into .idleState allowed and written: ${allowsRedirect ? "True" : "False"}; other redirect denied: ${deniesOther ? "True" : "False"}; 2 day old saved edit kept after the allowed call: ${keptOldEdit ? "True" : "False"}; removed after the denial: ${removedOldEdit ? "True" : "False"}`);
+  addRow(rows, 61, "blockParentEdits (files)", getSessionModel(session), ok, `redirect into .idleState allowed and written: ${allowsRedirect ? "True" : "False"}; other redirect denied: ${deniesOther ? "True" : "False"}; 2 day old saved edit kept after the allowed call: ${keptOldEdit ? "True" : "False"}; removed after the denial: ${removedOldEdit ? "True" : "False"}`);
 }

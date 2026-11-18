@@ -33,7 +33,7 @@ function addTypedPonytailRow(rows: Row[], session: Session, bed: string): void {
   const notUltraOk = notUltraNudged && !notUltraFlag;
   const shortOk = !shortNudged && shortFlag;
   const fullOk = !fullNudged && fullFlag;
-  addRow(rows, 62, "ponytail-ultra-nudge (typed)", getSessionModel(session), notUltraOk && shortOk && fullOk, `/ponytail:ponytail ultra counts on the same prompt: ${fullOk ? "True" : "False"}; /ponytail ultra counts: ${shortOk ? "True" : "False"}; "not ultra" still nudges: ${notUltraOk ? "True" : "False"}`);
+  addRow(rows, 62, "ponytailUltraNudge (typed)", getSessionModel(session), notUltraOk && shortOk && fullOk, `/ponytail:ponytail ultra counts on the same prompt: ${fullOk ? "True" : "False"}; /ponytail ultra counts: ${shortOk ? "True" : "False"}; "not ultra" still nudges: ${notUltraOk ? "True" : "False"}`);
 }
 
 function addSkillPonytailRow(rows: Row[], session: Session, bed: string): void {
@@ -44,7 +44,7 @@ function addSkillPonytailRow(rows: Row[], session: Session, bed: string): void {
   const nextNudged = findEvidence(nextRecords, PONYTAIL_NUDGE_TEXT, "UserPromptSubmit") !== undefined;
   const skillFlag = readUltraFlag(bed, session);
   const skillOk = skillPromptNudged && !nextNudged && skillFlag;
-  addRow(rows, 63, "ponytail-ultra-nudge (skill)", getSessionModel(session), skillOk, `prompt before the Skill call nudged: ${skillPromptNudged ? "True" : "False"}; next prompt after Skill call with ultra gets no nudge: ${!nextNudged ? "True" : "False"}; flag set: ${skillFlag ? "True" : "False"}`);
+  addRow(rows, 63, "ponytailUltraNudge (skill)", getSessionModel(session), skillOk, `prompt before the Skill call nudged: ${skillPromptNudged ? "True" : "False"}; next prompt after Skill call with ultra gets no nudge: ${!nextNudged ? "True" : "False"}; flag set: ${skillFlag ? "True" : "False"}`);
 }
 
 // Rows 62 and 63: typed ponytail commands and Skill calls decide if later prompts get the nudge.

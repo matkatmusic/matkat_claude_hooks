@@ -50,7 +50,7 @@ export function validateBlockBashEdits(context: DirectContext): DirectResult {
   const allowsNull = !isHookDenied(nullRedirect);
   const ok = deniesFd && deniesPython && allowsMerged && allowsNull;
   const evidence = `denied "make 2> err.log": ${formatFlag(deniesFd)}; denied python -c: ${formatFlag(deniesPython)}; allowed 2>&1: ${formatFlag(allowsMerged)}; allowed 2>/dev/null: ${formatFlag(allowsNull)}`;
-  return buildResult(16, "block-bash-edits", ok, evidence);
+  return buildResult(16, "blockBashEdits", ok, evidence);
 }
 
 export function validateNpmTestOtherReporter(context: DirectContext): DirectResult {
@@ -60,7 +60,7 @@ export function validateNpmTestOtherReporter(context: DirectContext): DirectResu
   const failCount = countOccurrences(done, "FAIL math.test.ts");
   const hasStoppedNote = done.includes("test runner stopped before producing a summary");
   const ok = isHookDenied(run) && failCount === 1 && !hasStoppedNote && done.includes("exit code: 1");
-  return buildResult(17, "block-npm-test (reporter)", ok, `jest-style output: failed test name printed ${failCount} time(s); stopped-before-summary note: ${formatFlag(hasStoppedNote)}`);
+  return buildResult(17, "blockNpmTest (reporter)", ok, `jest-style output: failed test name printed ${failCount} time(s); stopped-before-summary note: ${formatFlag(hasStoppedNote)}`);
 }
 
 export function validateNpmTestTypedRunner(context: DirectContext): DirectResult {
@@ -70,7 +70,7 @@ export function validateNpmTestTypedRunner(context: DirectContext): DirectResult
   const keepsTypedRunner = reason.includes("the typed command jest math.test.ts");
   const swapsToNodeTest = reason.includes("node --test math.test.ts");
   const ok = isHookDenied(run) && keepsTypedRunner && !swapsToNodeTest;
-  return buildResult(18, "block-npm-test (jest)", ok, `typed jest command kept: ${formatFlag(keepsTypedRunner)}; swapped to node --test: ${formatFlag(swapsToNodeTest)}`);
+  return buildResult(18, "blockNpmTest (jest)", ok, `typed jest command kept: ${formatFlag(keepsTypedRunner)}; swapped to node --test: ${formatFlag(swapsToNodeTest)}`);
 }
 
 export function validateNpmTestShellAndLaterRuns(context: DirectContext): DirectResult {
@@ -79,12 +79,12 @@ export function validateNpmTestShellAndLaterRuns(context: DirectContext): Direct
   const twoRuns = executeBashCommand(context, NPM_TEST_SCRIPT, "npm test && node --test a.test.ts", project);
   const runCount = countOccurrences(readDenyReason(twoRuns), "runs in the background in");
   const ok = isHookDenied(shellRun) && runCount === 2;
-  return buildResult(19, "block-npm-test (many runs)", ok, `bash -c "npm test" denied: ${formatFlag(isHookDenied(shellRun))}; runs started for "npm test && node --test a.test.ts": ${runCount}`);
+  return buildResult(19, "blockNpmTest (many runs)", ok, `bash -c "npm test" denied: ${formatFlag(isHookDenied(shellRun))}; runs started for "npm test && node --test a.test.ts": ${runCount}`);
 }
 
 export function validateNpmTestMissingFolder(context: DirectContext): DirectResult {
   const project = createJestProject(context);
   const run = executeBashCommand(context, NPM_TEST_SCRIPT, "cd newdir-not-made-yet && npm test", project);
   const ok = run.status === 0 && run.stdout.trim() === "";
-  return buildResult(20, "block-npm-test (cd)", ok, `exit ${run.status}; output: ${run.stdout.trim() === "" ? "none, command runs as typed" : run.stdout.trim()}`);
+  return buildResult(20, "blockNpmTest (cd)", ok, `exit ${run.status}; output: ${run.stdout.trim() === "" ? "none, command runs as typed" : run.stdout.trim()}`);
 }

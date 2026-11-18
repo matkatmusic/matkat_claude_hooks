@@ -29,7 +29,7 @@ export function validateParentModels(context: DirectContext): DirectResult {
   const allowsSonnet = !isHookDenied(sonnet);
   const failsLoudly = noModel.status !== 0 && noModel.stderr.includes("no model found");
   const ok = blocksNewOpus && allowsSonnet && failsLoudly;
-  return buildResult(21, "block-parent-edits (model)", ok, `claude-opus-6 blocked: ${formatFlag(blocksNewOpus)}; sonnet allowed: ${formatFlag(allowsSonnet)}; no model fails loudly: ${formatFlag(failsLoudly)}`);
+  return buildResult(21, "blockParentEdits (model)", ok, `claude-opus-6 blocked: ${formatFlag(blocksNewOpus)}; sonnet allowed: ${formatFlag(allowsSonnet)}; no model fails loudly: ${formatFlag(failsLoudly)}`);
 }
 
 // Moved to live row 61 in run_stranger.ts.
@@ -42,7 +42,7 @@ export function validateTaskListIdName(context: DirectContext): DirectResult {
   const warnsCharacter = badCharacter.stdout.includes("not allowed");
   const staysQuiet = goodName.stdout.trim() === "";
   const ok = warnsShort && warnsCharacter && staysQuiet;
-  return buildResult(23, "check-task-list-id (name)", ok, `"x" warned too short: ${formatFlag(warnsShort)}; "my project!" warned bad character: ${formatFlag(warnsCharacter)}; "myproject" silent: ${formatFlag(staysQuiet)}`);
+  return buildResult(23, "checkTaskListId (name)", ok, `"x" warned too short: ${formatFlag(warnsShort)}; "my project!" warned bad character: ${formatFlag(warnsCharacter)}; "myproject" silent: ${formatFlag(staysQuiet)}`);
 }
 
 function executeClarify(context: DirectContext, name: string, prompt: string) {
@@ -58,5 +58,5 @@ export function validateClarifyWords(context: DirectContext): DirectResult {
   const ignoresYes = !yesRun.stdout.includes("AMBIGUITY GATE");
   const failsLoudly = brokenRun.status !== 0;
   const ok = ignoresPrefix && ignoresYes && failsLoudly;
-  return buildResult(24, "clarify-ambiguous (words)", ok, `"prefix" no longer counts as "fix": ${formatFlag(ignoresPrefix)}; bare "yes" has no gate: ${formatFlag(ignoresYes)}; bad input fails loudly: ${formatFlag(failsLoudly)}`);
+  return buildResult(24, "clarifyAmbiguous (words)", ok, `"prefix" no longer counts as "fix": ${formatFlag(ignoresPrefix)}; bare "yes" has no gate: ${formatFlag(ignoresYes)}; bad input fails loudly: ${formatFlag(failsLoudly)}`);
 }

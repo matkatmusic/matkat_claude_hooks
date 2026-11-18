@@ -20,7 +20,7 @@ test("validateIdleReaderSubfolder passes on a copy of the repo with the idle-sta
   const bed = mkdtempSync(path.join(tmpdir(), "direct-state-"));
   const clone = path.join(bed, "claude_hooks");
   cpSync(REPO, clone, { recursive: true, filter: isCopiedPath });
-  const userDispatch = { enablements: {}, values: { "idle-state-reader": { CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" } } };
+  const userDispatch = { enablements: {}, values: { "idleStateReader": { CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS: "86400000" } } };
   writeFileSync(path.join(clone, "dispatcher", "user-dispatch.json"), JSON.stringify(userDispatch));
   const context = { ...createContext(bed, bed), clone };
   const result = validateIdleReaderSubfolder(context);

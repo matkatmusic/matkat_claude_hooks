@@ -26,7 +26,7 @@ export function validateTypecheckTsx(context: DirectContext): DirectResult {
   const run = executeTypecheck(context, dir, writeEditTranscript(context, "tc-tsx", path.join(dir, "bad.tsx")), false);
   const blocks = isHookBlocked(run) && readBlockReason(run).includes("error TS2322");
   const hasSummary = run.stdout.includes("tsc found 1 errors");
-  return buildResult(32, "typecheck-on-stop (.tsx)", blocks && hasSummary, `.tsx edit starts the check and blocks on error TS2322: ${formatFlag(blocks)}; reason keeps the tsc summary line: ${formatFlag(hasSummary)}`);
+  return buildResult(32, "typecheckOnStop (.tsx)", blocks && hasSummary, `.tsx edit starts the check and blocks on error TS2322: ${formatFlag(blocks)}; reason keeps the tsc summary line: ${formatFlag(hasSummary)}`);
 }
 
 export function validateTypecheckOtherFiles(context: DirectContext): DirectResult {
@@ -34,7 +34,7 @@ export function validateTypecheckOtherFiles(context: DirectContext): DirectResul
   const run = executeTypecheck(context, dir, writeEditTranscript(context, "tc-other", path.join(dir, "fresh.ts")), false);
   const notBlocked = !isHookBlocked(run);
   const notesOldError = run.stdout.includes("in other files") && run.stdout.includes("old.ts");
-  return buildResult(33, "typecheck-on-stop (old error)", notBlocked && notesOldError, `old error in an untouched file does not block: ${formatFlag(notBlocked)}; it is only noted: ${formatFlag(notesOldError)}`);
+  return buildResult(33, "typecheckOnStop (old error)", notBlocked && notesOldError, `old error in an untouched file does not block: ${formatFlag(notBlocked)}; it is only noted: ${formatFlag(notesOldError)}`);
 }
 
 // Moved to live row 65 in run_stranger.ts.
@@ -50,7 +50,7 @@ export function validateTypecheckStartFailure(context: DirectContext): DirectRes
   const isBlocked = isHookBlocked(run);
   const reason = isBlocked ? readBlockReason(run) : "";
   const namesFailure = reason.includes("TSC FAILED TO START") && reason.includes("Exit status 3") && reason.includes("boom");
-  return buildResult(35, "typecheck-on-stop (no tsc)", isBlocked && namesFailure, `a tsc that cannot start blocks with its exit status and stderr: ${formatFlag(namesFailure)}`);
+  return buildResult(35, "typecheckOnStop (no tsc)", isBlocked && namesFailure, `a tsc that cannot start blocks with its exit status and stderr: ${formatFlag(namesFailure)}`);
 }
 
 function writeOpenTask(context: DirectContext, sessionId: string, subject: string): void {
@@ -70,12 +70,12 @@ export function validateUnlistedQuotedAndReworded(context: DirectContext): Direc
   const reworded = executeUnlisted(context, "direct-unlisted-a", "next step: build the login screen");
   const ignoresQuote = !isHookBlocked(quoted);
   const matchesReworded = !isHookBlocked(reworded);
-  return buildResult(36, "unlisted-items (words)", ignoresQuote && matchesReworded, `quoted "next step:" passes: ${formatFlag(ignoresQuote)}; "login screen" matches task "login screens": ${formatFlag(matchesReworded)}`);
+  return buildResult(36, "unlistedItems (words)", ignoresQuote && matchesReworded, `quoted "next step:" passes: ${formatFlag(ignoresQuote)}; "login screen" matches task "login screens": ${formatFlag(matchesReworded)}`);
 }
 
 export function validateUnlistedSharedWords(context: DirectContext): DirectResult {
   writeOpenTask(context, "direct-unlisted-b", "Fix checkout webhooks logging");
   const run = executeUnlisted(context, "direct-unlisted-b", "next step: build the payment gateway integration for checkout webhooks");
   const blocks = isHookBlocked(run) && readBlockReason(run).includes("payment gateway");
-  return buildResult(37, "unlisted-items (overlap)", blocks, `two shared words no longer hide an unrelated missing item: ${formatFlag(blocks)}`);
+  return buildResult(37, "unlistedItems (overlap)", blocks, `two shared words no longer hide an unrelated missing item: ${formatFlag(blocks)}`);
 }
