@@ -143,6 +143,7 @@ const takeoverPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TAKEOV
   handoffPath: handoffFilePath,
   closeScript: `${import.meta.dirname}/closeChat.ts`,
   job,
+  logPath: `${DISPATCHER_DIR}/claude-tmux-team-swap.log`,
 });
 startingTextParts.push(takeoverPrompt);
 const startingText = startingTextParts.join("\n\n");

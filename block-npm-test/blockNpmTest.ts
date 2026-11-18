@@ -43,7 +43,12 @@ function spawnTestRun(testRun: FoundTestRun, cwd: string, logPath: string, killA
 
 if (import.meta.main) {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  const command = input.tool_input?.command ?? "";
+  // const command = input.tool_input?.command ?? "";
+  let command = input.tool_input?.command ?? "";
+  if (input.tool_name === "mcp__plugin_context-mode_context-mode__ctx_execute") {
+    if (input.tool_input.language === "shell")
+      command = input.tool_input.code;
+  }
   const isInNodeProject = isNodeProject(input.cwd);
   if (!isInNodeProject)
     process.exit(0);

@@ -76,3 +76,21 @@ test("test_every_dispatch_json_hook_runs_with_bun", () => {
   }
   assert.deepEqual(badCommands, []);
 });
+
+test("test_plugin_hooks_json_pre_tool_use_entry_matches_every_tool_name", () => {
+  // Step: read the plugin hooks.json.
+  const pluginHooksJson = JSON.parse(readFileSync(join(REPO_ROOT, "hooks/hooks.json"), "utf8"));
+  // Step: a missing matcher means Claude Code runs the entry for every tool, ctx_execute and Read included.
+  const pluginMatcher = pluginHooksJson.hooks.PreToolUse[0].matcher;
+  assert.equal(pluginMatcher, undefined);
+});
+
+test("test_block_npm_test_hooks_json_matcher_matches_bash_and_ctx_execute_only", () => {
+  // Step: read the stand-alone block-npm-test hooks.json.
+  const blockNpmTestHooksJson = JSON.parse(readFileSync(join(REPO_ROOT, "block-npm-test/hooks.json"), "utf8"));
+  // Step: its matcher must match Bash and the ctx_execute tool name, and must not match Read.
+  const blockNpmTestMatcher = new RegExp(`^(${blockNpmTestHooksJson.hooks.PreToolUse[0].matcher})$`);
+  assert.equal(blockNpmTestMatcher.test("Bash"), true);
+  assert.equal(blockNpmTestMatcher.test("mcp__plugin_context-mode_context-mode__ctx_execute"), true);
+  assert.equal(blockNpmTestMatcher.test("Read"), false);
+});

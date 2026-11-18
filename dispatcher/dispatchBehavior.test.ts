@@ -187,6 +187,42 @@ test("a non-Stop hook still runs while the stop-hooks-off marker exists", () => 
   assert.equal(existsSync(ranPath), true);
 });
 
+test("test_block_npm_test_entry_runs_for_ctx_execute_tool_name", () => {
+  // Find the blockNpmTest entry that dispatch.json registers for PreToolUse.
+  let blockNpmTestMatcher: string | undefined;
+  for (const entry of getHooks(readSettings(DISPATCHER_DIR))) {
+    const isPreToolUse = entry.event === "PreToolUse";
+    const isBlockNpmTest = entry.command[entry.command.length - 1].endsWith("blockNpmTest.ts");
+    if (isPreToolUse) {
+      if (isBlockNpmTest)
+        blockNpmTestMatcher = entry.matcher;
+    }
+  }
+  assert.notEqual(blockNpmTestMatcher, undefined);
+  // The dispatcher compares the matcher with the tool name as a regular expression.
+  const matcherRegex = new RegExp(blockNpmTestMatcher as string);
+  assert.equal(matcherRegex.test("mcp__plugin_context-mode_context-mode__ctx_execute"), true);
+  assert.equal(matcherRegex.test("Bash"), true);
+  assert.equal(matcherRegex.test("Edit"), false);
+});
+
+test("test_dispatcher_starts_no_pre_tool_use_hook_for_read_tool", () => {
+  // Every PreToolUse entry in dispatch.json has a matcher, and no matcher matches Read.
+  const entriesThatRunForRead: string[] = [];
+  for (const entry of getHooks(readSettings(DISPATCHER_DIR))) {
+    const isPreToolUse = entry.event === "PreToolUse";
+    if (isPreToolUse) {
+      const hasMatcher = entry.matcher !== undefined;
+      let runsForRead = true;
+      if (hasMatcher)
+        runsForRead = new RegExp(entry.matcher as string).test("Read");
+      if (runsForRead)
+        entriesThatRunForRead.push(entry.command[entry.command.length - 1]);
+    }
+  }
+  assert.deepEqual(entriesThatRunForRead, []);
+});
+
 test("every hook points at a script that exists", () => {
   const missingScripts: string[] = [];
   for (const entry of getHooks(readSettings(DISPATCHER_DIR))) {

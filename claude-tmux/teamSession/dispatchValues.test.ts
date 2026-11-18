@@ -83,7 +83,7 @@ test("test_texts_use_only_fields_that_the_scripts_give", () => {
     HANDLE_LIST_HEADER: [],
     HANDLE_LINE: ["chatName", "role"],
     WORKTREE_TEXT: ["worktreePath", "branch", "baseBranch"],
-    TAKEOVER_PROMPT: ["oldHandle", "handoffPath", "closeScript", "job"],
+    TAKEOVER_PROMPT: ["oldHandle", "handoffPath", "closeScript", "job", "logPath"],
     LEAVING_NOTICE: ["newHandle"],
     REPLACED_NOTICE: ["oldHandle", "newHandle"],
   };

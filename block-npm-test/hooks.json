@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|mcp__plugin_context-mode_context-mode__ctx_execute",
         "hooks": [
           { "type": "command", "command": "bun \"/path/to/claude_hooks/block-npm-test/blockNpmTest.ts\"", "timeout": 300 }
         ]
