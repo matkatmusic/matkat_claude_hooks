@@ -20,6 +20,16 @@ export function scanSourceText(relativeFilePath: string, sourceText: string): Li
   return report[0].messages;
 }
 
+export function listMessagesWithRuleId(messages: LintMessage[], ruleId: string): LintMessage[] {
+  const matching: LintMessage[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const hasRuleId = messages[i].ruleId === ruleId;
+    if (hasRuleId)
+      matching.push(messages[i]);
+  }
+  return matching;
+}
+
 export function listMessagesWithText(messages: LintMessage[], text: string): LintMessage[] {
   const matching: LintMessage[] = [];
   for (let i = 0; i < messages.length; i++) {

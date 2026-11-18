@@ -209,6 +209,14 @@ export default [
     plugins: { local: { rules: { 'shebang-requires-main': shebangRequiresMainRule } } },
     rules: { 'local/shebang-requires-main': 'error' },
   },
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
   buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
   buildRestrictedSyntaxConfig(TEST_FILES, [], buildTopLevelSelectors([TEST_CALL_SELECTOR, AWAIT_IMPORT_SELECTOR], '')),
   buildRestrictedSyntaxConfig(REGISTER_FILES, [], buildTopLevelSelectors([], HOOK_DECLARATION_EXEMPTION)),
