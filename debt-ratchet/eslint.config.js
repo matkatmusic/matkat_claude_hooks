@@ -215,6 +215,7 @@ export default [
     plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
     },
   },
   buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
