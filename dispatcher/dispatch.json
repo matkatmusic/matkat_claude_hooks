@@ -2,6 +2,7 @@
   "debugLoggingEnabled": false,
   "enablements": {
     "blockNpmTest": { "PreToolUse": false },
+    "blockWorktreeAdd": { "PreToolUse": false },
     "blockParentEdits": { "PreToolUse": false },
     "blockBashEdits": { "PreToolUse": false },
     "planFileReminder": { "PostToolUse": false },
@@ -301,6 +302,7 @@
   },
   "hooks": [
     { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-npm-test/blockNpmTest.ts"], "timeout": 300 },
+    { "event": "PreToolUse", "matcher": "Bash", "command": ["bun", "../block-worktree-add/blockWorktreeAdd.ts"] },
     { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["node", "../block-parent-edits/blockParentEdits.ts"] },
     { "event": "PreToolUse", "matcher": "Bash", "command": ["node", "../block-bash-edits/blockBashEdits.ts"] },
     { "event": "PostToolUse", "matcher": "Write|Edit|MultiEdit|NotebookEdit", "command": ["node", "../plan-file-reminder/planFileReminder.ts"] },

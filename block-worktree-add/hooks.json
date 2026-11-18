@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/block-worktree-add/blockWorktreeAdd.ts\"" }
+        ]
+      }
+    ]
+  }
+}
