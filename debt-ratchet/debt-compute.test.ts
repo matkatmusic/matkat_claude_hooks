@@ -45,8 +45,8 @@ test("computeDebt outside dotfiles is not ignored by the eslint base path: real 
   spawnSync("git", ["init"], { cwd: dir });
   spawnSync("git", ["config", "user.email", "test@test.com"], { cwd: dir });
   spawnSync("git", ["config", "user.name", "test"], { cwd: dir });
-  writeFileSync(`${dir}/subject.ts`, "const a = 1; const b = 2;\n");
-  writeFileSync(`${dir}/subject.test.ts`, "export const check = 1;\n");
+  writeFileSync(`${dir}/subject.ts`, "export function getValue(input: any): number {\n  return 1;\n}\n");
+  writeFileSync(`${dir}/subject.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   spawnSync("git", ["add", "-A"], { cwd: dir });
   spawnSync("git", ["commit", "-m", "initial"], { cwd: dir });
   const debt = computeDebt(`${dir}/subject.ts`);
@@ -55,40 +55,40 @@ test("computeDebt outside dotfiles is not ignored by the eslint base path: real 
 });
 
 test("computeDebt does not count eslint's ignored-file warning for a .test.ts file", () => {
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   const debt = computeDebt(`${repo}/subject.test.ts`);
   assert.deepEqual(debt?.lines, []);
 });
 
 test("test_computeDebt_counts_eslint_lines_in_test_ts_file", () => {
   // Steps: a repo has a subject.test.ts file with one flagged line. Compute debt: lines is not empty.
-  const repo = setUpRepo("export const value = 1;\n");
-  writeFileSync(`${repo}/subject.test.ts`, "const a = 1; const b = 2;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
+  writeFileSync(`${repo}/subject.test.ts`, "export function getValue(input: any): number {\n  return 1;\n}\n");
   const debt = computeDebt(`${repo}/subject.test.ts`);
   assert.ok((debt?.lines.length ?? 0) >= 1);
 });
 
 test("test_computeDebt_marks_test_ts_file_as_not_missing_test", () => {
   // Steps: a repo has a subject.test.ts file. Compute debt for that file: missingTest is false.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   assert.equal(computeDebt(`${repo}/subject.test.ts`)?.missingTest, false);
 });
 
 test("test_computeDebt_marks_spec_ts_file_as_not_missing_test", () => {
   // Steps: a repo has a subject.spec.ts file. Compute debt for that file: missingTest is false.
-  const repo = setUpRepo("export const value = 1;\n");
-  writeFileSync(`${repo}/subject.spec.ts`, "export const check = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
+  writeFileSync(`${repo}/subject.spec.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   assert.equal(computeDebt(`${repo}/subject.spec.ts`)?.missingTest, false);
 });
 
 test("a source file with no test file is flagged missingTest and costs 1 more debt point", () => {
   // Steps: a repo has a source file and no test file. Compute debt: missingTest is true.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   rmSync(`${repo}/subject.test.ts`);
   const withoutTest =computeDebt(`${repo}/subject.ts`);
   assert.equal(withoutTest?.missingTest, true);
   // Add subject.test.ts next to it. Compute debt: missingTest is false and the debt is 1 lower.
-  writeFileSync(`${repo}/subject.test.ts`, "export const check = 1;\n");
+  writeFileSync(`${repo}/subject.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   const withTest = computeDebt(`${repo}/subject.ts`);
   assert.equal(withTest?.missingTest, false);
   assert.equal(withTest?.current, (withoutTest?.current ?? 0) - 1);
@@ -96,31 +96,31 @@ test("a source file with no test file is flagged missingTest and costs 1 more de
 
 test("a source file with a .spec.ts file next to it is not flagged missingTest", () => {
   // Steps: a repo has a source file and a subject.spec.ts file next to it, and no .test.ts file.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   rmSync(`${repo}/subject.test.ts`);
-  writeFileSync(`${repo}/subject.spec.ts`, "export const check = 1;\n");
+  writeFileSync(`${repo}/subject.spec.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   // Compute debt: missingTest is false.
   assert.equal(computeDebt(`${repo}/subject.ts`)?.missingTest, false);
 });
 
 test("a tests/<name>.test.ts file at the repo root counts as the test file", () => {
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   rmSync(`${repo}/subject.test.ts`);
   mkdirSync(`${repo}/tests`);
-  writeFileSync(`${repo}/tests/subject.test.ts`, "export const check = 1;\n");
+  writeFileSync(`${repo}/tests/subject.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   assert.equal(computeDebt(`${repo}/subject.ts`)?.missingTest, false);
 });
 
 test("a tests/test-<name>.ts file at the repo root counts as the test file", () => {
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   rmSync(`${repo}/subject.test.ts`);
   mkdirSync(`${repo}/tests`);
-  writeFileSync(`${repo}/tests/test-subject.ts`, "export const check = 1;\n");
+  writeFileSync(`${repo}/tests/test-subject.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   assert.equal(computeDebt(`${repo}/subject.ts`)?.missingTest, false);
 });
 
 test("a .d.ts file is never flagged missingTest", () => {
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   writeFileSync(`${repo}/types.d.ts`, "export type Value = number;\n");
   assert.equal(computeDebt(`${repo}/types.d.ts`)?.missingTest, false);
 });
@@ -136,7 +136,7 @@ test("eslint --fix runs: fixable brace-style debt is fixed in place, and the ref
   const headSource =
     "export function computeValue(x) {\n  if (x > 0) {\n    return 1;\n  }\n  else {\n    return 2;\n  }\n}\n";
   writeFileSync(`${dir}/subject.ts`, headSource);
-  writeFileSync(`${dir}/subject.test.ts`, "export const check = 1;\n");
+  writeFileSync(`${dir}/subject.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   spawnSync("git", ["add", "-A"], { cwd: dir });
   spawnSync("git", ["commit", "-m", "initial"], { cwd: dir });
 
@@ -160,7 +160,7 @@ test("eslint --fix runs: fixable brace-style debt is fixed in place, and the ref
 
 test("a .css file with one !important is flagged on that line and never flagged missingTest", () => {
   // Steps: a repo has a .css file whose line 2 has one !important.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   writeFileSync(`${repo}/style.css`, "a {\n  color: red !important;\n}\n");
   spawnSync("git", ["add", "-A"], { cwd: repo });
   spawnSync("git", ["commit", "-m", "add css"], { cwd: repo });
@@ -176,7 +176,7 @@ const CLEAN_PAGE_TAIL = ["</head>", "<body>", "  <h1>Hi</h1>", "</body>", "</htm
 
 test("a clean .html page with an inline <style> and an inline <script> is flagged once for each", () => {
   // Steps: a repo page head has an inline style on line 6, an inline script on line 7.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   const pageLines = [...CLEAN_PAGE_HEAD, "  <style>body { margin: 0; }</style>", "  <script>const a = 1;</script>", ...CLEAN_PAGE_TAIL];
   writeFileSync(`${repo}/page.html`, `${pageLines.join("\n")}\n`);
   spawnSync("git", ["add", "-A"], { cwd: repo });
@@ -190,7 +190,7 @@ test("a clean .html page with an inline <style> and an inline <script> is flagge
 
 test("a clean .html page that only uses <script src> and <link rel=stylesheet> has no debt", () => {
   // Steps: a repo has a complete page that loads its code and style from separate files.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   const pageLines = [...CLEAN_PAGE_HEAD, '  <link rel="stylesheet" href="page.css">', '  <script src="page.js"></script>', ...CLEAN_PAGE_TAIL];
   writeFileSync(`${repo}/page.html`, `${pageLines.join("\n")}\n`);
   spawnSync("git", ["add", "-A"], { cwd: repo });
@@ -204,7 +204,7 @@ test("a clean .html page that only uses <script src> and <link rel=stylesheet> h
 
 test("an .html element nested deeper than 8 levels is flagged", () => {
   // Steps: a repo page has 7 nested divs in body, so the 7th div is at depth 9.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   const divOpens = "<div>".repeat(7);
   const divCloses = "</div>".repeat(7);
   const pageLines = [...CLEAN_PAGE_HEAD, "</head>", "<body>", "<h1>Hi</h1>", `${divOpens}${divCloses}`, "</body>", "</html>"];
