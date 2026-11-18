@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { basename, extname } from "node:path";
 import { buildHookOutput } from "./output.ts";
 import { readSettings, isEnabled, isDebugLoggingEnabled, getValues, getHooks, DISPATCHER_DIR, type HookEntry, type Settings } from "../shared/settings.ts";
-import { logHookFailure, logDispatchedHook } from "../shared/hook-log.ts";
+import { logHookFailure, logDispatchedHook } from "../shared/hookLog.ts";
 // Runs the hooks in the list for one event and merges their outputs.
 export { type HookEntry, buildHookOutput };
 

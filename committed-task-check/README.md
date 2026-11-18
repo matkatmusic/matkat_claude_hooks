@@ -90,4 +90,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test committed-task-check/committed-task-check.test.ts committed-task-check/markRoadmapTaskCompleted.test.ts` from the `claude_hooks` folder.
+Run `node --test committed-task-check/committedTaskCheck.test.ts committed-task-check/markRoadmapTaskCompleted.test.ts` from the `claude_hooks` folder.

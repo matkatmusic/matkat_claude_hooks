@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { findTaskFolder, TASK_LIST_ID_NOT_SET_REASON } from "../../shared/session-tasks.ts";
+import { findTaskFolder, TASK_LIST_ID_NOT_SET_REASON } from "../../shared/sessionTasks.ts";
 import { getRepoTopLevelFolder, listRepoFolders } from "../prune-shared-tasklist/SkillBodyEmitter.ts";
 import { readTaskFiles } from "./collectTaskFacts.ts";
 

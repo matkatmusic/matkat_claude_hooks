@@ -48,4 +48,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test ponytail-ultra-nudge/ponytail-ultra-nudge.test.ts` from the `claude_hooks` folder.
+Run `node --test ponytail-ultra-nudge/ponytailUltraNudge.test.ts` from the `claude_hooks` folder.

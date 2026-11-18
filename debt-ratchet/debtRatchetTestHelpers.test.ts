@@ -1,0 +1,11 @@
+#!/usr/bin/env bun
+import { test } from "node:test";
+import { strict as assert } from "node:assert";
+import { DEBT_LIMITS, DEBT_SETTINGS } from "./debtRatchetTestHelpers.ts";
+
+test("DEBT_LIMITS matches the numbers in DEBT_SETTINGS", () => {
+  assert.equal(DEBT_LIMITS.maxFileLines, Number(DEBT_SETTINGS.CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES));
+  assert.equal(DEBT_LIMITS.debtTarget, Number(DEBT_SETTINGS.CLAUDE_HOOKS_DEBT_RATCHET_DEBT_TARGET));
+  assert.equal(DEBT_LIMITS.fixBatchSize, Number(DEBT_SETTINGS.CLAUDE_HOOKS_DEBT_RATCHET_FIX_BATCH_SIZE));
+  assert.equal(DEBT_LIMITS.minFileDebt, Number(DEBT_SETTINGS.CLAUDE_HOOKS_DEBT_RATCHET_MIN_FILE_DEBT));
+});

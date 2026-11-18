@@ -10,7 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "bun test --parallel --timeout=120000 --path-ignore-patterns 'tests/**' --path-ignore-patterns 'context-exit/**' --path-ignore-patterns 'ask-dont-dump/**' --path-ignore-patterns 'anything-for-me/**' --path-ignore-patterns 'prompt-intent/**' --path-ignore-patterns 'typesafe-template/**' --path-ignore-patterns 'idle-state/mod/**' --path-ignore-patterns 'idle-state/idle-state-reader.test.ts' && bun run test:mods",
+    "test": "bun test --parallel --timeout=120000 --path-ignore-patterns 'tests/**' --path-ignore-patterns 'context-exit/**' --path-ignore-patterns 'ask-dont-dump/**' --path-ignore-patterns 'anything-for-me/**' --path-ignore-patterns 'prompt-intent/**' --path-ignore-patterns 'typesafe-template/**' --path-ignore-patterns 'idle-state/mod/**' --path-ignore-patterns 'idle-state/idleStateReader.test.ts' && bun run test:mods",
     "test:mods": "~/.local/bin/claude plugin test idle-state/mod && ~/.local/bin/claude plugin test context-exit/mod && ~/.local/bin/claude plugin test ask-dont-dump/mod && ~/.local/bin/claude plugin test anything-for-me/mod && ~/.local/bin/claude plugin test prompt-intent/mod && ~/.local/bin/claude plugin test typesafe-template/mod"
   }
 }
