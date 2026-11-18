@@ -1,0 +1,6 @@
+{
+  "name": "tmux-helper",
+  "version": "0.1.0",
+  "description": "Opens helper chats when the skill tmux-new-helper is typed, then tells the main chat their names",
+  "types": "./types/index.d.ts"
+}

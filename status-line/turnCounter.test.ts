@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { tmpdir } from "node:os";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import type { Sitting } from "../shared/sessionState.ts";
 
 const SCRATCH_ROOT = "/private/tmp";
-const { applyEvent, countTranscriptTokens } = await import("./turnCounter.ts");
+const { applyEvent, countTranscriptTokens, removeStaleCounters } = await import("./turnCounter.ts");
 
 const events = [
   "SessionStart",
@@ -139,6 +139,21 @@ test("SessionEnd keeps the tokens from the last Stop and sets end", async () => 
   assert.equal(state.sittings[0].tokensIn, 10);
   assert.equal(state.sittings[0].tokensOut, 2);
   assert.equal(typeof state.sittings[0].end, "number");
+});
+
+test("a file that vanishes after the folder listing does not stop the cleanup", async () => {
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-stale-`);
+  const longAgo = new Date(1000 * 1000);
+  writeFileSync(`${stateDir}/stale-before.json`, "{}");
+  writeFileSync(`${stateDir}/stale-after.json`, "{}");
+  utimesSync(`${stateDir}/stale-before.json`, longAgo, longAgo);
+  utimesSync(`${stateDir}/stale-after.json`, longAgo, longAgo);
+  // vanished.json is in the listing but another chat already deleted it
+  const listing = ["stale-before.json", "vanished.json", "stale-after.json"];
+  await removeStaleCounters(Math.floor(Date.now() / 1000), 14, stateDir, listing);
+  const remaining = readdirSync(stateDir);
+  rmSync(stateDir, { recursive: true, force: true });
+  assert.deepEqual(remaining, []);
 });
 
 test("no transcript path", async () => {

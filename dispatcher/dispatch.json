@@ -31,7 +31,8 @@
     "bug-report": { "prompt.submit": true },
     "feature-request": { "prompt.submit": true },
     "change-request": { "prompt.submit": true },
-    "ask-if-unclear": { "prompt.submit": true }
+    "ask-if-unclear": { "prompt.submit": true },
+    "tmux-helper": { "prompt.submit": true }
   },
   "values": {
     "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },
@@ -82,7 +83,9 @@
         "Continue the open work of the handoff file at once. Do not wait for a prompt from the user.",
         "The user sees this chat now. Start your first reply with this line: I continue the work of {oldChatName}."
       ],
-      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap to a new chat failed. This chat stays open. The error is in {logPath}. The next swap starts after your next prompt."
+      "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap to a new chat failed. This chat stays open. The error is in {logPath}. The next swap starts after your next prompt.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPERS_CREATED_NOTICE": "helpers have been created.  use them for work instead of your own subagents:  {helperHandles}",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT": "[claude-tmux] your supervisor is {supervisorHandle}. send your reports and questions to it. if it is gone, use the ListAgents tool to find the newest {supervisorBaseName} chat."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "planFileReminder": {

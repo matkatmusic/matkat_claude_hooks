@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // Counts turns per conversation into the session state file's sittings list.
 
-import { mkdir, readdir, readFile, stat, unlink } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { mkdir, readdir, readFile } from "node:fs/promises";
+import { readFileSync, rmSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/sessionState.ts";
 import type { Sitting } from "../shared/sessionState.ts";
@@ -160,16 +160,18 @@ export async function countTranscriptTokens(
   return { in: tokensIn, out: tokensOut };
 }
 
-async function removeStaleCounters(now: number, keepDays: number, dir: string): Promise<void> {
+export async function removeStaleCounters(now: number, keepDays: number, dir: string, names?: string[]): Promise<void> {
   const cutoff = now - keepDays * 86400;
-  for (const name of await readdir(dir)) {
+  for (const name of names ?? await readdir(dir)) {
     const isNotJson = !name.endsWith(".json");
     if (isNotJson)
       continue;
     const path = `${dir}/${name}`;
-    const { mtimeMs } = await stat(path);
-    if (mtimeMs / 1000 < cutoff)
-      await unlink(path);
+    const stats = statSync(path, { throwIfNoEntry: false });
+    if (stats === undefined)
+      continue;
+    if (stats.mtimeMs / 1000 < cutoff)
+      rmSync(path, { force: true });
   }
 }
 

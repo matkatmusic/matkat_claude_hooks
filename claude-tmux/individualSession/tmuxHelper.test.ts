@@ -7,7 +7,26 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 // import { buildClaudeCommand, computeNextHelperNumber, stripHelperSuffix } from "./tmuxHelper.ts";
 // import { computeNextHelperNumberFromChatTitles, getHelperBaseName, getHelperModel, getLastCustomTitleOfEachTranscript, stripHelperSuffix } from "./tmuxHelper.ts";
-import { getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
+// import { buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
+import { buildHelperSupervisorPrompt, buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
+
+test("test_buildHelperSupervisorPrompt_fills_dashed_handle_and_base_name", () => {
+    // The template holds {supervisorHandle} and {supervisorBaseName}.
+    const template = "[claude-tmux] your supervisor is {supervisorHandle}. send your reports and questions to it. if it is gone, use the ListAgents tool to find the newest {supervisorBaseName} chat.";
+    // The supervisor chat is "X 1" and its base name is "X".
+    const prompt = buildHelperSupervisorPrompt(template, "X 1", "X");
+    // The handle is @ plus the chat name with each space replaced by "-".
+    assert.equal(prompt, "[claude-tmux] your supervisor is @X-1. send your reports and questions to it. if it is gone, use the ListAgents tool to find the newest X chat.");
+});
+
+test("test_buildHelpersCreatedNotice_fills_dashed_handles_joined_by_commas", () => {
+    // The template holds {helperHandles}.
+    const template = "helpers have been created.  use them for work instead of your own subagents:  {helperHandles}";
+    // Two helper chat names are given.
+    const notice = buildHelpersCreatedNotice(template, ["X helper 1", "X helper 2"]);
+    // Each name becomes @ plus the name with spaces replaced by "-", and the handles are joined with ", ".
+    assert.equal(notice, "helpers have been created.  use them for work instead of your own subagents:  @X-helper-1, @X-helper-2");
+});
 
 test("test_stripHelperSuffix_removes_trailing_helper_number", () => {
     // Chat name ends with ` helper 1`.

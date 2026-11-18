@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { writeBlockDecision } from "../../shared/sessionTasks.ts";
 // import { wrapShellWord } from "../shared/chatSwap.ts";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
+import { fillTemplate } from "../shared/chatSwap.ts";
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, openTrackerOfPane, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
 // UserPromptSubmit hook: /tmux-new-helper [model] starts a helper chat in a new tmux window.
 const HELPER_SUFFIX_PATTERN = / helper \d+$/;
@@ -87,7 +88,13 @@ export function parseNewHelperArguments(argumentText: string): { helperCount: nu
     return { helperCount, model };
 }
 
-export function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string): string {
+export function buildHelperSupervisorPrompt(template: string, supervisorChatName: string, supervisorBaseName: string): string {
+    const supervisorHandle = `@${supervisorChatName.split(" ").join("-")}`;
+    return fillTemplate(template, { supervisorHandle, supervisorBaseName });
+}
+
+// export function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string): string {
+export function startHelperChat(tmuxPane: string, payload: Record<string, string>, model: string, supervisorChatName: string): string {
     // // session_title is the chat name in the hook payload.
     // const chatName = payload.session_title;
     // if (!chatName)
@@ -112,10 +119,21 @@ export function startHelperChat(tmuxPane: string, payload: Record<string, string
     const helperModel = getHelperModel(model, values["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL"]);
     const swapPercent = process.env.CLAUDE_TMUX_SWAP_PERCENT ?? "";
     const environmentFlags = buildSingleChatEnvironmentFlags(helperCounterName, helperNumber, helperModel, workDirectory, swapPercent);
-    const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, "");
+    const supervisorPrompt = buildHelperSupervisorPrompt(values["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT"], supervisorChatName, baseName);
+    // const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, "");
+    const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, supervisorPrompt);
     const windowId = runTmux(["display", "-p", "-t", tmuxPane, "#{window_id}"]);
     runTmux(["new-window", "-d", "-a", "-t", windowId, "-n", helperChatName, "-c", workDirectory, ...environmentFlags, paneCommand]);
-    return `${helperChatName} is ready.`;
+    // return `${helperChatName} is ready.`;
+    return helperChatName;
+}
+
+export function buildHelpersCreatedNotice(template: string, helperChatNames: string[]): string {
+    const helperHandles: string[] = [];
+    for (const helperChatName of helperChatNames)
+        // helperHandles.push(`@"${helperChatName}"`);
+        helperHandles.push(`@${helperChatName.split(" ").join("-")}`);
+    return fillTemplate(template, { helperHandles: helperHandles.join(", ") });
 }
 
 if (import.meta.main) {
@@ -132,6 +150,8 @@ if (import.meta.main) {
     const { helperCount, model } = parseNewHelperArguments(prompt.slice("/tmux-new-helper".length).trim());
     const readyLines: string[] = [];
     for (let helperIndex = 0; helperIndex < helperCount; helperIndex++)
-        readyLines.push(startHelperChat(tmuxPane, payload, model));
+        // readyLines.push(startHelperChat(tmuxPane, payload, model));
+        // readyLines.push(`${startHelperChat(tmuxPane, payload, model)} is ready.`);
+        readyLines.push(`${startHelperChat(tmuxPane, payload, model, payload.session_title)} is ready.`);
     writeBlockDecision(readyLines.join("\n"));
 }

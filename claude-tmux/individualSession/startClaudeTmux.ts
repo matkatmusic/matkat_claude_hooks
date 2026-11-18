@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
-import { getGitRootOfWorkDirectory } from "../shared/chatSwap.ts";
+import { getGitRootOfWorkDirectory, wrapShellWord } from "../shared/chatSwap.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
@@ -40,9 +40,23 @@ console.log(`Started ${firstChatName} in the tmux session ${singleChat.name}.`);
 
 // startHelperChat names the helpers from CLAUDE_TMUX_NAME: a claude-tmux started inside another chat still has that chat's name
 process.env.CLAUDE_TMUX_NAME = singleChat.name;
+const helperChatNames: string[] = [];
 for (let helperIndex = 0; helperIndex < singleChat.helperCount; helperIndex++) {
-  const helperReadyText = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "");
-  console.log(helperReadyText);
+  // const helperReadyText = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "");
+  // const helperChatName = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "");
+  const helperChatName = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "", firstChatName);
+  helperChatNames.push(helperChatName);
+  console.log(`${helperChatName} is ready.`);
+}
+
+if (helperChatNames.length > 0) {
+  const noticeLogPath = `${DISPATCHER_DIR}/claude-tmux-helpers-notice.log`;
+  const noticeScriptPath = `${import.meta.dirname}/sendHelpersCreatedNotice.ts`;
+  const helperNameWords: string[] = [];
+  for (const helperChatName of helperChatNames)
+    helperNameWords.push(wrapShellWord(helperChatName));
+  const noticeCommand = `bun ${wrapShellWord(noticeScriptPath)} ${wrapShellWord(firstPane)} ${wrapShellWord(firstChatName)} ${helperNameWords.join(" ")} >>${wrapShellWord(noticeLogPath)} 2>&1`;
+  tmux_lib.run(["tmux", "run-shell", "-b", noticeCommand], { capture_output: true, text: true, check: true });
 }
 
 if (process.stdout.isTTY) {

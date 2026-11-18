@@ -9,11 +9,13 @@ const REGISTER_PATHS = [
   "idle-state/mod/hooks/register.ts",
   "context-exit/mod/hooks/register.ts",
   "prompt-intent/mod/hooks/register.ts",
+  "tmux-helper/mod/hooks/register.ts",
 ];
 
 const VALUE_REGISTER_PATHS = [
   "idle-state/mod/hooks/register.ts",
   "context-exit/mod/hooks/register.ts",
+  "tmux-helper/mod/hooks/register.ts",
 ];
 
 function extractCopy(path: string, functionNames = ["parseDefaultFile", "parseUserFile", "getEnablement", "readDefault", "readUser", "isEventEnabled"]): string {
@@ -57,8 +59,10 @@ function assertEnablementCopiesAreIdentical(): void {
 
 function assertValueCopiesAreIdentical(): void {
   const sourceCopy = extractCopy(VALUE_REGISTER_PATHS[0], ["getValue", "readValue"]);
-  const otherCopy = extractCopy(VALUE_REGISTER_PATHS[1], ["getValue", "readValue"]);
-  assert.equal(otherCopy, sourceCopy, `${VALUE_REGISTER_PATHS[0]} and ${VALUE_REGISTER_PATHS[1]} differ`);
+  for (let i = 1; i < VALUE_REGISTER_PATHS.length; i++) {
+    const otherCopy = extractCopy(VALUE_REGISTER_PATHS[i], ["getValue", "readValue"]);
+    assert.equal(otherCopy, sourceCopy, `${VALUE_REGISTER_PATHS[0]} and ${VALUE_REGISTER_PATHS[i]} differ`);
+  }
 }
 
 const LOG_FAILURE_PATHS = [
@@ -67,6 +71,7 @@ const LOG_FAILURE_PATHS = [
   "idle-state/mod/hooks/logHookFailure.ts",
   "context-exit/mod/hooks/logHookFailure.ts",
   "prompt-intent/mod/hooks/logHookFailure.ts",
+  "tmux-helper/mod/hooks/logHookFailure.ts",
 ];
 
 function assertLogFailureCopiesAreIdentical(): void {
