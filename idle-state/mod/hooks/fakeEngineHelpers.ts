@@ -50,7 +50,7 @@ export function createFakeEngine(messages: unknown[]) {
     return 'abcdef1234567890';
   }
   function getGitStatusResult(argv: string[]) {
-    const path = argv[argv.length - 1]!;
+    const path = `${argv[2]}/${argv[argv.length - 1]}`;
     const isOutsideRepo = fake.gitOutsideRepoPaths.includes(path);
     if (isOutsideRepo)
       return { ...NO_PROCESS_FOUND, exitCode: 128, stderr: 'fatal: not a git repository (or any of the parent directories): .git' };

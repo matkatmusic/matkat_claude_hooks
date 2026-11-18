@@ -17,7 +17,7 @@ function getNearestExistingFolder(path: string): string {
 function getFileCommitState(root: string, file: string): string {
   const path = resolve(root, file);
   const folder = getNearestExistingFolder(path);
-  const status = spawnSync("git", ["-C", folder, "status", "--porcelain", "--", path], { encoding: "utf8" });
+  const status = spawnSync("git", ["-C", folder, "status", "--porcelain", "--", path.slice(folder.length + 1)], { encoding: "utf8" });
   if (status.status !== 0) {
     if (status.stderr.includes("not a git repository"))
       return "outside a git repository";

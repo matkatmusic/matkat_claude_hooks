@@ -48,10 +48,10 @@ async function assertFakeEngineGitStatusFollowsGitStatusLines() {
   const { fake, engine } = createFakeEngine([]);
   const $ = engine as any;
   // a path with no status line prints nothing
-  expect(await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', '/work/p/a.ts'])).toEqual({ ...NO_PROCESS_FOUND, exitCode: 0 });
+  expect(await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', 'a.ts'])).toEqual({ ...NO_PROCESS_FOUND, exitCode: 0 });
   // a path with a status line prints that line
   fake.gitStatusLines['/work/p/a.ts'] = ' M a.ts\n';
-  expect((await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', '/work/p/a.ts'])).stdout).toBe(' M a.ts\n');
+  expect((await $.process.run(['git', '-C', '/work/p', 'status', '--porcelain', '--', 'a.ts'])).stdout).toBe(' M a.ts\n');
 }
 
 async function assertFakeEngineExistsFollowsExistingPaths() {

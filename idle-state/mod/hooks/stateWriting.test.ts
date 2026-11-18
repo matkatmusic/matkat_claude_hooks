@@ -196,13 +196,20 @@ async function assertWriteStateFileAndExitAddsNoErrorForEmptyFiles() {
 async function assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder() {
   // a file in a nested repo runs git in the file's own folder, so its own repo answers
   const { fake } = await getWrittenDoneItem(['sub/lib/c.ts'], setNoGitChanges);
-  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub/lib', 'status', '--porcelain', '--', '/work/p/sub/lib/c.ts']);
+  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub/lib', 'status', '--porcelain', '--', 'c.ts']);
+}
+
+async function assertWriteStateFileAndExitRunsGitWithPathRelativeToGitFolder() {
+  // a file given by full path
+  const { fake } = await getWrittenDoneItem(['/work/p/sub/lib/c.ts'], setNoGitChanges);
+  // git runs in the file's folder, and the last argument is the path relative to that folder
+  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub/lib', 'status', '--porcelain', '--', 'c.ts']);
 }
 
 async function assertWriteStateFileAndExitChecksMissingFolderInNearestParent() {
   // the file's folder no longer exists: git runs in the nearest folder that exists
   const { fake } = await getWrittenDoneItem(['/work/p/sub/gone/d.ts'], setNoGitChanges);
-  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub', 'status', '--porcelain', '--', '/work/p/sub/gone/d.ts']);
+  expect(fake.argvs).toContainEqual(['git', '-C', '/work/p/sub', 'status', '--porcelain', '--', 'gone/d.ts']);
 }
 
 async function assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError() {
@@ -346,6 +353,7 @@ test('writeStateFileAndExit sets isCommitted to true for an item with no files',
 test('writeStateFileAndExit sets isCommitted to false and adds an error for an item with no files key', assertWriteStateFileAndExitSetsMissingFilesToFalseWithError);
 test('writeStateFileAndExit adds no error for an item with an empty files list', assertWriteStateFileAndExitAddsNoErrorForEmptyFiles);
 test('writeStateFileAndExit checks a nested repo file in its own folder',assertWriteStateFileAndExitChecksNestedRepoFileInItsOwnFolder);
+test('writeStateFileAndExit runs git with the file path relative to the git folder', assertWriteStateFileAndExitRunsGitWithPathRelativeToGitFolder);
 test('writeStateFileAndExit checks a file in a missing folder from the nearest folder that exists', assertWriteStateFileAndExitChecksMissingFolderInNearestParent);
 test('writeStateFileAndExit sets isCommitted to false and adds an error for a file outside a git repository', assertWriteStateFileAndExitSetsOutsideRepoFileToFalseWithError);
 test('writeStateFileAndExit sets createdTasks from the TaskCreate results in the chat log', assertWriteStateFileAndExitSetsCreatedTasksFromChatLog);

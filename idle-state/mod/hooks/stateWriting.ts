@@ -67,7 +67,7 @@ async function getNearestExistingFolder($: EngineInterface, path: string) {
 async function getFileCommitState($: EngineInterface, root: string, file: string) {
   const path = file.startsWith('/') ? file : `${root}/${file}`;
   const folder = await getNearestExistingFolder($, path);
-  const status = await $.process.run(['git', '-C', folder, 'status', '--porcelain', '--', path]);
+  const status = await $.process.run(['git', '-C', folder, 'status', '--porcelain', '--', path.slice(folder.length + 1)]);
   if (status.exitCode !== 0) {
     if (status.stderr.includes('not a git repository'))
       return 'outside a git repository';

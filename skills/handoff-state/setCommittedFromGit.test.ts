@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { setCommittedFromGit } from "./setCommittedFromGit.ts";
 
@@ -127,6 +127,18 @@ function checksNestedRepoFileInItsOwnRepo() {
   assert.equal(readIsCommitted(path), true);
 }
 
+function checksFileReachedThroughSymlinkedFolder() {
+  // a committed file reached through a symlinked folder outside the repo gives true and does not throw
+  const root = createProject();
+  mkdirSync(`${root}/sub`);
+  writeAndCommitFile(root, "sub/c.ts");
+  const linkParent = mkdtempSync(`${tmpdir()}/handoff-state-link-`);
+  symlinkSync(`${root}/sub`, `${linkParent}/linked`);
+  const path = writeStateFile(root, [`${linkParent}/linked/c.ts`]);
+  setCommittedFromGit(path);
+  assert.equal(readIsCommitted(path), true);
+}
+
 function setsOutsideRepoFileToFalseWithError() {
   // a file outside any git repository gives false and an error
   const root = createProject();
@@ -216,5 +228,6 @@ test("sets isCommitted to true for an item with no files", setsEmptyFilesToTrue)
 test("sets isCommitted to false and adds an error for an item with no files key", setsMissingFilesToFalseWithError);
 test("adds no error for an item with an empty files list", addsNoErrorForEmptyFiles);
 test("checks a nested repo file in its own repo",checksNestedRepoFileInItsOwnRepo);
+test("checks a file reached through a symlinked folder", checksFileReachedThroughSymlinkedFolder);
 test("sets isCommitted to false and adds an error for a file outside a git repository", setsOutsideRepoFileToFalseWithError);
 test("keeps the version key", keepsVersion);

@@ -100,6 +100,8 @@ const blockPromptAfterStateSaved: Hook<'prompt.submit'> = async ($, e, next) => 
 
 function saveHandoffStateFilePathOnWrite(e: Parameters<Hook<'tool.call'>>[1]) {
   if (e.tool === 'Write') {
+    if (e.file_path === undefined)
+      throw new Error('idle-state: Write call has no file_path');
     const isInIdleStateFolder = e.file_path.includes(`/${IDLE_STATE_FOLDER_NAME}/`);
     if (isInIdleStateFolder) {
       const isJsonFile = e.file_path.endsWith('.json');
