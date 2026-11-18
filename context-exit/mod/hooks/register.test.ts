@@ -283,12 +283,15 @@ test('a new session warns again at the first level', async ($, on) => {
 
 const SINGLE_CHAT_SWAP_TOAST_TEXT = 'single chat swap toast text'
 const SINGLE_CHAT_PROMPT_DROP_REASON_TEXT = 'single chat prompt drop reason text'
-const DISPATCH_WITH_SINGLE_CHAT_SWAP = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true, "classic.Stop": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80", "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "' + SINGLE_CHAT_SWAP_TOAST_TEXT + '", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "' + SINGLE_CHAT_PROMPT_DROP_REASON_TEXT + '" } } }'
+const SINGLE_CHAT_SWAP_BLOCKED_NOTICE_TEXT = '{count} tasks block the swap: {tasks}'
+// const DISPATCH_WITH_SINGLE_CHAT_SWAP = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true, "classic.Stop": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80", "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "' + SINGLE_CHAT_SWAP_TOAST_TEXT + '", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "' + SINGLE_CHAT_PROMPT_DROP_REASON_TEXT + '" } } }'
+const DISPATCH_WITH_SINGLE_CHAT_SWAP = '{ "debugLoggingEnabled": false, "enablements": { "context-exit": { "turn.complete": true, "classic.Stop": true } }, "values": { "context-exit": { "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80", "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "' + SINGLE_CHAT_SWAP_TOAST_TEXT + '", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_BLOCKED_NOTICE": "' + SINGLE_CHAT_SWAP_BLOCKED_NOTICE_TEXT + '", "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "' + SINGLE_CHAT_PROMPT_DROP_REASON_TEXT + '" } } }'
 const SINGLE_CHAT_ENVIRONMENT: Record<string, string> = { CLAUDE_TMUX_NAME: 'bed', CLAUDE_TMUX_CHAT_NUMBER: '1', CLAUDE_TMUX_MODEL: 'haiku', CLAUDE_TMUX_WORK_DIRECTORY: '/work/bed', TMUX_PANE: '%7' }
 
 function watchSingleChatSwap($: any, on: any, environmentValues: Record<string, string>, runShellExitCode: number) {
   const runCommands: string[][] = []
   const toasts: string[] = []
+  const statuses: string[] = []
   const submittedTexts: string[] = []
   const swapFailedMarker = { exists: false }
   on('classic.Stop', () => ({}))
@@ -313,12 +316,17 @@ function watchSingleChatSwap($: any, on: any, environmentValues: Record<string, 
     toasts.push(e.text)
     return { value: undefined }
   })
-  on('ui.status', () => ({ value: undefined }))
+  // on('ui.status', () => ({ value: undefined }))
+  on('ui.status', (_$: any, e: any) => {
+    statuses.push(e.text)
+    return { value: undefined }
+  })
   on('prompt.submit', (_$: any, e: any) => {
     submittedTexts.push(e.text)
     return { text: e.text }
   })
-  return { runCommands, toasts, submittedTexts, swapFailedMarker }
+  // return { runCommands, toasts, submittedTexts, swapFailedMarker }
+  return { runCommands, toasts, statuses, submittedTexts, swapFailedMarker }
 }
 
 async function submitPromptForResult($: any, text: string) {
@@ -396,6 +404,36 @@ test('test_a_Stop_above_the_swap_percent_in_a_claude_tmux_chat_shows_the_swap_to
   const { toasts } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
   await $.classic.Stop(STOP_EVENT)
   expect(toasts).toEqual([SINGLE_CHAT_SWAP_TOAST_TEXT])
+})
+
+const WAIT_LOOP_TASK = { id: 'b1', type: 'shell', status: 'running', description: 'wait loop', command: 'while true; do sleep 1; done' }
+
+test('test_startSwapOnStop_shows_a_notice_when_only_background_tasks_block_the_swap', async ($, on) => {
+  // Setup: a claude-tmux chat at 35 percent, above the swap percent of 30.
+  const { runCommands, toasts, statuses } = watchSingleChatSwap($, on, SINGLE_CHAT_ENVIRONMENT, 0)
+  // Action: the chat stops while one background task named "wait loop" still runs.
+  await $.classic.Stop({ ...STOP_EVENT, background_tasks: [WAIT_LOOP_TASK] })
+  // The toast and the status line both name the blocking task.
+  expect(toasts).toHaveLength(1)
+  expect(toasts[0]).toContain('wait loop')
+  expect(statuses).toHaveLength(1)
+  expect(statuses[0]).toContain('wait loop')
+  // The swap does not start.
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(0)
+})
+
+test('test_startSwapOnStop_shows_no_notice_below_the_swap_percent', async ($, on) => {
+  // Setup: a claude-tmux chat at 35 percent with a swap percent of 40, so the chat is below the limit.
+  const { runCommands, toasts, statuses } = watchSingleChatSwap($, on, { ...SINGLE_CHAT_ENVIRONMENT, CLAUDE_TMUX_SWAP_PERCENT: '40' }, 0)
+  // Action: the chat stops while one background task still runs.
+  await $.classic.Stop({ ...STOP_EVENT, background_tasks: [WAIT_LOOP_TASK] })
+  // No toast and no status line show.
+  expect(toasts).toEqual([])
+  expect(statuses).toEqual([])
+  // The swap does not start.
+  const tmuxCommands = runCommands.filter(command => command[0] === 'tmux')
+  expect(tmuxCommands).toHaveLength(0)
 })
 
 test('test_a_failed_run_shell_in_a_claude_tmux_chat_lets_the_next_Stop_try_again', async ($, on) => {

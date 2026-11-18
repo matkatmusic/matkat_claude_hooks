@@ -62,6 +62,7 @@
       "CLAUDE_HOOKS_CONTEXT_EXIT_WARNING_PERCENTS": "30,50,80",
       "CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT": "30",
       "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST": "This chat passed its context limit. It writes a handoff file now. Then a new chat opens in a new window and continues the work. Do not type in this chat.",
+      "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_BLOCKED_NOTICE": "The swap to a new chat waits. {count} background tasks still run: {tasks}. The swap starts when they end. Stop a task that never ends.",
       "CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON": "This chat hands off its work to a new chat now. The new chat opens in a new window. Send your prompt there."
     },
     "claude-tmux": {

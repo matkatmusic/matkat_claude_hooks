@@ -8,6 +8,7 @@ const DISPATCHER_DIR = '../../dispatcher';
 
 const SWAP_PERCENT_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SWAP_PERCENT';
 const SINGLE_CHAT_SWAP_TOAST_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_TOAST';
+const SINGLE_CHAT_SWAP_BLOCKED_NOTICE_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_SWAP_BLOCKED_NOTICE';
 const SINGLE_CHAT_PROMPT_DROP_REASON_KEY = 'CLAUDE_HOOKS_CONTEXT_EXIT_SINGLE_CHAT_PROMPT_DROP_REASON';
 // const SINGLE_CHAT_ENVIRONMENT_NAMES = ['CLAUDE_TMUX_NAME', 'CLAUDE_TMUX_CHAT_NUMBER', 'CLAUDE_TMUX_MODEL', 'CLAUDE_TMUX_WORK_DIRECTORY', 'TMUX_PANE'];
 
@@ -223,8 +224,21 @@ const startSwapOnStop: Hook<'classic.Stop'> = async ($, e, next) => {
   }
   // const isDue = isSwapDue({ teamName, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
   const isDue = isSwapDue({ swapMode, percent: usage.context.percent, swapPercent, backgroundTaskCount, isSwapStarted });
-  if (!isDue)
+  // if (!isDue)
+  //   return next(e);
+  if (!isDue) {
+    const isDueWithoutBackgroundTasks = isSwapDue({ swapMode, percent: usage.context.percent, swapPercent, backgroundTaskCount: 0, isSwapStarted });
+    if (isDueWithoutBackgroundTasks) {
+      const taskDescriptions: string[] = [];
+      for (const backgroundTask of e.background_tasks ?? [])
+        taskDescriptions.push(backgroundTask.description);
+      const noticeTemplate = String(await readValue($, PLUGIN_NAME, SINGLE_CHAT_SWAP_BLOCKED_NOTICE_KEY));
+      const noticeText = noticeTemplate.replace('{count}', String(backgroundTaskCount)).replace('{tasks}', taskDescriptions.join('; '));
+      $.ui.toast(noticeText, { timeoutMs: TOAST_MS });
+      $.ui.status(noticeText);
+    }
     return next(e);
+  }
   if (swapMode === 'single') {
     await launchSingleChatSwap($, sessionId);
     return next(e);
