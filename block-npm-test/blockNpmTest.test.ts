@@ -117,6 +117,48 @@ test("hook: a cd into a folder that an earlier step makes lets the command run a
   assert.equal(hook.stdout, "");
 });
 
+const CTX_EXECUTE_TOOL_NAME = "mcp__plugin_context-mode_context-mode__ctx_execute";
+
+test("test_ctx_execute_shell_test_command_is_denied_like_bash", () => {
+  // The project has a package.json with a test script.
+  const project = mkdtempSync(`${tmpdir()}/ctx-execute-`);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+  // The hook gets a ctx_execute call with shell code that runs npm test.
+  const input = JSON.stringify({ cwd: project, tool_name: CTX_EXECUTE_TOOL_NAME, tool_input: { language: "shell", code: "npm test" }, settings: HOOK_SETTINGS });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/blockNpmTest.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  // The hook denies the call and names the monitor command.
+  assert.equal(JSON.parse(hook.stdout).hookSpecificOutput.permissionDecision, "deny");
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  // The background run finishes, so no test run is left behind.
+  assert.match(waitForLog(logPaths[0]), /all passing/);
+});
+
+test("test_ctx_execute_shell_code_without_test_command_passes", () => {
+  // The project has a package.json.
+  const project = mkdtempSync(`${tmpdir()}/ctx-execute-`);
+  writeFileSync(`${project}/package.json`, "{}");
+  // The hook gets a ctx_execute call with shell code that is not a test command.
+  const input = JSON.stringify({ cwd: project, tool_name: CTX_EXECUTE_TOOL_NAME, tool_input: { language: "shell", code: "ls" }, settings: HOOK_SETTINGS });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/blockNpmTest.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  // The hook says nothing.
+  assert.equal(hook.status, 0);
+  assert.equal(hook.stdout, "");
+});
+
+test("test_ctx_execute_non_shell_language_passes", () => {
+  // The project has a package.json.
+  const project = mkdtempSync(`${tmpdir()}/ctx-execute-`);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+  // The hook gets a ctx_execute call in another language whose code contains npm test.
+  const input = JSON.stringify({ cwd: project, tool_name: CTX_EXECUTE_TOOL_NAME, tool_input: { language: "javascript", code: "npm test" }, settings: HOOK_SETTINGS });
+  const hook = spawnSync("bun", [`${import.meta.dirname}/blockNpmTest.ts`], { input, encoding: "utf8", env: HOOK_TEST_ENV });
+  // The hook says nothing.
+  assert.equal(hook.status, 0);
+  assert.equal(hook.stdout, "");
+});
+
 test("hook: returns immediately, and the full-suite test run finishes in the background", () => {
   const project = mkdtempSync(`${tmpdir()}/background-run-`);
   writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
