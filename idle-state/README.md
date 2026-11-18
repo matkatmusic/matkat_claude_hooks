@@ -26,15 +26,15 @@ claude --plugin-dir /path/to/claude_hooks/idle-state/mod
 
 ## How it works
 
-The mod waits after each reply. When the chat sits idle for a set time, it asks Claude to write a JSON state file, saves it in the project, and exits the chat. In the new chat, the reader (`idle-state-reader.ts`) lists the recent state files and tells Claude to read them. The check (`idle-state-check.ts`) blocks the end of the first turn until Claude reads and names each file.
+The mod waits after each reply. When the chat sits idle for a set time, it asks Claude to write a JSON state file, saves it in the project, and exits the chat. In the new chat, the reader (`idleStateReader.ts`) lists the recent state files and tells Claude to read them. The check (`idleStateCheck.ts`) blocks the end of the first turn until Claude reads and names each file.
 
 ## More details
 
 ### What the parts are
 
 - The mod (`mod/`) watches a chat. When the chat sits idle for a set time, the mod asks Claude to write a state file. The state file is JSON. It holds the work done, the work left, the files changed, the programs running, and the traps to avoid. Then the mod exits the chat.
-- The reader (`idle-state-reader.ts`) is a UserPromptSubmit hook. On the first prompt of a chat, it lists the state files made in a set window of time. It tells Claude to read them. It does nothing on later prompts. It also does nothing when the first prompt runs `/catch-up`.
-- The check (`idle-state-check.ts`) is a Stop hook. It makes sure Claude does what the reader asked.
+- The reader (`idleStateReader.ts`) is a UserPromptSubmit hook. On the first prompt of a chat, it lists the state files made in a set window of time. It tells Claude to read them. It does nothing on later prompts. It also does nothing when the first prompt runs `/catch-up`.
+- The check (`idleStateCheck.ts`) is a Stop hook. It makes sure Claude does what the reader asked.
 
 The mod also writes the state file when you run `exit` yourself, before the chat closes.
 
@@ -62,7 +62,7 @@ A missing value in `input.settings` makes the reader throw an error.
 
 - `CLAUDE_HOOKS_IDLE_STATE_WINDOW_MS`: the reader lists state files newer than this many milliseconds.
 
-The constant `IDLE_STATE_FOLDER_NAME` (`.idleState`) at the top of `idle-state-reader.ts` and `mod/hooks/register.ts` names the state folder. Both files must use the same name.
+The constant `IDLE_STATE_FOLDER_NAME` (`.idleState`) at the top of `idleStateReader.ts` and `mod/hooks/register.ts` names the state folder. Both files must use the same name.
 
 The mod reads the idle time from `CLAUDE_HOOKS_IDLE_MINUTES` in the `idle-state` values of `dispatcher/dispatch.json`. The default is 55. The constants `LATE_LIMIT_MINUTES` and `EXIT_KEY_DELAY_MINUTES` in `mod/hooks/idleStateShared.ts` set the sleep limit and the key delay.
 
@@ -74,6 +74,6 @@ Do not use both ways at the same time. Claude would list the files twice.
 
 ### Run the tests
 
-- Reader: `node --test idle-state/idle-state-reader.test.ts`
-- Check: `node --test idle-state/idle-state-check.test.ts`
+- Reader: `node --test idle-state/idleStateReader.test.ts`
+- Check: `node --test idle-state/idleStateCheck.test.ts`
 - Mod: `claude plugin test idle-state/mod`

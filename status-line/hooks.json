@@ -1,40 +1,40 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"/path/to/claude_hooks/status-line/status.ts\"",
+    "command": "bun\"/path/to/claude_hooks/status-line/status.ts\"",
     "refreshInterval": 1
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
+    "command": "bun\"/path/to/claude_hooks/status-line/subagentStatusLine.ts\"",
     "refreshInterval": 1
   },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/status-line/turn-counter.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/status-line/turnCounter.ts\"" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/status-line/turn-counter.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/status-line/turnCounter.ts\"" }
         ]
       }
     ],
     "StopFailure": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/status-line/turn-counter.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/status-line/turnCounter.ts\"" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/status-line/turn-counter.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/status-line/turnCounter.ts\"" }
         ]
       }
     ]

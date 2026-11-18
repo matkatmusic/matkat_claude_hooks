@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Splits the debt log files into files to split first (one at a time) and files to fix after (in parallel).
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
-import { isLongFileWithEnoughDebt } from "../../debt-ratchet/debt-compute.ts";
+import { isLongFileWithEnoughDebt } from "../../debt-ratchet/debtCompute.ts";
 
 const SPLIT_MIN_FILE_DEBT = 0;
 

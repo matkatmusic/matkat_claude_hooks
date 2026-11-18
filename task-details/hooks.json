@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/task-details/task-details.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/task-details/taskDetails.ts\"" }
         ]
       }
     ]

@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"/path/to/claude_hooks/pending-task-list/pending-task-list.ts\"" }
+          { "type": "command", "command": "bun\"/path/to/claude_hooks/pending-task-list/pendingTaskList.ts\"" }
         ]
       }
     ]

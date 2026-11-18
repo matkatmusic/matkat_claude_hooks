@@ -29,7 +29,7 @@ When a turn stops, the hook reads the transcript and finds the `.ts` files that 
 ### What it does
 
 It runs when Claude stops a turn. A subagent stop also runs it. It finds the `.ts` files that were edited in the turn. It runs eslint with `--fix` on each file. It counts the eslint findings that remain. It counts one extra point for each file that has no test file. It blocks the stop if the total did not drop. It also blocks the stop if a file is too long. A re-entrant stop (when `stop_hook_active` is true) is checked again. The hook counts its blocks in a chain. It passes after 3 blocks in a row.
-`debt-ratchet-report.ts` is a second script. It counts the same debt for every `.ts` file in a git repo. It never blocks. You run it by hand.
+`debtRatchetReport.ts` is a second script. It counts the same debt for every `.ts` file in a git repo. It never blocks. You run it by hand.
 
 ### The problem it solves
 
@@ -43,7 +43,7 @@ The hook saves the debt total of each session in a ledger file. Each new stop mu
 
 1. The hook reads the transcript. It collects the files that Claude and its subagents edited in this turn.
 2. It skips test files and duplicate paths for the eslint count. An edited test file still counts toward the line limit.
-3. For each file, `debt-compute.ts` runs eslint `--fix`. It then counts the findings with the rules in `eslint.config.js`. It adds one point if the file has no test file.
+3. For each file, `debtCompute.ts` runs eslint `--fix`. It then counts the findings with the rules in `eslint.config.js`. It adds one point if the file has no test file.
 4. A test file can sit next to the source file as `<name>.test.ts`. It can also sit in `tests/<name>.test.ts` or `tests/test-<name>.ts` at the repo root. A `.d.ts` file needs no test.
 5. The hook adds the new counts to the ledger of the session. The ledger is one JSON file for each session.
 6. It blocks the stop when a file is over the line limit. It also blocks when the total is above the debt target and did not drop below the ledger total. The message lists the flagged lines.
@@ -73,4 +73,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run each file from the `claude_hooks` folder, for example `node --test debt-ratchet/debt-compute.test.ts`. Most tests run eslint, so the eslint packages must be in `claude_hooks/node_modules`.
+Run each file from the `claude_hooks` folder, for example `node --test debt-ratchet/debtCompute.test.ts`. Most tests run eslint, so the eslint packages must be in `claude_hooks/node_modules`.

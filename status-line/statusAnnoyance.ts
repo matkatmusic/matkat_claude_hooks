@@ -1,4 +1,4 @@
-import { ANNOYANCE_ANCHORS } from "./status_line_config.ts";
+import { ANNOYANCE_ANCHORS } from "./statusLineConfig.ts";
 
 // Six steps of "how much will a forced break sting": hue falls, saturation rises
 export const ANNOYANCE_COLORS = [

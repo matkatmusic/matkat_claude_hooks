@@ -15,7 +15,7 @@ function runSubagentStatus(modelId: string, recordedEffort: string) {
   writeFileSync(join(subagentsDir, "agent-a1.jsonl"), `{"effort":"${recordedEffort}"}`);
   writeFileSync(join(subagentsDir, "agent-a1.meta.json"), JSON.stringify({ agentType: "general" }));
   const task = { id: "a1", description: "work", startTime: Date.now(), model: modelId, tokenCount: 5 };
-  const result = spawnSync("node", [SUBAGENT_STATUS_PATH], {
+  const result = spawnSync("bun", [SUBAGENT_STATUS_PATH], {
     input: JSON.stringify({ transcript_path: join(dir, "t.jsonl"), tasks: [task] }),
     env: process.env,
     encoding: "utf8",

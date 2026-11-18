@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Claude Code status line. Docs: code.claude.com/docs/en/statusline
 import { existsSync, readFileSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
@@ -8,7 +8,7 @@ import { resetColor } from "./statusAnnoyance.ts";
 import { computeWeeklyBudget, computeDayOfWeek, formatBar, formatCountdown, formatTokens, computeSecondsUntilNextDay, computeSecondsUntilReset, formatWeeklyResetSuffix } from "./statusFormat.ts";
 import { countTurns, getGitBranch, getSessionTokens, readSittings } from "./statusRead.ts";
 import type { StatusInput } from "./statusRead.ts";
-import { CONTEXT_ORANGE_AT, CONTEXT_RED_AT, CONTEXT_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT, DAY_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT, FIVE_HOUR_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT, TOKENS_YELLOW_AT, TURNS_ORANGE_AT, TURNS_RED_AT, TURNS_YELLOW_AT } from "./status_line_config.ts";
+import { CONTEXT_ORANGE_AT, CONTEXT_RED_AT, CONTEXT_YELLOW_AT, DAY_ORANGE_AT, DAY_RED_AT, DAY_YELLOW_AT, FIVE_HOUR_ORANGE_AT, FIVE_HOUR_RED_AT, FIVE_HOUR_YELLOW_AT, TOKENS_ORANGE_AT, TOKENS_RED_AT, TOKENS_YELLOW_AT, TURNS_ORANGE_AT, TURNS_RED_AT, TURNS_YELLOW_AT } from "./statusLineConfig.ts";
 
 export { CYAN, DASH, RED, RESET, formatOrDash, selectColor, selectBudgetColor, selectWeeklyUsageColor } from "./statusColors.ts";
 export { ANNOYANCE_COLORS, computeAnnoyanceLevel, resetColor } from "./statusAnnoyance.ts";

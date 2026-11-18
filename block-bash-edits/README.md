@@ -25,7 +25,7 @@ Claude sometimes writes files with `cat >`, heredocs, `sed -i`, `tee`, or `pytho
 ### Steps
 
 1. The hook runs before every Bash tool call.
-2. It reads the command and asks `isBashContentWrite` (from `shared/bash-content-write.ts`) if the command writes file content.
+2. It reads the command and asks `isBashContentWrite` (from `shared/bashContentWrite.ts`) if the command writes file content.
 3. If yes, it denies the call and tells Claude to use Edit or Write.
 4. If no, it prints nothing and the command runs.
 

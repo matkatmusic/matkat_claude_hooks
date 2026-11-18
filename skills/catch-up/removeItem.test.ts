@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /* Disabled: removeItem.ts is disabled.
 import { test } from "node:test";
 import { strict as assert } from "node:assert";

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /* Disabled: writeMerged.ts replaces this file.
 // Removes one item text from the 5 lists of <root>/.idleState/<file>.json and every other .json file there.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";

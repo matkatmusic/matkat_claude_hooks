@@ -55,7 +55,7 @@ A forced break at the limit costs a lot of time. The status line lets you plan b
 
 ### Steps
 
-1. `turn-counter.ts` runs on SessionStart, Stop, StopFailure, and SessionEnd. It writes a list of sittings into the session state file. Each sitting holds the start time, the turns, the end time, and the tokens in and out.
+1. `turnCounter.ts` runs on SessionStart, Stop, StopFailure, and SessionEnd. It writes a list of sittings into the session state file. Each sitting holds the start time, the turns, the end time, and the tokens in and out.
 2. The tokens come from the transcript. The hook also adds the files of subagents and workflow agents.
 3. On SessionStart the hook removes session state files that are older than the keep time.
 4. `status.ts` reads the status data from stdin and the sittings from the session state file. It prints four lines.
@@ -73,7 +73,7 @@ The `turn-counter` hook reads these values from `input.settings`.
 | `CLAUDE_HOOKS_STATUS_LINE_SCRATCH_ROOT` | The folder where workflow agents write their files. |
 | `CLAUDE_HOOKS_STATUS_LINE_KEEP_DAYS` | Days to keep a session state file. |
 
-The color thresholds are constants in `status_line_config.ts`.
+The color thresholds are constants in `statusLineConfig.ts`.
 
 Every name needs a value in `dispatch.json` or `user-dispatch.json`. A missing name makes the hook stop with an error.
 

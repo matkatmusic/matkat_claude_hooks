@@ -39,12 +39,12 @@ It knows these test commands: `npm test`, `npm t`, `npm run test:*`, `yarn test`
 ### Steps
 
 1. The hook checks for a `package.json` in the folder or in a folder above it. If there is none, it does nothing.
-2. `block-npm-test-split.ts` cuts the Bash line into simple commands. `block-npm-test-find.ts` finds the first test command, its file, its `cd` folder, and its `VAR=value` words.
+2. `blockNpmTestSplit.ts` cuts the Bash line into simple commands. `blockNpmTestFind.ts` finds the first test command, its file, its `cd` folder, and its `VAR=value` words.
 3. If the `cd` folder does not exist, the hook blocks the command and says so.
 4. The hook makes the log folder and removes old logs.
-5. `block-npm-test-scripts.ts` builds a shell script. The script runs the tests and writes `<log>.done` when the run ends. A timer kills the run if it takes too long.
-6. The hook starts the script in the background. It blocks the original command. Its message gives the command `monitor-test-run.ts <log>`.
-7. `monitor-test-run.ts` waits for the `.done` file. It prints the result, or it says the run is still in progress.
+5. `blockNpmTestScripts.ts` builds a shell script. The script runs the tests and writes `<log>.done` when the run ends. A timer kills the run if it takes too long.
+6. The hook starts the script in the background. It blocks the original command. Its message gives the command `monitorTestRun.ts <log>`.
+7. `monitorTestRun.ts` waits for the `.done` file. It prints the result, or it says the run is still in progress.
 
 ### Settings values
 
@@ -57,7 +57,7 @@ The hook reads these values from `input.settings`. The defaults are in `dispatch
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS` | The time limit for one test, in milliseconds. |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS` | The age at which old logs are removed, in milliseconds. |
 
-The constants `MONITOR_WAIT_SECONDS` and `MONITOR_POLL_SECONDS` at the top of `monitor-test-run.ts` set the monitor wait and the check interval.
+The constants `MONITOR_WAIT_SECONDS` and `MONITOR_POLL_SECONDS` at the top of `monitorTestRun.ts` set the monitor wait and the check interval.
 
 ### Turn it on alone
 
@@ -67,4 +67,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run each file from the `claude_hooks` folder, for example `node --test block-npm-test/block-npm-test.test.ts`.
+Run each file from the `claude_hooks` folder, for example `node --test block-npm-test/blockNpmTest.test.ts`.
