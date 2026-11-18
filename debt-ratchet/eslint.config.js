@@ -217,6 +217,7 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       '@typescript-eslint/no-empty-object-type': 'error',
+      'no-var': 'error',
       'prefer-destructuring': ['error', { VariableDeclarator: { array: false, object: true }, AssignmentExpression: { array: false, object: true } }],
     },
   },
