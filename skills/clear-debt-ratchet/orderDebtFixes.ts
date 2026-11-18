@@ -38,7 +38,7 @@ if (import.meta.main) {
   if (gitRoot.error)
     throw gitRoot.error;
   const repoRoot = gitRoot.stdout.trim();
-  const values = getValues(readSettings(DISPATCHER_DIR), "debt-ratchet");
+  const values = getValues(readSettings(DISPATCHER_DIR), "debtRatchet");
   const logPath = `${values.CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR}/repo-${basename(repoRoot)}.json`;
   const maxFileLines = Number(values.CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES);
   const log: DebtLog = JSON.parse(readFileSync(logPath, "utf8"));

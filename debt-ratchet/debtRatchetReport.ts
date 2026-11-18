@@ -45,7 +45,7 @@ if (import.meta.main) {
   }
   const files = filterUniqueDebtCheckedFiles(absolutePaths);
 
-  const maxFileLines = Number(getValues(readSettings(DISPATCHER_DIR), "debt-ratchet").CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES);
+  const maxFileLines = Number(getValues(readSettings(DISPATCHER_DIR), "debtRatchet").CLAUDE_HOOKS_DEBT_RATCHET_MAX_FILE_LINES);
   const overLimitFiles: string[] = [];
   const debtLines: string[] = [];
   const fileDebtCounts: Record<string, number> = {};
@@ -76,7 +76,7 @@ if (import.meta.main) {
 
   const ledger = buildLedger(fileDebtCounts);
   const total = ledger.total;
-  const logFolder = getValues(readSettings(DISPATCHER_DIR), "debt-ratchet").CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR;
+  const logFolder = getValues(readSettings(DISPATCHER_DIR), "debtRatchet").CLAUDE_HOOKS_DEBT_RATCHET_LEDGER_DIR;
   mkdirSync(logFolder, { recursive: true });
   const logPath = `${logFolder}/repo-${basename(repoRoot)}.json`;
   writeFileSync(logPath, JSON.stringify({ ...ledger, details }, null, 2));

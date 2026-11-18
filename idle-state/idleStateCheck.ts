@@ -80,7 +80,7 @@ export function findUnnamedFiles(files: string[], replyText: string): string[] {
 }
 
 export function isReaderEnabled(dispatcherDir = DISPATCHER_DIR): boolean {
-  return isEnabled(readSettings(dispatcherDir), "idle-state-reader", "UserPromptSubmit");
+  return isEnabled(readSettings(dispatcherDir), "idleStateReader", "UserPromptSubmit");
 }
 
 if (import.meta.main) {

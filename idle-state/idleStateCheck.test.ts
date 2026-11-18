@@ -95,7 +95,7 @@ test("text inside an api-request-blob assistant line is collected as reply text"
 
 function writeDispatcherDir(readerEnabled: boolean): string {
   const dir = mkdtempSync(`${tmpdir()}/idle-state-dispatcher-`);
-  const dispatch = { enablements: { "idle-state-reader": { UserPromptSubmit: readerEnabled } }, values: {} };
+  const dispatch = { enablements: { idleStateReader: { UserPromptSubmit: readerEnabled } }, values: {} };
   writeFileSync(`${dir}/dispatch.json`, JSON.stringify(dispatch));
   return dir;
 }
