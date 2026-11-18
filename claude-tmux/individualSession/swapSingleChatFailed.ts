@@ -2,7 +2,8 @@ import { existsSync, rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, sendTextToChat, writeSwapFailedMarker } from "../shared/chatSwap.ts";
-import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+// import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+import { buildHandoffDoneMarkerPath, closePaneIfOpen, fillTemplate, removeHandoffPathMarker, writeSwapFailedMarker } from "../shared/chatSwap.ts";
 // import { buildSingleChatName, buildSwapRecordPath, getSwapFailedAction, readSwapRecord } from "./singleChat.ts";
 import { buildSingleChatName, buildSwapRecordPath, getSwapFailedAction, openTrackerOfPane, readSwapRecord, resetTrackerAfterFailedSwap } from "./singleChat.ts";
 import type { SingleChatSwapRecord } from "./singleChat.ts";
@@ -39,6 +40,7 @@ if (swapRecord !== undefined) {
 }
 
 rmSync(buildHandoffDoneMarkerPath(DISPATCHER_DIR, oldSessionId), { force: true });
+removeHandoffPathMarker(DISPATCHER_DIR, oldSessionId);
 writeSwapFailedMarker(DISPATCHER_DIR, oldSessionId);
 const failedNotice = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE"], { logPath: `${DISPATCHER_DIR}/claude-tmux-swap.log` });
 // sendTextToChat(oldPane, oldChatName, failedNotice, Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS"]));

@@ -108,6 +108,28 @@ export function removeHandoffDoneMarker(dispatcherDirectory: string, sessionId: 
   rmSync(buildHandoffDoneMarkerPath(dispatcherDirectory, sessionId));
 }
 
+export function buildHandoffFilePath(idleStateDirectory: string, sessionId: string, now: Date): string {
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  return `${idleStateDirectory}/${year}-${month}-${day}-${hour}${minute}-${sessionId.slice(0, 8)}.json`;
+}
+
+export function buildHandoffPathMarkerPath(dispatcherDirectory: string, sessionId: string): string {
+  return `${dispatcherDirectory}/handoff-path/${sessionId}`;
+}
+
+export function writeHandoffPathMarker(dispatcherDirectory: string, sessionId: string, handoffFilePath: string): void {
+  mkdirSync(`${dispatcherDirectory}/handoff-path`, { recursive: true });
+  writeFileSync(buildHandoffPathMarkerPath(dispatcherDirectory, sessionId), handoffFilePath);
+}
+
+export function removeHandoffPathMarker(dispatcherDirectory: string, sessionId: string): void {
+  rmSync(buildHandoffPathMarkerPath(dispatcherDirectory, sessionId), { force: true });
+}
+
 export function writeSwapFailedMarker(dispatcherDirectory: string, sessionId: string): void {
   mkdirSync(`${dispatcherDirectory}/swap-failed`, { recursive: true });
   writeFileSync(`${dispatcherDirectory}/swap-failed/${sessionId}`, "");

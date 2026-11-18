@@ -3,7 +3,8 @@ import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.t
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { fillTemplate, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
 // import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
-import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, waitForIdleChatAndClearInputBox, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+// import { fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, waitForIdleChatAndClearInputBox, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+import { buildHandoffFilePath, fillTemplate, isWindowOfPaneActive, removeHandoffDoneMarker, removeHandoffPathMarker, selectWindowOfPane, sendExitToChat, sendHandoffCommandAndWaitForFile, startChatInNewWindow, waitForChatReady, waitForIdleChat, waitForIdleChatAndClearInputBox, writeHandoffDoneMarker, writeHandoffPathMarker } from "../shared/chatSwap.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord } from "./singleChat.ts";
 import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, buildSwapRecordPath, openTrackerOfPane, updateTrackerWithNextChatNumber, writeSwapRecord } from "./singleChat.ts";
 
@@ -32,8 +33,12 @@ writeSwapRecord(swapRecordPath, { newChatName, newPane: "", isNewChatReady: fals
 waitForIdleChat(oldPane, oldChatName, handoffWaitSeconds);
 // const projectRootResult = tmux_lib.run(["git", "-C", workDirectory, "rev-parse", "--show-toplevel"], { capture_output: true, text: true, check: true });
 const idleStateDirectories = [`${projectRootResult.stdout.trim()}/.idleState`];
-const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND"], { sessionId: oldSessionId });
+const expectedHandoffFilePath = buildHandoffFilePath(idleStateDirectories[0], oldSessionId, new Date());
+writeHandoffPathMarker(DISPATCHER_DIR, oldSessionId, expectedHandoffFilePath);
+// const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND"], { sessionId: oldSessionId });
+const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND"], { sessionId: oldSessionId, handoffPath: expectedHandoffFilePath });
 const handoffFilePath = sendHandoffCommandAndWaitForFile(oldPane, oldChatName, handoffCommand, idleStateDirectories, oldSessionId, dialogWaitSeconds, handoffWaitSeconds);
+removeHandoffPathMarker(DISPATCHER_DIR, oldSessionId);
 writeHandoffDoneMarker(DISPATCHER_DIR, oldSessionId);
 
 const takeoverPrompt = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT"], { oldChatName, handoffPath: handoffFilePath });

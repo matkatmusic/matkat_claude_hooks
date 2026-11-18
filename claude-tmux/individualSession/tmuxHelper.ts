@@ -119,9 +119,9 @@ export function startHelperChat(tmuxPane: string, payload: Record<string, string
     const helperModel = getHelperModel(model, values["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_MODEL"]);
     const swapPercent = process.env.CLAUDE_TMUX_SWAP_PERCENT ?? "";
     const environmentFlags = buildSingleChatEnvironmentFlags(helperCounterName, helperNumber, helperModel, workDirectory, swapPercent);
-    const supervisorPrompt = buildHelperSupervisorPrompt(values["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT"], supervisorChatName, baseName);
-    // const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, "");
-    const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, supervisorPrompt);
+    // const supervisorPrompt = buildHelperSupervisorPrompt(values["CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT"], supervisorChatName, baseName);
+    const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, "");
+    // const paneCommand = buildSingleChatPaneCommand(helperChatName, helperModel, supervisorPrompt);
     const windowId = runTmux(["display", "-p", "-t", tmuxPane, "#{window_id}"]);
     runTmux(["new-window", "-d", "-a", "-t", windowId, "-n", helperChatName, "-c", workDirectory, ...environmentFlags, paneCommand]);
     // return `${helperChatName} is ready.`;

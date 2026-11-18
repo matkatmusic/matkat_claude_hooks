@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { tmpdir } from "node:os";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import type { Sitting } from "../shared/sessionState.ts";
 
 const SCRATCH_ROOT = "/private/tmp";
-const { applyEvent, countTranscriptTokens, removeStaleCounters } = await import("./turnCounter.ts");
+const { applyEvent, countTranscriptTokens, removeStaleCounters, removeStaleCountersUnderLock } = await import("./turnCounter.ts");
 
 const events = [
   "SessionStart",
@@ -151,6 +151,52 @@ test("a file that vanishes after the folder listing does not stop the cleanup", 
   // vanished.json is in the listing but another chat already deleted it
   const listing = ["stale-before.json", "vanished.json", "stale-after.json"];
   await removeStaleCounters(Math.floor(Date.now() / 1000), 14, stateDir, listing);
+  const remaining = readdirSync(stateDir);
+  rmSync(stateDir, { recursive: true, force: true });
+  assert.deepEqual(remaining, []);
+});
+
+test("test_cleanup_is_skipped_when_a_fresh_lock_file_exists", async () => {
+  // Step 1: make a state folder with an old counter file and a lock file made just now.
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-lock-`);
+  const longAgo = new Date(1000 * 1000);
+  writeFileSync(`${stateDir}/old-counter.json`, "{}");
+  utimesSync(`${stateDir}/old-counter.json`, longAgo, longAgo);
+  writeFileSync(`${stateDir}/stale-cleanup.lock`, "");
+  // Step 2: run the locked cleanup.
+  await removeStaleCountersUnderLock(Math.floor(Date.now() / 1000), 14, stateDir);
+  // Step 3: the old counter file is still there, because another chat holds the lock.
+  const oldCounterStillExists = existsSync(`${stateDir}/old-counter.json`);
+  rmSync(stateDir, { recursive: true, force: true });
+  assert.equal(oldCounterStillExists, true);
+});
+
+test("test_cleanup_runs_when_the_lock_file_is_older_than_the_lock_age", async () => {
+  // Step 1: make a state folder with an old counter file and a lock file 120 seconds old.
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-lock-`);
+  const longAgo = new Date(1000 * 1000);
+  const twoMinutesAgo = new Date(Date.now() - 120 * 1000);
+  writeFileSync(`${stateDir}/old-counter.json`, "{}");
+  utimesSync(`${stateDir}/old-counter.json`, longAgo, longAgo);
+  writeFileSync(`${stateDir}/stale-cleanup.lock`, "");
+  utimesSync(`${stateDir}/stale-cleanup.lock`, twoMinutesAgo, twoMinutesAgo);
+  // Step 2: run the locked cleanup.
+  await removeStaleCountersUnderLock(Math.floor(Date.now() / 1000), 14, stateDir);
+  // Step 3: the old counter file is gone, because the old lock came from a crashed chat.
+  const oldCounterStillExists = existsSync(`${stateDir}/old-counter.json`);
+  rmSync(stateDir, { recursive: true, force: true });
+  assert.equal(oldCounterStillExists, false);
+});
+
+test("test_lock_file_is_gone_after_a_cleanup_with_no_prior_lock", async () => {
+  // Step 1: make a state folder with an old counter file and no lock file.
+  const stateDir = mkdtempSync(`${tmpdir()}/turn-counter-lock-`);
+  const longAgo = new Date(1000 * 1000);
+  writeFileSync(`${stateDir}/old-counter.json`, "{}");
+  utimesSync(`${stateDir}/old-counter.json`, longAgo, longAgo);
+  // Step 2: run the locked cleanup.
+  await removeStaleCountersUnderLock(Math.floor(Date.now() / 1000), 14, stateDir);
+  // Step 3: the old counter file is gone and the lock file is gone.
   const remaining = readdirSync(stateDir);
   rmSync(stateDir, { recursive: true, force: true });
   assert.deepEqual(remaining, []);

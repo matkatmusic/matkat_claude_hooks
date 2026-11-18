@@ -11,6 +11,8 @@ ask-dont-dump/auditor/marks/
 undefined/
 dispatcher/claude-tmux-team-swap.log
 dispatcher/claude-tmux-swap.log
+dispatcher/claude-tmux-helpers-notice.log
 dispatcher/handoff-done/
+dispatcher/handoff-path/
 dispatcher/swap-failed/
 dispatcher/claude-team-swap.log

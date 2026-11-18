@@ -11,6 +11,11 @@ const {
   listHandoffFilesInDirectories,
   writeHandoffDoneMarker,
   removeHandoffDoneMarker,
+  buildHandoffFilePath,
+  listHandoffFiles,
+  buildHandoffPathMarkerPath,
+  writeHandoffPathMarker,
+  removeHandoffPathMarker,
   writeSwapFailedMarker,
   isChatIdle,
 } = await import("./chatSwap.ts");
@@ -231,6 +236,67 @@ test("test_removeHandoffDoneMarker_throws_when_the_marker_is_missing", () => {
   mkdirSync(`${dispatcherFolder}/handoff-done`);
   // Step 2 and 3: remove the marker. The call throws.
   assert.throws(() => removeHandoffDoneMarker(dispatcherFolder, "sess-1"));
+});
+
+test("test_buildHandoffFilePath_gives_the_folder_the_local_stamp_and_the_first_8_characters_of_the_session_id", () => {
+  // Scenario: the handoff file path holds the folder, the local time stamp, and the short session id.
+  // Step 1: pick the local time 2026-11-18 09:07.
+  const now = new Date(2026, 10, 18, 9, 7);
+  // Step 2: build the handoff file path for session abcdefgh-0000.
+  const handoffFilePath = buildHandoffFilePath("/idle", SESSION_ID, now);
+  // Step 3: the path has the folder, the zero padded stamp, and the first 8 characters of the session id.
+  assert.equal(handoffFilePath, "/idle/2026-11-18-0907-abcdefgh.json");
+});
+
+test("test_buildHandoffFilePath_path_is_found_by_listHandoffFiles", () => {
+  // Scenario: a file at the built path is listed for the session.
+  // Step 1: build a handoff file path in an empty idle folder.
+  const idleFolder = makeTemporaryFolder();
+  const handoffFilePath = buildHandoffFilePath(idleFolder, SESSION_ID, new Date(2026, 10, 18, 9, 7));
+  // Step 2: make the file.
+  writeFileSync(handoffFilePath, "{}");
+  // Step 3: list the files of the session.
+  const handoffFiles = listHandoffFiles(idleFolder, SESSION_ID);
+  // Step 4: the built path is the only file in the list.
+  assert.deepEqual(handoffFiles, [handoffFilePath]);
+});
+
+test("test_buildHandoffPathMarkerPath_gives_the_handoff_path_folder_and_the_session_id", () => {
+  // Scenario: the marker path is in the handoff-path folder of the dispatcher folder.
+  // Step 1 and 2: build the marker path for session sess-1.
+  const markerPath = buildHandoffPathMarkerPath("/dispatcher", "sess-1");
+  // Step 3: the path is the dispatcher folder, handoff-path, and the session id.
+  assert.equal(markerPath, "/dispatcher/handoff-path/sess-1");
+});
+
+test("test_writeHandoffPathMarker_writes_the_handoff_file_path_as_the_whole_content", () => {
+  // Scenario: the marker file holds the handoff file path and nothing else.
+  // Step 1: make an empty dispatcher folder.
+  const dispatcherFolder = makeTemporaryFolder();
+  // Step 2: write the marker of session sess-1 with a handoff file path.
+  writeHandoffPathMarker(dispatcherFolder, "sess-1", "/idle/2026-11-18-0907-abcdefgh.json");
+  // Step 3: the marker content is exactly the handoff file path, with no line break.
+  assert.equal(readFileSync(`${dispatcherFolder}/handoff-path/sess-1`, "utf8"), "/idle/2026-11-18-0907-abcdefgh.json");
+});
+
+test("test_removeHandoffPathMarker_removes_the_marker_file", () => {
+  // Scenario: the marker file is gone after the call.
+  // Step 1: write the marker of session sess-1.
+  const dispatcherFolder = makeTemporaryFolder();
+  writeHandoffPathMarker(dispatcherFolder, "sess-1", "/idle/handoff.json");
+  assert.equal(existsSync(`${dispatcherFolder}/handoff-path/sess-1`), true);
+  // Step 2: remove the marker.
+  removeHandoffPathMarker(dispatcherFolder, "sess-1");
+  // Step 3: the marker file is gone.
+  assert.equal(existsSync(`${dispatcherFolder}/handoff-path/sess-1`), false);
+});
+
+test("test_removeHandoffPathMarker_does_not_throw_when_the_marker_is_missing", () => {
+  // Scenario: removing a marker that does not exist is not an error.
+  // Step 1: make an empty dispatcher folder with no marker.
+  const dispatcherFolder = makeTemporaryFolder();
+  // Step 2 and 3: remove the marker. The call does not throw.
+  assert.doesNotThrow(() => removeHandoffPathMarker(dispatcherFolder, "sess-1"));
 });
 
 test("test_writeSwapFailedMarker_creates_the_marker_file_of_the_session", () => {

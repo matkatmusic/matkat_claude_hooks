@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DISPATCHER_DIR } from "../../shared/settings.ts";
+import { buildHandoffPathMarkerPath, writeHandoffPathMarker } from "../shared/chatSwap.ts";
 
 function runScriptWithBun(scriptName: string, scriptArguments: string[], workDirectory: string) {
   return spawnSync("bun", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", cwd: workDirectory, env: { ...process.env, BUN_JSC_useTailCalls: "0" } });
@@ -109,4 +110,31 @@ test("test_swapSingleChatFailed_does_not_type_the_fail_notice_into_the_chat", (t
   assert.ok(existsSync(swapFailedMarkerPath));
   // Step 6: check that the script ended with no error.
   assert.equal(result.status, 0, result.stderr);
+});
+
+test("test_swapSingleChatFailed_removes_the_handoff_path_marker", (t) => {
+  // Scenario: after a failed swap, the handoff path marker of the old chat must be gone.
+  // Step 1: start a tmux session whose pane runs cat.
+  const newSessionResult = spawnSync("tmux", ["new-session", "-d", "-x", "300", "-y", "50", "-P", "-F", "#{session_id} #{pane_id}", "cat"], { encoding: "utf8" });
+  assert.equal(newSessionResult.status, 0);
+  const [sessionId, pane] = newSessionResult.stdout.trim().split(" ");
+  // Step 2: write a handoff path marker for a made-up session id.
+  const oldSessionId = `handoff-path-test-${process.pid}`;
+  const swapFailedMarkerPath = `${DISPATCHER_DIR}/swap-failed/${oldSessionId}`;
+  writeHandoffPathMarker(DISPATCHER_DIR, oldSessionId, "/w/.idleState/handoff.json");
+  const handoffPathMarkerPath = buildHandoffPathMarkerPath(DISPATCHER_DIR, oldSessionId);
+  // Step 3: kill the tmux session by its id when the test ends. Also remove both marker files.
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", sessionId]);
+    rmSync(swapFailedMarkerPath, { force: true });
+    rmSync(handoffPathMarkerPath, { force: true });
+  });
+  // Step 4: check that the marker file exists before the script runs, so the test proves what it claims.
+  assert.ok(existsSync(handoffPathMarkerPath));
+  // Step 5: run swapSingleChatFailed.ts for that pane. No swap record exists for oldSessionId.
+  const result = runScriptWithBun("swapSingleChatFailed.ts", ["a", "1", "sonnet", "/w", pane, oldSessionId, "80"], import.meta.dirname);
+  // Step 6: check that the script ended with no error.
+  assert.equal(result.status, 0, result.stderr);
+  // Step 7: check that the marker file is gone.
+  assert.ok(!existsSync(handoffPathMarkerPath));
 });

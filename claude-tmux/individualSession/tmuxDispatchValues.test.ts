@@ -17,6 +17,8 @@ const tmuxValueKeys = [
   "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE",
   "CLAUDE_HOOKS_CLAUDE_TMUX_HELPERS_CREATED_NOTICE",
   "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT",
+  "CLAUDE_HOOKS_CLAUDE_TMUX_MAIN_TEAM_RULE",
+  "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_TEAM_RULE",
 ];
 const joinValue = (valueKey: string): string => [tmuxValues[valueKey]].flat().join("\n");
 const listFieldNames = (text: string): string[] => [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
@@ -41,11 +43,14 @@ test("test_tmuxValues_texts_use_only_fields_that_the_scripts_give", () => {
   // Step: join each text. List the {field} names of the text. Check the list.
   // assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), ["sessionId"]);
   // the handoff command does not tell the chat its session id
-  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), []);
+  // assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), []);
+  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND")), ["handoffPath"]);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT")), ["handoffPath", "oldChatName"]);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE")), ["logPath"]);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HELPERS_CREATED_NOTICE")), ["helperHandles"]);
   assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT")), ["supervisorBaseName", "supervisorHandle"]);
+  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_MAIN_TEAM_RULE")), ["baseName"]);
+  assert.deepEqual(listFieldNames(joinValue("CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_TEAM_RULE")), ["baseName"]);
 });
 
 test("test_tmuxValues_hold_one_line_in_each_string", () => {

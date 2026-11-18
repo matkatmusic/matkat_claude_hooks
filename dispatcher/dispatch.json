@@ -18,6 +18,7 @@
     "clarifyAmbiguous": { "UserPromptSubmit": false },
     "taskDetails": { "UserPromptSubmit": false },
     "tmuxHelper": { "UserPromptSubmit": false },
+    "teamRuleOnStart": { "SessionStart": false },
     "pendingTaskList": { "UserPromptSubmit": false },
     "inProgressTaskList": { "UserPromptSubmit": false },
     "typecheckOnStop": { "Stop": false, "SubagentStop": false },
@@ -32,7 +33,7 @@
     "feature-request": { "prompt.submit": true },
     "change-request": { "prompt.submit": true },
     "ask-if-unclear": { "prompt.submit": true },
-    "tmux-helper": { "prompt.submit": true }
+    "tmux-helper": { "prompt.submit": false }
   },
   "values": {
     "shared": { "CLAUDE_HOOKS_SESSION_STATE_DIR": "~/.claude/claude_hooks" },
@@ -72,7 +73,7 @@
       "CLAUDE_HOOKS_CLAUDE_TMUX_DIALOG_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_CLOSE_WAIT_SECONDS": "120",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HANDOFF_COMMAND": "/matkat-hooks:handoff-state Write the handoff file to exactly this path: {handoffPath}",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TAKEOVER_PROMPT": [
         "You continue the work of the chat {oldChatName}. That chat passed its context limit and wrote a handoff file for you.",
         "The handoff file is: {handoffPath}",
@@ -85,7 +86,9 @@
       ],
       "CLAUDE_HOOKS_CLAUDE_TMUX_SWAP_FAILED_NOTICE": "[claude-tmux] The swap to a new chat failed. This chat stays open. The error is in {logPath}. The next swap starts after your next prompt.",
       "CLAUDE_HOOKS_CLAUDE_TMUX_HELPERS_CREATED_NOTICE": "helpers have been created.  use them for work instead of your own subagents:  {helperHandles}",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT": "[claude-tmux] your supervisor is {supervisorHandle}. send your reports and questions to it. if it is gone, use the ListAgents tool to find the newest {supervisorBaseName} chat."
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_SUPERVISOR_PROMPT": "[claude-tmux] your supervisor is {supervisorHandle}. send your reports and questions to it. if it is gone, use the ListAgents tool to find the newest {supervisorBaseName} chat.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_MAIN_TEAM_RULE": "[claude-tmux] You are the supervisor of the team {baseName}. Your helpers are the live chats named \"{baseName} helper N\". Use the ListAgents tool to find them. Send them work instead of starting your own subagents.",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_HELPER_TEAM_RULE": "[claude-tmux] You are a helper of the team {baseName}. Your supervisor is the live chat named \"{baseName} N\" with the highest N. Use the ListAgents tool to find it. Send your reports and questions to it."
     },
     "ask-dont-dump": { "useTypesafe": false, "typesafeQuestions": "hooks/typesafeQuestions.json" },
     "planFileReminder": {
@@ -288,7 +291,7 @@
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_MESSAGE_HEADER": "[claude-tmux-team] From \"{senderChatName}\" (role {senderJob}). To reply, send to the role {senderJob}.",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_DIALOG_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_START_WAIT_SECONDS": "900",
-      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state",
+      "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND": "/matkat-hooks:handoff-state Write the handoff file to exactly this path: {handoffPath}",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_WAIT_SECONDS": "600",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_CLOSE_WAIT_SECONDS": "120",
       "CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_TAKEOVER_PROMPT": [
@@ -329,6 +332,7 @@
     { "event": "UserPromptSubmit", "command": ["bun","../clarify-ambiguous/clarifyAmbiguous.ts"] },
     { "event": "UserPromptSubmit", "command": ["bun","../task-details/taskDetails.ts"] },
     { "event": "UserPromptSubmit", "command": ["bun","../claude-tmux/individualSession/tmuxHelper.ts"] },
+    { "event": "SessionStart", "command": ["bun","../claude-tmux/individualSession/teamRuleOnStart.ts"] },
     { "event": "UserPromptSubmit", "command": ["bun","../pending-task-list/pendingTaskList.ts"] },
     { "event": "UserPromptSubmit", "command": ["bun","../in-progress-task-list/inProgressTaskList.ts"] },
     { "event": "Stop", "command": ["bun","../typecheck-on-stop/typecheckOnStop.ts"], "timeout": 300 },

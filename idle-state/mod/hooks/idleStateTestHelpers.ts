@@ -49,6 +49,7 @@ export function getNoProcessFound() {
 }
 
 export const existingFsPathEnds: string[] = [];
+export const fsFileTextsByPathEnd: Record<string, string> = {};
 
 export function setFsStubs(on: any, dispatchText = DISPATCH_ALL_ON) {
   function getFsExists(_$: any, e: any) {
@@ -62,6 +63,10 @@ export function setFsStubs(on: any, dispatchText = DISPATCH_ALL_ON) {
     const isDispatchFile = e.path.endsWith('dispatch.json');
     if (isDispatchFile)
       return { value: dispatchText };
+    for (const pathEnd of Object.keys(fsFileTextsByPathEnd)) {
+      if (e.path.endsWith(pathEnd))
+        return { value: fsFileTextsByPathEnd[pathEnd] };
+    }
     return { value: TEMPLATE_TEXT };
   }
   on('fs.exists', getFsExists);

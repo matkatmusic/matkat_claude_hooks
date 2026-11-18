@@ -9,7 +9,8 @@ import type { Team, TeamChat } from "./teamFile.ts";
 // import { sendTextToChat } from "./teamSend.ts";
 // import { startChatInNewWindow } from "./teamStart.ts";
 // import { sendHandoffCommandAndWaitForFile, waitForChatReady, writeHandoffDoneMarker } from "../chat-swap/chatSwap.ts";
-import { fillTemplate, sendHandoffCommandAndWaitForFile, sendTextToChat, startChatInNewWindow, waitForChatReady, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+// import { fillTemplate, sendHandoffCommandAndWaitForFile, sendTextToChat, startChatInNewWindow, waitForChatReady, writeHandoffDoneMarker } from "../shared/chatSwap.ts";
+import { buildHandoffFilePath, fillTemplate, removeHandoffPathMarker, sendHandoffCommandAndWaitForFile, sendTextToChat, startChatInNewWindow, waitForChatReady, writeHandoffDoneMarker, writeHandoffPathMarker } from "../shared/chatSwap.ts";
 
 const scriptArguments = process.argv.slice(2);
 if (scriptArguments.length !== 4)
@@ -40,11 +41,16 @@ const idleStateDirectories = listIdleStateDirectories(team, projectRootResult.st
 // const handoffFilesBefore: string[] = [];
 // for (const idleStateDirectory of idleStateDirectories)
 //   handoffFilesBefore.push(...listHandoffFiles(idleStateDirectory, oldSessionId));
-const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND"], { sessionId: oldSessionId });
+const chatIdleStateDirectory = idleStateDirectories[idleStateDirectories.length - 1];
+const expectedHandoffFilePath = buildHandoffFilePath(chatIdleStateDirectory, oldSessionId, new Date());
+writeHandoffPathMarker(DISPATCHER_DIR, oldSessionId, expectedHandoffFilePath);
+// const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND"], { sessionId: oldSessionId });
+const handoffCommand = fillTemplate(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_COMMAND"], { sessionId: oldSessionId, handoffPath: expectedHandoffFilePath });
 // sendTextToChat(oldChat.pane, oldChatName, handoffCommand, dialogWaitSeconds);
 
 const handoffWaitSeconds = Number(values["CLAUDE_HOOKS_CLAUDE_TMUX_TEAM_HANDOFF_WAIT_SECONDS"]);
 const handoffFilePath = sendHandoffCommandAndWaitForFile(oldChat.pane, oldChatName, handoffCommand, idleStateDirectories, oldSessionId, dialogWaitSeconds, handoffWaitSeconds);
+removeHandoffPathMarker(DISPATCHER_DIR, oldSessionId);
 // const handoffStartedAt = Date.now();
 // let handoffFilePath: string | undefined;
 // while (handoffFilePath === undefined) {

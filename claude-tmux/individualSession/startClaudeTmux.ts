@@ -49,15 +49,15 @@ for (let helperIndex = 0; helperIndex < singleChat.helperCount; helperIndex++) {
   console.log(`${helperChatName} is ready.`);
 }
 
-if (helperChatNames.length > 0) {
-  const noticeLogPath = `${DISPATCHER_DIR}/claude-tmux-helpers-notice.log`;
-  const noticeScriptPath = `${import.meta.dirname}/sendHelpersCreatedNotice.ts`;
-  const helperNameWords: string[] = [];
-  for (const helperChatName of helperChatNames)
-    helperNameWords.push(wrapShellWord(helperChatName));
-  const noticeCommand = `bun ${wrapShellWord(noticeScriptPath)} ${wrapShellWord(firstPane)} ${wrapShellWord(firstChatName)} ${helperNameWords.join(" ")} >>${wrapShellWord(noticeLogPath)} 2>&1`;
-  tmux_lib.run(["tmux", "run-shell", "-b", noticeCommand], { capture_output: true, text: true, check: true });
-}
+// if (helperChatNames.length > 0) {
+//   const noticeLogPath = `${DISPATCHER_DIR}/claude-tmux-helpers-notice.log`;
+//   const noticeScriptPath = `${import.meta.dirname}/sendHelpersCreatedNotice.ts`;
+//   const helperNameWords: string[] = [];
+//   for (const helperChatName of helperChatNames)
+//     helperNameWords.push(wrapShellWord(helperChatName));
+//   const noticeCommand = `bun ${wrapShellWord(noticeScriptPath)} ${wrapShellWord(firstPane)} ${wrapShellWord(firstChatName)} ${helperNameWords.join(" ")} >>${wrapShellWord(noticeLogPath)} 2>&1`;
+//   tmux_lib.run(["tmux", "run-shell", "-b", noticeCommand], { capture_output: true, text: true, check: true });
+// }
 
 if (process.stdout.isTTY) {
   const isInsideTmux = process.env.TMUX !== undefined;

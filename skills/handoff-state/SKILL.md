@@ -21,6 +21,7 @@ Write a state file for this chat. A fresh chat reads it and continues the work.
 9. Reply with only the file path.
 
 ## Rules
+- When the prompt gives a file path for the handoff file, write the JSON to exactly that path. That path replaces the path of steps 1, 2, 3, 4 and 6. Write the `.gitignore` of step 8 into the folder of that path. Do not find the project root yourself.
 - Write only JSON in the file. Do not use a code fence.
 - Replace each example value in the template with a real value.
 - Use an empty array when there is nothing to say.

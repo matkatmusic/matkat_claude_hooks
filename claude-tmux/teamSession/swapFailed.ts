@@ -3,7 +3,8 @@ import { rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 // import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
-import { closePaneIfOpen, fillTemplate, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+// import { closePaneIfOpen, fillTemplate, writeSwapFailedMarker } from "../shared/chatSwap.ts";
+import { closePaneIfOpen, fillTemplate, removeHandoffPathMarker, writeSwapFailedMarker } from "../shared/chatSwap.ts";
 import { buildTeamFilePath, lockTeamFile, readTeamFile, undoReplacementChat, unlockTeamFile, writeTeamFile } from "./teamFile.ts";
 // import { sendTextToChat } from "../shared/chatSend.ts";
 
@@ -30,6 +31,7 @@ if (removedChat === undefined) {
 }
 
 rmSync(`${DISPATCHER_DIR}/handoff-done/${oldSessionId}`, { force: true });
+removeHandoffPathMarker(DISPATCHER_DIR, oldSessionId);
 // mkdirSync(`${DISPATCHER_DIR}/swap-failed`, { recursive: true });
 // writeFileSync(`${DISPATCHER_DIR}/swap-failed/${oldSessionId}`, "");
 writeSwapFailedMarker(DISPATCHER_DIR, oldSessionId);

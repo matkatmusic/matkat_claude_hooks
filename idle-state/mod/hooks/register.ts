@@ -111,10 +111,41 @@ function saveHandoffStateFilePathOnWrite(e: Parameters<Hook<'tool.call'>>[1]) {
   }
 }
 
+function getIdleStateJsonWritePath(e: Parameters<Hook<'tool.call'>>[1]): string | undefined {
+  if (e.tool !== 'Write')
+    return undefined;
+  if (e.file_path === undefined)
+    return undefined;
+  const isInIdleStateFolder = e.file_path.includes(`/${IDLE_STATE_FOLDER_NAME}/`);
+  if (!isInIdleStateFolder)
+    return undefined;
+  const isJsonFile = e.file_path.endsWith('.json');
+  if (!isJsonFile)
+    return undefined;
+  return e.file_path;
+}
+
+async function denyHandoffWriteToWrongPath($: EngineInterface, e: Parameters<Hook<'tool.call'>>[1]): Promise<{ deny: string } | undefined> {
+  const writtenHandoffPath = getIdleStateJsonWritePath(e);
+  if (writtenHandoffPath === undefined)
+    return undefined;
+  const handoffPathMarkerPath = `${$.plugin.root}/../../dispatcher/handoff-path/${await $.session.id()}`;
+  const hasHandoffPathMarker = await $.fs.exists(handoffPathMarkerPath);
+  if (!hasHandoffPathMarker)
+    return undefined;
+  const requiredHandoffPath = (await $.fs.read(handoffPathMarkerPath)).trim();
+  if (writtenHandoffPath === requiredHandoffPath)
+    return undefined;
+  return { deny: `Write the handoff file to exactly this path: ${requiredHandoffPath}` };
+}
+
 const denyToolsWhileStatePromptPending: Hook<'tool.call'> = async ($, e, next) => {
   const enabled = await isEventEnabled($, PLUGIN_NAME, 'tool.call');
   if (!enabled)
     return next(e);
+  const handoffWriteDenial = await denyHandoffWriteToWrongPath($, e);
+  if (handoffWriteDenial !== undefined)
+    return handoffWriteDenial;
   saveHandoffStateFilePathOnWrite(e);
   if (!idleState.isWritingState)
     return next(e);

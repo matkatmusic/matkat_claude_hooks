@@ -2,7 +2,7 @@
 // Counts turns per conversation into the session state file's sittings list.
 
 import { mkdir, readdir, readFile } from "node:fs/promises";
-import { readFileSync, rmSync, statSync } from "node:fs";
+import { closeSync, openSync, readFileSync, rmSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { getSessionStatePath, readSessionState, writeSessionState } from "../shared/sessionState.ts";
 import type { Sitting } from "../shared/sessionState.ts";
@@ -175,6 +175,37 @@ export async function removeStaleCounters(now: number, keepDays: number, dir: st
   }
 }
 
+const CLEANUP_LOCK_FILE_NAME = "stale-cleanup.lock";
+const STALE_LOCK_AGE_SECONDS = 60;
+
+export async function removeStaleCountersUnderLock(now: number, keepDays: number, dir: string): Promise<void> {
+  const lockPath = `${dir}/${CLEANUP_LOCK_FILE_NAME}`;
+  const lockStats = statSync(lockPath, { throwIfNoEntry: false });
+  if (lockStats !== undefined) {
+    const lockAgeSeconds = now - lockStats.mtimeMs / 1000;
+    const isLeftOverFromCrashedChat = lockAgeSeconds > STALE_LOCK_AGE_SECONDS;
+    if (isLeftOverFromCrashedChat)
+      rmSync(lockPath, { force: true });
+  }
+  let lockDescriptor: number;
+  try {
+    lockDescriptor = openSync(lockPath, "wx");
+  }
+  catch (error) {
+    const isLockAlreadyHeld = (error as NodeJS.ErrnoException).code === "EEXIST";
+    if (isLockAlreadyHeld)
+      return;
+    throw error;
+  }
+  try {
+    await removeStaleCounters(now, keepDays, dir);
+  }
+  finally {
+    closeSync(lockDescriptor);
+    rmSync(lockPath, { force: true });
+  }
+}
+
 if (import.meta.main) {
   let input: {
     hook_event_name?: string;
@@ -203,7 +234,8 @@ if (import.meta.main) {
 
   if (input.hook_event_name === "SessionStart") {
     await mkdir(dirname(path), { recursive: true });
-    await removeStaleCounters(now, keepDays, stateDir);
+    // await removeStaleCounters(now, keepDays, stateDir);
+    await removeStaleCountersUnderLock(now, keepDays, stateDir);
   }
 
   const isSessionStart = input.hook_event_name === "SessionStart";

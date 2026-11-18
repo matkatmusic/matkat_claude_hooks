@@ -5,6 +5,7 @@ import { existsSync, rmSync } from "node:fs";
 import { DISPATCHER_DIR, getValues, readSettings } from "../../shared/settings.ts";
 import { buildTeamFilePath, writeTeamFile } from "./teamFile.ts";
 import type { Team } from "./teamFile.ts";
+import { buildHandoffPathMarkerPath, writeHandoffPathMarker } from "../shared/chatSwap.ts";
 
 function runScriptWithBun(scriptName: string, scriptArguments: string[]) {
   return spawnSync("bun", [`${import.meta.dirname}/${scriptName}`, ...scriptArguments], { encoding: "utf8", cwd: import.meta.dirname, env: { ...process.env, BUN_JSC_useTailCalls: "0" } });
@@ -50,4 +51,46 @@ test("test_swapFailed_does_not_type_the_fail_notice_into_the_chat", (t) => {
   assert.equal(result.status, 0, result.stderr);
   // Step 7: check that the swap-failed marker file exists.
   assert.ok(existsSync(swapFailedMarkerPath));
+});
+
+test("test_swapFailed_removes_the_handoff_path_marker", (t) => {
+  // Scenario: after a failed team swap, the handoff path marker of the old chat must be gone.
+  // Step 1: start a tmux session whose pane runs cat.
+  const newSessionResult = spawnSync("tmux", ["new-session", "-d", "-x", "300", "-y", "50", "-P", "-F", "#{session_id} #{pane_id}", "cat"], { encoding: "utf8" });
+  assert.equal(newSessionResult.status, 0);
+  const [sessionId, pane] = newSessionResult.stdout.trim().split(" ");
+  // Step 2: write a team file for a new team with an old chat (leaving) and a new chat (starting).
+  const teamName = `swapfailed-marker-test-${process.pid}`;
+  const job = "planner";
+  const oldChatName = `${teamName} ${job} 1`;
+  const oldSessionId = `swap-failed-marker-test-${process.pid}`;
+  const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux-team");
+  const teamFilePath = buildTeamFilePath(values["CLAUDE_HOOKS_SESSION_STATE_DIR"], teamName);
+  const swapFailedMarkerPath = `${DISPATCHER_DIR}/swap-failed/${oldSessionId}`;
+  const team: Team = {
+    teamName,
+    workDirectory: "/w",
+    chats: [
+      { job, chatNumber: 1, chatName: oldChatName, pane, model: "sonnet", status: "leaving" },
+      { job, chatNumber: 2, chatName: `${teamName} ${job} 2`, pane: "", model: "sonnet", status: "starting" },
+    ],
+  };
+  writeTeamFile(teamFilePath, team);
+  // Step 3: write the handoff path marker of the old chat.
+  writeHandoffPathMarker(DISPATCHER_DIR, oldSessionId, "/w/.idleState/handoff.json");
+  const handoffPathMarkerPath = buildHandoffPathMarkerPath(DISPATCHER_DIR, oldSessionId);
+  assert.ok(existsSync(handoffPathMarkerPath));
+  // Step 4: when the test ends, kill the session and remove the team file, the lock folder and the markers.
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", sessionId]);
+    rmSync(teamFilePath, { force: true });
+    rmSync(`${teamFilePath}.lock`, { recursive: true, force: true });
+    rmSync(swapFailedMarkerPath, { force: true });
+    rmSync(handoffPathMarkerPath, { force: true });
+  });
+  // Step 5: run swapFailed.ts for that team, job, old chat and old session id.
+  const result = runScriptWithBun("swapFailed.ts", [teamName, job, oldChatName, oldSessionId]);
+  assert.equal(result.status, 0, result.stderr);
+  // Step 6: check that the handoff path marker is gone.
+  assert.equal(existsSync(handoffPathMarkerPath), false);
 });
