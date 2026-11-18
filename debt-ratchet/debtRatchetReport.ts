@@ -2,7 +2,8 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { buildLedger, computeDebt, isLongFileWithEnoughDebt } from "./debtCompute.ts";
+// import { buildLedger, computeDebt, isLongFileWithEnoughDebt } from "./debtCompute.ts";
+import { buildLedger, computeDebtForFiles, isLongFileWithEnoughDebt } from "./debtCompute.ts";
 import { applyReflowToFile, listOverCapLines } from "../comment-length-limiter/reflowComments.ts";
 import { DISPATCHER_DIR, getValues, readSettings } from "../shared/settings.ts";
 import { filterUniqueDebtCheckedFiles } from "../shared/debtFiles.ts";
@@ -51,9 +52,14 @@ if (import.meta.main) {
   const fileDebtCounts: Record<string, number> = {};
   const details: Record<string, { eslintLines: number[]; longCommentLines: number[]; lineCount: number; missingTest: boolean }> = {};
   let fileCount = 0;
-  for (let i = 0; i < files.length; i++) {
+  // for (let i = 0; i < files.length; i++) {
+  //   applyReflowToFile(files[i]);
+  //   const debt = computeDebt(files[i]);
+  for (let i = 0; i < files.length; i++)
     applyReflowToFile(files[i]);
-    const debt = computeDebt(files[i]);
+  const debts = computeDebtForFiles(files);
+  for (let i = 0; i < files.length; i++) {
+    const debt = debts[i];
     if (debt === undefined)
       continue;
     const runs = applyReflowToFile(files[i]);

@@ -66,6 +66,118 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   return { file: filePath, current, lines: result.lines, reformatted, lineCount, missingTest };
 }
 
+const MAX_ARGUMENT_BYTES = 200_000;
+
+function listArgumentBatches(filePaths: string[]): string[][] {
+  const batches: string[][] = [];
+  let batch: string[] = [];
+  let batchBytes = 0;
+  for (let i = 0; i < filePaths.length; i++) {
+    const pathBytes = Buffer.byteLength(filePaths[i]) + 1;
+    const hasBatchFiles = batch.length > 0;
+    const wouldExceedLimit = batchBytes + pathBytes > MAX_ARGUMENT_BYTES;
+    const isBatchFull = hasBatchFiles && wouldExceedLimit;
+    if (isBatchFull) {
+      batches.push(batch);
+      batch = [];
+      batchBytes = 0;
+    }
+    batch.push(filePaths[i]);
+    batchBytes += pathBytes;
+  }
+  const hasLastBatch = batch.length > 0;
+  if (hasLastBatch)
+    batches.push(batch);
+  return batches;
+}
+
+function readEslintLinesByFile(filePaths: string[], repoRoot: string): Record<string, number[]> {
+  const linesByFile: Record<string, number[]> = {};
+  const batches = listArgumentBatches(filePaths);
+  for (let b = 0; b < batches.length; b++) {
+    const result = spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, "--format", "json", "--no-warn-ignored", ...batches[b]], { cwd: repoRoot, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+    if (result.error)
+      throw result.error;
+    const report = JSON.parse(result.stdout);
+    for (let i = 0; i < report.length; i++) {
+      const lines: number[] = [];
+      for (let j = 0; j < report[i].messages.length; j++)
+        lines.push(report[i].messages[j].line);
+      linesByFile[report[i].filePath] = lines;
+    }
+  }
+  return linesByFile;
+}
+
+function applyEslintFixToFiles(filePaths: string[], repoRoot: string): void {
+  const batches = listArgumentBatches(filePaths);
+  for (let b = 0; b < batches.length; b++)
+    spawnSync(ESLINT_BIN, ["--config", ESLINT_CONFIG, "--fix", ...batches[b]], { cwd: repoRoot, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+}
+
+// Same result per file as computeDebt, but one --fix run and one --format json run per repo root for all files.
+export function computeDebtForFiles(filePaths: string[]): (FileDebt | undefined)[] {
+  const realFilePaths: string[] = [];
+  const repoRoots: (string | undefined)[] = [];
+  const realFilesByRepoRoot: Record<string, string[]> = {};
+  const beforeFixByFile: Record<string, string> = {};
+  for (let i = 0; i < filePaths.length; i++) {
+    const realFilePath = realpathSync(filePaths[i]);
+    const gitRoot = spawnSync("git", ["-C", dirname(realFilePath), "rev-parse", "--show-toplevel"], { encoding: "utf8" });
+    if (gitRoot.error)
+      throw gitRoot.error;
+    realFilePaths.push(realFilePath);
+    const isOutsideGitRepo = gitRoot.status !== 0;
+    if (isOutsideGitRepo) {
+      repoRoots.push(undefined);
+      continue;
+    }
+    const repoRoot = gitRoot.stdout.trim();
+    repoRoots.push(repoRoot);
+    const isNewRepoRoot = realFilesByRepoRoot[repoRoot] === undefined;
+    if (isNewRepoRoot)
+      realFilesByRepoRoot[repoRoot] = [];
+    realFilesByRepoRoot[repoRoot].push(realFilePath);
+    beforeFixByFile[realFilePath] = readFileSync(realFilePath, "utf8");
+  }
+  const groupRoots = Object.keys(realFilesByRepoRoot);
+  for (let g = 0; g < groupRoots.length; g++)
+    applyEslintFixToFiles(realFilesByRepoRoot[groupRoots[g]], groupRoots[g]);
+  const linesByFile: Record<string, number[]> = {};
+  for (let g = 0; g < groupRoots.length; g++)
+    Object.assign(linesByFile, readEslintLinesByFile(realFilesByRepoRoot[groupRoots[g]], groupRoots[g]));
+  const debts: (FileDebt | undefined)[] = [];
+  for (let i = 0; i < filePaths.length; i++) {
+    const repoRoot = repoRoots[i];
+    if (repoRoot === undefined) {
+      debts.push(undefined);
+      continue;
+    }
+    const realFilePath = realFilePaths[i];
+    const dir = dirname(realFilePath);
+    const afterFix = readFileSync(realFilePath, "utf8");
+    const reformatted = beforeFixByFile[realFilePath] !== afterFix;
+    const lines = linesByFile[realFilePath] ?? [];
+    const lineCount = afterFix.trimEnd().split("\n").length;
+    const baseName = basename(realFilePath, ".ts");
+    const testFileCandidates = [`${dir}/${baseName}.test.ts`, `${dir}/${baseName}.spec.ts`, `${repoRoot}/tests/${baseName}.test.ts`, `${repoRoot}/tests/test-${baseName}.ts`];
+    let hasTestFile = false;
+    for (let t = 0; t < testFileCandidates.length; t++) {
+      const candidateExists = existsSync(testFileCandidates[t]);
+      if (candidateExists)
+        hasTestFile = true;
+    }
+    const isDeclarationFile = realFilePath.endsWith(".d.ts");
+    const isTsFile = realFilePath.endsWith(".ts");
+    const isTestSuffixFile = realFilePath.endsWith(".test.ts");
+    const isSpecSuffixFile = realFilePath.endsWith(".spec.ts");
+    const missingTest = isTsFile && !hasTestFile && !isDeclarationFile && !isTestSuffixFile && !isSpecSuffixFile;
+    const current = lines.length + (missingTest ? 1 : 0);
+    debts.push({ file: filePaths[i], current, lines, reformatted, lineCount, missingTest });
+  }
+  return debts;
+}
+
 export function isLongFileWithEnoughDebt(lineCount: number, fileDebt: number, maxFileLines: number, minFileDebt: number): boolean {
   const isOversized = lineCount > maxFileLines;
   if (isOversized) {
