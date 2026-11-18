@@ -129,6 +129,37 @@ test("test_report_names_file_over_line_limit", () => {
   rmSync(readDebtLog(output).logPath);
 });
 
+function setUpRepoWithCleanFiles(extraFileCount: number): string {
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
+  for (let i = 0; i < extraFileCount; i++) {
+    writeFileSync(`${repo}/extra${i}.ts`, `export function getExtra${i}(): number {\n  return ${i};\n}\n`);
+    writeFileSync(`${repo}/extra${i}.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
+  }
+  spawnSync("git", ["add", "-A"], { cwd: repo });
+  spawnSync("git", ["commit", "-m", "add extra files"], { cwd: repo });
+  return repo;
+}
+
+function measureReportMilliseconds(repo: string): number {
+  const startTime = Date.now();
+  const output = runReport(repo);
+  const elapsed = Date.now() - startTime;
+  rmSync(readDebtLog(output).logPath);
+  return elapsed;
+}
+
+test("test_report_time_does_not_grow_with_each_file", () => {
+  // Steps: one repo has 1 clean .ts file and its test file.
+  const oneFileRepo = setUpRepoWithCleanFiles(0);
+  // Another repo has 8 clean .ts files and their test files.
+  const eightFileRepo = setUpRepoWithCleanFiles(7);
+  // The test times the report on each repo.
+  const oneFileMilliseconds = measureReportMilliseconds(oneFileRepo);
+  const eightFileMilliseconds = measureReportMilliseconds(eightFileRepo);
+  // The 8 file report takes less than 3 times as long as the 1 file report.
+  assert.ok(eightFileMilliseconds < oneFileMilliseconds * 3, `1 file: ${oneFileMilliseconds} ms, 8 files: ${eightFileMilliseconds} ms`);
+});
+
 test("test_report_logs_line_of_comment_with_20_or_more_words", () => {
   // Steps: a repo has a .ts file with a 25 word comment on line 1 and clean code after it.
   const longComment = `// ${"word ".repeat(25).trim()}\n`;

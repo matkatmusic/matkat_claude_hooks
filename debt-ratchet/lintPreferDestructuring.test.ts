@@ -4,11 +4,12 @@ import { scanSourceText, listMessagesWithRuleId } from "./lintRuleTestHelper.ts"
 
 const RULE_ID = "prefer-destructuring";
 
-test("test_property_assignment_is_flagged", () => {
-  // Scenario: 'const name = input.name' gets one message.
-  const messages = scanSourceText("subject.ts", "export function getName(input: { name: string }) {\n  const name = input.name;\n  return name;\n}\n");
-  assert.equal(listMessagesWithRuleId(messages, RULE_ID).length, 1);
-});
+// Rule prefer-destructuring is turned off (user order), so this test is commented out.
+// test("test_property_assignment_is_flagged", () => {
+//   // Scenario: 'const name = input.name' gets one message.
+//   const messages = scanSourceText("subject.ts", "export function getName(input: { name: string }) {\n  const name = input.name;\n  return name;\n}\n");
+//   assert.equal(listMessagesWithRuleId(messages, RULE_ID).length, 1);
+// });
 
 test("test_destructured_property_is_not_flagged", () => {
   // Scenario: 'const { name } = input' gets no message.

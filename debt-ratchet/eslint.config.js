@@ -50,7 +50,8 @@ const BASE_CONFIG = [
       '@stylistic/brace-style': ['error', 'stroustrup', { allowSingleLine: false }],
       '@stylistic/nonblock-statement-body-position': ['error', 'below'],
       '@stylistic/max-statements-per-line': ['error', { max: 1 }],
-      '@stylistic/indent': ['error', 2],
+      // '@stylistic/indent': ['error', 2],
+      '@stylistic/indent': ['error', 4],
       '@stylistic/no-trailing-spaces': 'error',
       '@stylistic/semi': ['error', 'always'],
       'max-lines-per-function': ['error', { max: 15, skipBlankLines: true, skipComments: true }],
@@ -224,7 +225,7 @@ export default [
       'prefer-const': 'error',
       'block-scoped-var': 'error',
       '@typescript-eslint/no-use-before-define': ['error', { functions: false }],
-      'prefer-destructuring': ['error', { VariableDeclarator: { array: false, object: true }, AssignmentExpression: { array: false, object: true } }],
+      // 'prefer-destructuring': ['error', { VariableDeclarator: { array: false, object: true }, AssignmentExpression: { array: false, object: true } }],
     },
   },
   {
