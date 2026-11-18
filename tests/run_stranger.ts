@@ -3,16 +3,16 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { tmux_lib } from "./external/tmux_lib/tmux_lib.ts";
-import { buildBed } from "./stranger_bed.ts";
-import { IDLE_MARGIN_S, IDLE_MS, IDLE_PROGRAM_PATTERN, type Row } from "./stranger_constants.ts";
-import { addRow, printTable } from "./stranger_evidence.ts";
-import { executeExitRows, executeStopFailureRow } from "./stranger_exit.ts";
-import { executeFirstSession } from "./stranger_first.ts";
-import { executeDirectRows } from "./stranger_direct_rows.ts";
-import { getTmuxPane, listFilesWithSuffix, wrapShellWord } from "./stranger_helpers.ts";
-import { addIdleProgramRow, executeSecondSession } from "./stranger_second.ts";
-import { executeSubfolderSession } from "./stranger_subfolder.ts";
-import { executeParentFilesRow, executeThirdSession } from "./stranger_third.ts";
+import { buildBed } from "./strangerBed.ts";
+import { IDLE_MARGIN_S, IDLE_MS, IDLE_PROGRAM_PATTERN, type Row } from "./strangerConstants.ts";
+import { addRow, printTable } from "./strangerEvidence.ts";
+import { executeExitRows, executeStopFailureRow } from "./strangerExit.ts";
+import { executeFirstSession } from "./strangerFirst.ts";
+import { executeDirectRows } from "./strangerDirectRows.ts";
+import { getTmuxPane, listFilesWithSuffix, wrapShellWord } from "./strangerHelpers.ts";
+import { addIdleProgramRow, executeSecondSession } from "./strangerSecond.ts";
+import { executeSubfolderSession } from "./strangerSubfolder.ts";
+import { executeParentFilesRow, executeThirdSession } from "./strangerThird.ts";
 
 function launchInTmux(): never {
   const argumentWords: string[] = [];

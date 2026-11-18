@@ -43,7 +43,7 @@ The project needs a `tsconfig.json` and a local `typescript` package.
 7. If the checker passes, the hook prints nothing.
 8. If the checker fails, the hook prints a JSON object with `decision: "block"` and a `reason`. The reason lists the error lines. It lists no more lines than the `CLAUDE_HOOKS_TYPECHECK_MAX_ERROR_LINES` limit allows.
 
-The hook imports `debt-transcript.ts` from `shared/`.
+The hook imports `debtTranscript.ts` from `shared/`.
 
 ### The settings value
 
@@ -57,4 +57,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test typecheck-on-stop/typecheck-on-stop.test.ts` from the `claude_hooks` folder.
+Run `node --test typecheck-on-stop/typecheckOnStop.test.ts` from the `claude_hooks` folder.

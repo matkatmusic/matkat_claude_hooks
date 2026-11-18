@@ -11,7 +11,7 @@ const SCRIPT = join(import.meta.dirname, "commentCombinerLogger.ts");
 const STATE_DIR = mkdtempSync(join(tmpdir(), "reflow-state-"));
 
 function run(toolInput: object): string {
-  return execFileSync("node", ["--no-inspect", SCRIPT], {
+  return execFileSync("bun", [SCRIPT], {
     input: JSON.stringify({ tool_name: "Edit", tool_input: toolInput, transcript_path: "/t/post-session.jsonl", settings: { CLAUDE_HOOKS_SESSION_STATE_DIR: STATE_DIR } }),
     encoding: "utf8", stdio: ["pipe", "pipe", "ignore"],
   });

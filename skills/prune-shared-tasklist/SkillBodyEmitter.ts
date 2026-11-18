@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { findTaskFolder, TASK_LIST_ID_NOT_SET_REASON } from "../../shared/session-tasks.ts";
+import { findTaskFolder, TASK_LIST_ID_NOT_SET_REASON } from "../../shared/sessionTasks.ts";
 
 function compareTaskNumbers(first: number, second: number): number {
     return first - second;

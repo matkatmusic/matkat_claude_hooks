@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Reads every .json file in <root>/.idleState and prints the open-work lists as one JSON object.
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";

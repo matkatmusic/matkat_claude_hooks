@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { getSessionStatePath, readSessionState } from "../shared/session-state.ts";
+import { getSessionStatePath, readSessionState } from "../shared/sessionState.ts";
 
 export type StatusInput = {
   model?: { id: string; display_name?: string };

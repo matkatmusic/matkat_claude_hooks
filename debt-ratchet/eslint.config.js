@@ -2,6 +2,7 @@ import tseslint from 'typescript-eslint';
 import stylistic from '@stylistic/eslint-plugin';
 import css from '@eslint/css';
 import html from '@html-eslint/eslint-plugin';
+import checkFile from 'eslint-plugin-check-file';
 
 const FUNCTION_VERBS = [
   'get', 'read', 'load', 'fetch', 'collect', 'extract', 'open',
@@ -25,7 +26,7 @@ const FUNCTION_NAME_SELECTOR = [
   `MethodDefinition[kind="method"] > Identifier.key[name!=/${VERB_WORD}/]`,
 ].join(', ');
 
-export default [
+const BASE_CONFIG = [
   {
     basePath: '/',
     ignores: [
@@ -131,4 +132,110 @@ export default [
       '@html-eslint/require-attrs': ['error', { tag: 'script', attr: 'src', message: 'Move the script block to a separate .js file.' }],
     },
   },
+];
+
+const BASE_SELECTORS = BASE_CONFIG[1].rules['no-restricted-syntax'].slice(1);
+const TEST_FILES = ['**/*.test.ts', '**/*.spec.ts'];
+const REGISTER_FILES = ['**/register.ts'];
+const ALLOWED_TOP_LEVEL_NODE_TYPES = [
+  'ImportDeclaration', 'ExportNamedDeclaration', 'ExportDefaultDeclaration', 'ExportAllDeclaration',
+  'TSTypeAliasDeclaration', 'TSInterfaceDeclaration', 'TSEnumDeclaration',
+  'FunctionDeclaration', 'TSDeclareFunction', 'ClassDeclaration', 'VariableDeclaration',
+];
+const MAIN_GUARD_SELECTOR = 'IfStatement[test.type="MemberExpression"][test.object.type="MetaProperty"][test.property.name="main"]:not([alternate])';
+const TEST_CALL_SELECTOR = 'ExpressionStatement[expression.type="CallExpression"][expression.callee.name=/^(test|describe)$/]';
+const AWAIT_IMPORT_SELECTOR = 'ExpressionStatement[expression.type="AwaitExpression"][expression.argument.type="ImportExpression"]';
+const HOOK_DECLARATION_EXEMPTION = ':not([declarations.0.id.typeAnnotation.typeAnnotation.typeName.name=/^(Hook|Register)$/])';
+const GLOBAL_VARIABLE_MESSAGE = 'No global variables: move the value into a function, or into a static member of a class that has a private constructor and a getInstance() method.';
+const TOP_LEVEL_CODE_MESSAGE = 'Write code inside functions. The top level allows only imports, exports, type, interface, enum, function and class declarations, and one `if (import.meta.main) { main(); }` block.';
+
+function buildTopLevelSelectors(extraAllowedSelectors, variableExemption) {
+  const allowedSelectors = [...ALLOWED_TOP_LEVEL_NODE_TYPES, MAIN_GUARD_SELECTOR, ...extraAllowedSelectors];
+  return [
+    {
+      selector: `Program > VariableDeclaration${variableExemption}, Program > ExportNamedDeclaration > VariableDeclaration${variableExemption}`,
+      message: GLOBAL_VARIABLE_MESSAGE,
+    },
+    {
+      selector: `Program > :not(${allowedSelectors.join(', ')})`,
+      message: TOP_LEVEL_CODE_MESSAGE,
+    },
+    {
+      selector: `Program > ${MAIN_GUARD_SELECTOR} > BlockStatement > :not(ExpressionStatement[expression.callee.name="main"])`,
+      message: TOP_LEVEL_CODE_MESSAGE,
+    },
+  ];
+}
+
+function buildRestrictedSyntaxConfig(files, ignores, topLevelSelectors) {
+  return {
+    basePath: '/',
+    files,
+    ignores,
+    rules: { 'no-restricted-syntax': ['error', ...BASE_SELECTORS, ...topLevelSelectors] },
+  };
+}
+
+const SHEBANG_MAIN_MESSAGE = 'A file with a #! first line needs a main() function.';
+const FIRST_LINE_START = { line: 1, column: 0 };
+const FIRST_LINE_SHEBANG_END = { line: 1, column: 2 };
+
+const shebangRequiresMainRule = {
+  meta: { type: 'problem', schema: [] },
+  create(context) {
+    return {
+      Program(program) {
+        const startsWithShebang = context.sourceCode.text.startsWith('#!');
+        if (!startsWithShebang)
+          return;
+        let hasMainFunction = false;
+        for (const statement of program.body) {
+          const declaration = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+          const isMainFunction = declaration?.type === 'FunctionDeclaration' && declaration.id?.name === 'main';
+          if (isMainFunction)
+            hasMainFunction = true;
+        }
+        if (!hasMainFunction)
+          context.report({ loc: { start: FIRST_LINE_START, end: FIRST_LINE_SHEBANG_END }, message: SHEBANG_MAIN_MESSAGE });
+      },
+    };
+  },
+};
+
+export default [
+  ...BASE_CONFIG,
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { local: { rules: { 'shebang-requires-main': shebangRequiresMainRule } } },
+    rules: { 'local/shebang-requires-main': 'error' },
+  },
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+      '@typescript-eslint/no-empty-object-type': 'error',
+      '@typescript-eslint/explicit-member-accessibility': 'error',
+      'no-var': 'error',
+      'init-declarations': ['error', 'always'],
+      'prefer-const': 'error',
+      'block-scoped-var': 'error',
+      '@typescript-eslint/no-use-before-define': ['error', { functions: false }],
+      'prefer-destructuring': ['error', { VariableDeclarator: { array: false, object: true }, AssignmentExpression: { array: false, object: true } }],
+    },
+  },
+  {
+    basePath: '/',
+    files: ['**/*.ts'],
+    plugins: { 'check-file': checkFile },
+    rules: {
+      'check-file/filename-naming-convention': ['error', { '**/*.ts': 'CAMEL_CASE' }, { ignoreMiddleExtensions: true }],
+    },
+  },
+  buildRestrictedSyntaxConfig(['**/*.ts'], [...TEST_FILES, ...REGISTER_FILES], buildTopLevelSelectors([], '')),
+  buildRestrictedSyntaxConfig(TEST_FILES, [], buildTopLevelSelectors([TEST_CALL_SELECTOR, AWAIT_IMPORT_SELECTOR], '')),
+  buildRestrictedSyntaxConfig(REGISTER_FILES, [], buildTopLevelSelectors([], HOOK_DECLARATION_EXEMPTION)),
 ];

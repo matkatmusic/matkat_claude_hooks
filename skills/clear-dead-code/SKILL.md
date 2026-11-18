@@ -8,7 +8,7 @@ description: Remove commented-out code from a file or folder. Use when the user 
 Remove commented-out code from a file or a folder.
 
 ## Steps
-1. Run `node "${CLAUDE_SKILL_DIR}/clearDeadCode.ts" <path>`.
+1. Run `bun "${CLAUDE_SKILL_DIR}/clearDeadCode.ts" <path>`.
 2. Show the user the script output.
 3. Tell the user to review the removals with `git diff`. Do not commit.
 

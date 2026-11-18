@@ -68,4 +68,4 @@ Do not use both ways at the same time. The hook would run twice.
 
 ### Test
 
-Run `node --test block-parent-edits/block-parent-edits.test.ts` from the `claude_hooks` folder.
+Run `node --test block-parent-edits/blockParentEdits.test.ts` from the `claude_hooks` folder.

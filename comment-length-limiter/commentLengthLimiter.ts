@@ -1,6 +1,6 @@
 // Stop: reflow the files edited this session and block on over-cap comments.
 import { existsSync, readFileSync } from "node:fs";
-import { getSessionStatePath, readSessionState } from "../shared/session-state.ts";
+import { getSessionStatePath, readSessionState } from "../shared/sessionState.ts";
 import { getSetting } from "../shared/settings.ts";
 import { applyReflowToFile, emitReflows, type FileReflow } from "./reflowComments.ts";
 
