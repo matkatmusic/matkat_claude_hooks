@@ -59,7 +59,9 @@ export function computeDebt(filePath: string): FileDebt | undefined {
   }
   const isDeclarationFile = realFilePath.endsWith(".d.ts");
   const isTsFile = realFilePath.endsWith(".ts");
-  const missingTest = isTsFile && !hasTestFile && !isDeclarationFile;
+  const isTestSuffixFile = realFilePath.endsWith(".test.ts");
+  const isSpecSuffixFile = realFilePath.endsWith(".spec.ts");
+  const missingTest = isTsFile && !hasTestFile && !isDeclarationFile && !isTestSuffixFile && !isSpecSuffixFile;
   const current = result.count + (missingTest ? 1 : 0);
   return { file: filePath, current, lines: result.lines, reformatted, lineCount, missingTest };
 }

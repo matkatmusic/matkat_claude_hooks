@@ -60,6 +60,27 @@ test("computeDebt does not count eslint's ignored-file warning for a .test.ts fi
   assert.deepEqual(debt?.lines, []);
 });
 
+test("test_computeDebt_counts_eslint_lines_in_test_ts_file", () => {
+  // Steps: a repo has a subject.test.ts file with one flagged line. Compute debt: lines is not empty.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/subject.test.ts`, "const a = 1; const b = 2;\n");
+  const debt = computeDebt(`${repo}/subject.test.ts`);
+  assert.ok((debt?.lines.length ?? 0) >= 1);
+});
+
+test("test_computeDebt_marks_test_ts_file_as_not_missing_test", () => {
+  // Steps: a repo has a subject.test.ts file. Compute debt for that file: missingTest is false.
+  const repo = setUpRepo("export const value = 1;\n");
+  assert.equal(computeDebt(`${repo}/subject.test.ts`)?.missingTest, false);
+});
+
+test("test_computeDebt_marks_spec_ts_file_as_not_missing_test", () => {
+  // Steps: a repo has a subject.spec.ts file. Compute debt for that file: missingTest is false.
+  const repo = setUpRepo("export const value = 1;\n");
+  writeFileSync(`${repo}/subject.spec.ts`, "export const check = 1;\n");
+  assert.equal(computeDebt(`${repo}/subject.spec.ts`)?.missingTest, false);
+});
+
 test("a source file with no test file is flagged missingTest and costs 1 more debt point", () => {
   // Steps: a repo has a source file and no test file. Compute debt: missingTest is true.
   const repo = setUpRepo("export const value = 1;\n");

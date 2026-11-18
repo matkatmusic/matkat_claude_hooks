@@ -64,12 +64,20 @@ test("filterUniqueDebtCheckedFiles keeps .html and .css files", () => {
   assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.html", "/x/a.css"]), ["/x/a.html", "/x/a.css"]);
 });
 
-test("filterUniqueDebtCheckedFiles drops .test.ts files", () => {
-  assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.test.ts", "/x/a.ts"]), ["/x/a.ts"]);
+// test("filterUniqueDebtCheckedFiles drops .test.ts files", () => {
+//   assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.test.ts", "/x/a.ts"]), ["/x/a.ts"]);
+// });
+
+// test("filterUniqueDebtCheckedFiles drops .spec.ts files", () => {
+//   assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.spec.ts", "/x/a.ts"]), ["/x/a.ts"]);
+// });
+
+test("test_filterUniqueDebtCheckedFiles_keeps_test_ts_files", () => {
+  assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.test.ts", "/x/a.ts"]), ["/x/a.test.ts", "/x/a.ts"]);
 });
 
-test("filterUniqueDebtCheckedFiles drops .spec.ts files", () => {
-  assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.spec.ts", "/x/a.ts"]), ["/x/a.ts"]);
+test("test_filterUniqueDebtCheckedFiles_keeps_spec_ts_files", () => {
+  assert.deepEqual(filterUniqueDebtCheckedFiles(["/x/a.spec.ts", "/x/a.ts"]), ["/x/a.spec.ts", "/x/a.ts"]);
 });
 
 test("filterUniqueDebtCheckedFiles drops files that are not .ts, .html or .css", () => {

@@ -29,7 +29,7 @@ export default [
   {
     basePath: '/',
     ignores: [
-      '**/*.test.ts',
+      // '**/*.test.ts',
       '**/node_modules/**',
       '**/claude/hooks/fixtures/**',
       '**/dist/**',

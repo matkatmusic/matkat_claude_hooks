@@ -88,6 +88,47 @@ test("test_report_skips_file_that_gitignore_lists", () => {
   rmSync(logPath);
 });
 
+function addSubmoduleToRepo(repo: string): void {
+  const subRepo = setUpRepo("const a = 1; const b = 2;\n");
+  const add = spawnSync("git", ["-c", "protocol.file.allow=always", "submodule", "add", subRepo, "sub"], { cwd: repo, encoding: "utf8" });
+  assert.equal(add.status, 0, add.stderr);
+  spawnSync("git", ["commit", "-m", "add submodule"], { cwd: repo });
+}
+
+test("test_report_scans_tracked_file_inside_submodule", () => {
+  // Steps: a main repo has a clean file and a submodule "sub" whose committed subject.ts has one flagged line.
+  const repo = setUpRepo("export const value = 1;\n");
+  addSubmoduleToRepo(repo);
+  // The report names the flagged file inside the submodule.
+  const output = runReport(repo);
+  assert.match(output, /sub\/subject\.ts: lines 1 /);
+  rmSync(readDebtLog(output).logPath);
+});
+
+test("test_report_scans_untracked_file_inside_submodule", () => {
+  // Steps: a main repo has a submodule "sub" with a clean file, and a new flagged file that git does not track yet.
+  const repo = setUpRepo("export const value = 1;\n");
+  addSubmoduleToRepo(repo);
+  writeFileSync(`${repo}/sub/untracked.ts`, "const a = 1; const b = 2;\n");
+  // The report names the untracked file inside the submodule.
+  const output = runReport(repo);
+  assert.match(output, /sub\/untracked\.ts: lines 1 /);
+  rmSync(readDebtLog(output).logPath);
+});
+
+test("test_report_names_file_over_line_limit", () => {
+  // Steps: a repo has a clean 160 line subject.ts and a matching subject.test.ts, so it has no style debt.
+  let longSource = "";
+  for (let i = 0; i < 160; i++)
+    longSource += `export const value${i} = ${i};\n`;
+  const repo = setUpRepo(longSource);
+  // The report names the file in a line that states the 150 line limit.
+  const output = runReport(repo);
+  assert.match(output, /Files over the 150-line limit: .*subject\.ts/);
+  assert.doesNotMatch(output, /No style debt found/);
+  rmSync(readDebtLog(output).logPath);
+});
+
 test("test_report_logs_line_of_comment_with_20_or_more_words", () => {
   // Steps: a repo has a .ts file with a 25 word comment on line 1 and clean code after it.
   const longComment = `// ${"word ".repeat(25).trim()}\n`;
