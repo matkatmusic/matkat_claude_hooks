@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/ponytail-ultra-nudge/ponytailUltraNudge.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/ponytail-ultra-nudge/ponytailUltraNudge.ts\"" }
         ]
       }
     ],
@@ -11,7 +11,7 @@
       {
         "matcher": "Skill",
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/ponytail-ultra-nudge/ponytailUltraNudge.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/ponytail-ultra-nudge/ponytailUltraNudge.ts\"" }
         ]
       }
     ]

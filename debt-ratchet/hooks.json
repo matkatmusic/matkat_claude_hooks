@@ -3,14 +3,14 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/debt-ratchet/debtRatchet.ts\"", "timeout": 300 }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/debt-ratchet/debtRatchet.ts\"", "timeout": 300 }
         ]
       }
     ],
     "SubagentStop": [
       {
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/debt-ratchet/debtRatchet.ts\"", "timeout": 300 }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/debt-ratchet/debtRatchet.ts\"", "timeout": 300 }
         ]
       }
     ]

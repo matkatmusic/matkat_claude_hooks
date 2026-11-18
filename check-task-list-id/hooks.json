@@ -3,7 +3,7 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/check-task-list-id/checkTaskListId.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/check-task-list-id/checkTaskListId.ts\"" }
         ]
       }
     ]

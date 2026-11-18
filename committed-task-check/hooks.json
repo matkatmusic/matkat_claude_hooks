@@ -3,7 +3,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bun\"/path/to/claude_hooks/committed-task-check/committedTaskCheck.ts\"" }
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/committed-task-check/committedTaskCheck.ts\"" }
         ]
       }
     ]
