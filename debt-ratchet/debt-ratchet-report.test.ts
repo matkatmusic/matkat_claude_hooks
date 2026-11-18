@@ -11,14 +11,14 @@ function runReport(repo: string): string {
 }
 
 test("report on a repo with a clean .ts file prints the no-debt line", () => {
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   const output = runReport(repo);
   assert.match(output, /^No style debt found across the repo\.\nDebt log written: /);
   rmSync(readDebtLog(output).logPath);
 });
 
 test("report on a repo with a flagged .ts file names that file under the Style debt line", () => {
-  const repo = setUpRepo("const a = 1; const b = 2;\n");
+  const repo = setUpRepo("export function getValue(input: any): number {\n  return 1;\n}\n");
   const output = runReport(repo);
   assert.match(output, /Style debt exists: 1 flagged line\(s\) across 1 file\(s\)/);
   assert.match(output, /subject\.ts: lines 1 /);
@@ -27,7 +27,7 @@ test("report on a repo with a flagged .ts file names that file under the Style d
 
 test("report on a repo with a flagged .css file names that file under the Style debt line", () => {
   // Steps: a repo has a clean .ts file and a committed .css file with one !important on line 2.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   writeFileSync(`${repo}/style.css`, "a {\n  color: red !important;\n}\n");
   spawnSync("git", ["add", "-A"], { cwd: repo });
   spawnSync("git", ["commit", "-m", "add css"], { cwd: repo });
@@ -49,7 +49,7 @@ function readDebtLog(output: string): { logPath: string; log: any } {
 
 test("test_report_writes_repo_debt_log_with_eslint_lines", () => {
   // Steps: a repo has a committed subject.ts with one flagged line.
-  const repo = setUpRepo("const a = 1; const b = 2;\n");
+  const repo = setUpRepo("export function getValue(input: any): number {\n  return 1;\n}\n");
   const subjectPath = realpathSync(`${repo}/subject.ts`);
   // The report prints the path of the debt log it wrote.
   const { logPath, log } = readDebtLog(runReport(repo));
@@ -65,8 +65,8 @@ test("test_report_writes_repo_debt_log_with_eslint_lines", () => {
 
 test("test_report_logs_new_file_that_git_does_not_track_yet", () => {
   // Steps: a repo has one committed clean file and a new flagged .ts file that was never git added.
-  const repo = setUpRepo("export const value = 1;\n");
-  writeFileSync(`${repo}/untracked.ts`, "const a = 1; const b = 2;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
+  writeFileSync(`${repo}/untracked.ts`, "export function getValue(input: any): number {\n  return 1;\n}\n");
   const untrackedPath = realpathSync(`${repo}/untracked.ts`);
   // The log counts debt for the untracked file.
   const { logPath, log } = readDebtLog(runReport(repo));
@@ -76,9 +76,9 @@ test("test_report_logs_new_file_that_git_does_not_track_yet", () => {
 
 test("test_report_skips_file_that_gitignore_lists", () => {
   // Steps: a repo commits only a .gitignore that lists ignored.ts, and ignored.ts has a flagged line.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   writeFileSync(`${repo}/.gitignore`, "ignored.ts\n");
-  writeFileSync(`${repo}/ignored.ts`, "const a = 1; const b = 2;\n");
+  writeFileSync(`${repo}/ignored.ts`, "export function getValue(input: any): number {\n  return 1;\n}\n");
   spawnSync("git", ["add", ".gitignore"], { cwd: repo });
   spawnSync("git", ["commit", "-m", "add gitignore"], { cwd: repo });
   const ignoredPath = realpathSync(`${repo}/ignored.ts`);
@@ -89,7 +89,7 @@ test("test_report_skips_file_that_gitignore_lists", () => {
 });
 
 function addSubmoduleToRepo(repo: string): void {
-  const subRepo = setUpRepo("const a = 1; const b = 2;\n");
+  const subRepo = setUpRepo("export function getValue(input: any): number {\n  return 1;\n}\n");
   const add = spawnSync("git", ["-c", "protocol.file.allow=always", "submodule", "add", subRepo, "sub"], { cwd: repo, encoding: "utf8" });
   assert.equal(add.status, 0, add.stderr);
   spawnSync("git", ["commit", "-m", "add submodule"], { cwd: repo });
@@ -97,7 +97,7 @@ function addSubmoduleToRepo(repo: string): void {
 
 test("test_report_scans_tracked_file_inside_submodule", () => {
   // Steps: a main repo has a clean file and a submodule "sub" whose committed subject.ts has one flagged line.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   addSubmoduleToRepo(repo);
   // The report names the flagged file inside the submodule.
   const output = runReport(repo);
@@ -107,9 +107,9 @@ test("test_report_scans_tracked_file_inside_submodule", () => {
 
 test("test_report_scans_untracked_file_inside_submodule", () => {
   // Steps: a main repo has a submodule "sub" with a clean file, and a new flagged file that git does not track yet.
-  const repo = setUpRepo("export const value = 1;\n");
+  const repo = setUpRepo("export function getValue(): number {\n  return 1;\n}\n");
   addSubmoduleToRepo(repo);
-  writeFileSync(`${repo}/sub/untracked.ts`, "const a = 1; const b = 2;\n");
+  writeFileSync(`${repo}/sub/untracked.ts`, "export function getValue(input: any): number {\n  return 1;\n}\n");
   // The report names the untracked file inside the submodule.
   const output = runReport(repo);
   assert.match(output, /sub\/untracked\.ts: lines 1 /);

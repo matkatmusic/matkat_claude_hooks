@@ -54,7 +54,7 @@ export function setUpRepo(headSource: string): string {
   spawnSync("git", ["config", "user.name", "test"], { cwd: dir });
   writeFileSync(`${dir}/eslint.config.js`, ESLINT_CONFIG);
   writeFileSync(`${dir}/subject.ts`, headSource);
-  writeFileSync(`${dir}/subject.test.ts`, "export const check = 1;\n");
+  writeFileSync(`${dir}/subject.test.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   spawnSync("git", ["add", "-A"], { cwd: dir });
   spawnSync("git", ["commit", "-m", "initial"], { cwd: dir });
   return dir;

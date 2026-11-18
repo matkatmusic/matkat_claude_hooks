@@ -57,7 +57,7 @@ function assertSpecFileEditedWithSourceIsNotReportedAsNoTestFile(): void {
   // Steps: a repo has subject.ts with enough style debt to block, and subject.spec.ts, and no subject.test.ts.
   const repo = setUpRepo(TEN_DEBT_SOURCE);
   rmSync(`${repo}/subject.test.ts`);
-  writeFileSync(`${repo}/subject.spec.ts`, "export const check = 1;\n");
+  writeFileSync(`${repo}/subject.spec.ts`, "export function getCheck(): number {\n  return 1;\n}\n");
   // The turn edits both files.
   const transcriptDir = mkdtempSync(`${tmpdir()}/debt-ratchet-e2e-transcript-`);
   const transcript_path = `${transcriptDir}/transcript.jsonl`;
