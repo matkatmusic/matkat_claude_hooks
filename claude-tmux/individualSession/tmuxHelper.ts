@@ -27,6 +27,12 @@ export function getHelperBaseName(claudeTmuxName: string | undefined, sessionTit
     return stripHelperSuffix(sessionTitle);
 }
 
+export function getHelperWorkDirectory(claudeTmuxWorkDirectory: string | undefined, currentDirectory: string): string {
+    if (claudeTmuxWorkDirectory !== undefined)
+        return claudeTmuxWorkDirectory;
+    return currentDirectory;
+}
+
 export function getHelperModel(typedModel: string, defaultHelperModel: string): string {
     if (typedModel === "")
         return defaultHelperModel;
@@ -105,7 +111,8 @@ export function startHelperChat(tmuxPane: string, payload: Record<string, string
     // const windowId = runTmux(["display", "-p", "-t", tmuxPane, "#{window_id}"]);
     // runTmux(["new-window", "-d", "-a", "-t", windowId, "-n", helperName, "-c", payload.cwd, "zsh", "-ic", buildClaudeCommand(helperName, model)]);
     // return `${helperName} is ready. Use /tmux-switch to open it.`;
-    const workDirectory = payload.cwd;
+    // const workDirectory = payload.cwd;
+    const workDirectory = getHelperWorkDirectory(process.env.CLAUDE_TMUX_WORK_DIRECTORY, payload.cwd);
     const gitRootResult = spawnSync("git", ["-C", workDirectory, "rev-parse", "--show-toplevel"], { encoding: "utf8" });
     if (gitRootResult.status !== 0)
         throw new Error("/tmux-new-helper must start inside a git repository: the handoff file goes to the .idleState folder of the project root");

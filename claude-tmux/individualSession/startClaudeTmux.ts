@@ -5,7 +5,8 @@ import { getGitRootOfWorkDirectory, wrapShellWord } from "../shared/chatSwap.ts"
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments } from "./singleChat.ts";
 // import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, parseSingleChatArguments, validateSwapPercentText } from "./singleChat.ts";
-import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, openTrackerOfPane, parseSingleChatArguments, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
+// import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, openTrackerOfPane, parseSingleChatArguments, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
+import { buildSingleChatEnvironmentFlags, buildSingleChatName, buildSingleChatPaneCommand, isTmuxSessionNameTaken, openTrackerOfPane, parseSingleChatArguments, removeSingleChatEnvironmentFromSession, updateTrackerWithNextChatNumber, validateSwapPercentText } from "./singleChat.ts";
 import { startHelperChat } from "./tmuxHelper.ts";
 
 const values = getValues(readSettings(DISPATCHER_DIR), "claude-tmux");
@@ -32,6 +33,7 @@ const paneCommand = buildSingleChatPaneCommand(firstChatName, singleChat.model, 
 const newSessionCommand = ["tmux", "new-session", "-d", "-P", "-F", "#{pane_id}", "-s", singleChat.name, "-c", workDirectory, ...environmentFlags, paneCommand];
 const newSessionResult = tmux_lib.run(newSessionCommand, { capture_output: true, text: true, check: true });
 const firstPane = newSessionResult.stdout.trim();
+removeSingleChatEnvironmentFromSession(firstPane, environmentFlags);
 // const trackerPath = openTrackerOfPane(firstPane, gitRootResult.stdout.trim());
 const trackerPath = openTrackerOfPane(firstPane, projectRoot);
 // the first chat already has number 1; this writes 1 into the new tracker
@@ -40,6 +42,7 @@ console.log(`Started ${firstChatName} in the tmux session ${singleChat.name}.`);
 
 // startHelperChat names the helpers from CLAUDE_TMUX_NAME: a claude-tmux started inside another chat still has that chat's name
 process.env.CLAUDE_TMUX_NAME = singleChat.name;
+process.env.CLAUDE_TMUX_WORK_DIRECTORY = workDirectory;
 const helperChatNames: string[] = [];
 for (let helperIndex = 0; helperIndex < singleChat.helperCount; helperIndex++) {
   // const helperReadyText = startHelperChat(firstPane, { cwd: workDirectory, session_title: singleChat.name }, "");

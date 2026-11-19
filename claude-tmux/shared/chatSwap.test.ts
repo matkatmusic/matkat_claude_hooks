@@ -19,6 +19,7 @@ const {
   writeSwapFailedMarker,
   isChatIdle,
 } = await import("./chatSwap.ts");
+const { removeDimText, isInputBoxEmpty } = await import("./chatScreen.ts");
 
 const SESSION_ID = "abcdefgh-0000";
 
@@ -354,6 +355,57 @@ test("test_waitForIdleChat_throws_when_the_input_box_holds_text_after_the_wait",
   // Step 3: the call fails with the not idle error.
   assert.notEqual(wait.status, 0);
   assert.match(wait.stderr, /is not idle/);
+});
+
+test("test_removeDimText_makes_an_input_box_with_only_a_dim_suggestion_empty", () => {
+  // Scenario: a grey suggestion after the prompt is not typed text.
+  // Step 1: build the prompt line of a real stuck pane: a dim suggestion after the prompt.
+  const promptLine = "\x1b[39m❯ \x1b[2mit still crashes: <paste error>\x1b[0m";
+  // Step 2: remove the dim text.
+  const screen = removeDimText(promptLine);
+  // Step 3: the input box counts as empty.
+  assert.equal(isInputBoxEmpty(screen), true);
+});
+
+test("test_removeDimText_keeps_typed_text_in_an_input_box", () => {
+  // Scenario: text that a person types is not dim, so the box is not empty.
+  // Step 1: build a prompt line with normal text after the prompt.
+  const promptLine = "\x1b[39m❯ fix the bug\x1b[0m";
+  // Step 2: remove the dim text.
+  const screen = removeDimText(promptLine);
+  // Step 3: the input box does not count as empty.
+  assert.equal(isInputBoxEmpty(screen), false);
+});
+
+test("test_removeDimText_keeps_normal_text_after_a_dim_run", () => {
+  // Scenario: normal text after the end code of a dim run stays.
+  // Step 1: build a line with a dim run, its end code, and then normal text.
+  const line = "\x1b[2mgrey words\x1b[0m normal words";
+  // Step 2: remove the dim text.
+  const screen = removeDimText(line);
+  // Step 3: only the normal text is left.
+  assert.equal(screen, " normal words");
+});
+
+test("test_removeDimText_leaves_no_escape_sequences", () => {
+  // Scenario: the result is plain text.
+  // Step 1: build a line with colour codes, a dim run, and a bold code.
+  const line = "\x1b[38;5;81mfunction\x1b[39m \x1b[2m56\x1b[0m \x1b[1m\x1b[32mdone\x1b[0m";
+  // Step 2: remove the dim text.
+  const screen = removeDimText(line);
+  // Step 3: no escape character is left.
+  assert.equal(screen.includes("\x1b"), false);
+});
+
+test("test_waitForIdleChat_returns_for_a_pane_that_shows_only_a_dim_suggestion", (t) => {
+  // Scenario: a pane whose prompt line shows only a dim suggestion is idle.
+  // Step 1: start a pane that prints the real stuck prompt line (dim suggestion) and then waits.
+  const { pane } = startPane(t, "dimSuggestion", ["sh", "-c", "printf '\\033[39m❯\\302\\240\\033[2mit still crashes: <paste error>\\033[0m\\n'; sleep 60"]);
+  // Step 2: wait for idle with 5 seconds, in a child process.
+  const code = `import { waitForIdleChat } from "./shared/chatSwap.ts"; waitForIdleChat(${JSON.stringify(pane)}, "test chat", 5);`;
+  const wait = runInBun(code);
+  // Step 3: the call returns without an error.
+  assert.equal(wait.status, 0, wait.stderr);
 });
 
 test("test_closePaneIfOpen_closes_an_open_pane", (t) => {

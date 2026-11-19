@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:
 // import { tmux_lib } from "../tests/external/tmux_lib/tmux_lib.ts";
 import { tmux_lib } from "../../tests/external/tmux_lib/tmux_lib.ts";
 // import { findNewHandoffFile, hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, listHandoffFiles } from "../claude-team/teamFile.ts";
-import { hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty } from "./chatScreen.ts";
+// import { hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty } from "./chatScreen.ts";
+import { hasBackgroundWorkDialog, isChatBusy, isInputBoxEmpty, removeDimText } from "./chatScreen.ts";
 // import { sendTextToChat } from "../claude-team/teamSend.ts";
 import { sendTextToChat } from "./chatSend.ts";
 
@@ -160,6 +161,12 @@ function assertPaneIsOpen(pane: string, chatName: string): void {
     throw new Error(`"${chatName}" is gone: the tmux pane ${pane} does not exist`);
 }
 
+function isPaneInputBoxEmpty(pane: string): boolean {
+  const captureResult = tmux_lib.run(["tmux", "capture-pane", "-e", "-p", "-t", pane], { capture_output: true, text: true, check: true });
+  const screenWithoutDimText = removeDimText(captureResult.stdout);
+  return isInputBoxEmpty(screenWithoutDimText);
+}
+
 export function waitForIdleChat(pane: string, chatName: string, waitSeconds: number): void {
   const waitStartedAt = Date.now();
   let isIdle = false;
@@ -170,7 +177,10 @@ export function waitForIdleChat(pane: string, chatName: string, waitSeconds: num
     assertPaneIsOpen(pane, chatName);
     const screen = tmux_lib.tmux_capturePane(pane);
     closeExitDialogIfOpen(pane, screen);
-    isIdle = isChatIdle(screen);
+    // isIdle = isChatIdle(screen);
+    const isBusy = isChatBusy(screen);
+    if (!isBusy)
+      isIdle = isPaneInputBoxEmpty(pane);
     if (!isIdle)
       tmux_lib.sleep(1);
   }
@@ -186,11 +196,15 @@ export function waitForIdleChatAndClearInputBox(pane: string, chatName: string, 
     assertPaneIsOpen(pane, chatName);
     const screen = tmux_lib.tmux_capturePane(pane);
     closeExitDialogIfOpen(pane, screen);
-    const isBoxEmpty = isInputBoxEmpty(screen);
+    // const isBoxEmpty = isInputBoxEmpty(screen);
+    const isBoxEmpty = isPaneInputBoxEmpty(pane);
     // Claude Code docs: Ctrl-U deletes to the line start, and repeated it clears across lines; Ctrl-E first takes the text after the cursor
     if (!isBoxEmpty)
       tmux_lib.run(["tmux", "send-keys", "-t", pane, "C-e", "C-u"], { capture_output: true, text: true, check: true });
-    isIdle = isChatIdle(screen);
+    // isIdle = isChatIdle(screen);
+    const isBusy = isChatBusy(screen);
+    if (!isBusy)
+      isIdle = isBoxEmpty;
     if (!isIdle)
       tmux_lib.sleep(1);
   }

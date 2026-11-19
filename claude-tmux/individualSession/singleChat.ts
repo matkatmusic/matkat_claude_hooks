@@ -65,6 +65,15 @@ export function buildSingleChatEnvironmentFlags(name: string, chatNumber: number
   return environmentFlags;
 }
 
+export function removeSingleChatEnvironmentFromSession(pane: string, environmentFlags: string[]): void {
+  for (const environmentFlag of environmentFlags) {
+    if (environmentFlag !== "-e") {
+      const variableName = environmentFlag.slice(0, environmentFlag.indexOf("="));
+      readTmuxOutput(["set-environment", "-t", pane, "-r", variableName]);
+    }
+  }
+}
+
 export function buildSingleChatPaneCommand(chatName: string, model: string, startingText: string): string {
   let claudeCommand = `claude --name ${wrapShellWord(chatName)} --model ${wrapShellWord(model)}`;
   if (startingText !== "")

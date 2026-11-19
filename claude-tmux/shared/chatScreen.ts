@@ -40,6 +40,12 @@ export function isInputBoxEmpty(screen: string): boolean {
   return false;
 }
 
+export function removeDimText(screenWithEscapeCodes: string): string {
+  const screenWithoutDimRuns = screenWithEscapeCodes.replace(/\x1b\[2m[^\x1b]*/g, "");
+  const plainScreen = screenWithoutDimRuns.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
+  return plainScreen;
+}
+
 export function hasBackgroundWorkDialog(screen: string): boolean {
   const screenWithoutWhiteSpace = screen.replace(/\s/g, "");
   const screenShowsBackgroundWorkDialog = screenWithoutWhiteSpace.includes("Backgroundworkisrunning");

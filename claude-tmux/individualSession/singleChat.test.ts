@@ -10,7 +10,8 @@ import { join } from "node:path";
 
 // const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText } = await import("./singleChat.ts");
 // const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane } = await import("./singleChat.ts");
-const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane, resetTrackerAfterFailedSwap } = await import("./singleChat.ts");
+// const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane, resetTrackerAfterFailedSwap } = await import("./singleChat.ts");
+const { parseSingleChatArguments, buildSingleChatName, buildSingleChatEnvironmentFlags, buildSingleChatPaneCommand, buildSwapRecordPath, writeSwapRecord, readSwapRecord, getSwapFailedAction, validateSwapPercentText, buildTrackerPath, computeNextChatNumber, updateTrackerWithNextChatNumber, openTrackerOfPane, resetTrackerAfterFailedSwap, removeSingleChatEnvironmentFromSession } = await import("./singleChat.ts");
 const { buildDirectorPaneCommand } = await import("../teamSession/teamCommand.ts");
 
 test("test_parseSingleChatArguments_returns_the_given_name", () => {
@@ -496,4 +497,56 @@ test("test_isTmuxSessionNameTaken_true_for_a_name_with_a_dot", (t) => {
   // Step 3: check that the child worked and printed true.
   assert.equal(child.status, 0, child.stderr);
   assert.equal(child.stdout.trim(), "true");
+});
+
+function createEnvironmentTestSession(t: { after: (hook: () => void) => void }, caseName: string): { pane: string; sessionName: string; outputFolder: string } {
+  const sessionName = `environment-test-${process.pid}-${caseName}`;
+  const outputFolder = mkdtempSync(join(tmpdir(), "environment-test-"));
+  const environmentFlags = buildSingleChatEnvironmentFlags("leak test", 1, "sonnet", "/tmp", "");
+  const startResult = spawnSync("tmux", ["new-session", "-d", "-P", "-F", "#{pane_id}", "-s", sessionName, ...environmentFlags, "cat"], { encoding: "utf8" });
+  assert.equal(startResult.status, 0, startResult.stderr);
+  t.after(() => {
+    spawnSync("tmux", ["kill-session", "-t", `=${sessionName}`]);
+    rmSync(outputFolder, { recursive: true, force: true });
+  });
+  const pane = startResult.stdout.trim();
+  return { pane, sessionName, outputFolder };
+}
+
+function readEnvironmentNameFromNewWindow(sessionName: string, outputFolder: string, extraNewWindowFlags: string[]): string {
+  const outputPath = join(outputFolder, "name.txt");
+  const writeCommand = `printf '%s' "\${CLAUDE_TMUX_NAME:-none}" > '${outputPath}.part' && mv '${outputPath}.part' '${outputPath}'`;
+  const newWindowResult = spawnSync("tmux", ["new-window", "-d", "-t", `=${sessionName}:`, ...extraNewWindowFlags, writeCommand], { encoding: "utf8" });
+  assert.equal(newWindowResult.status, 0, newWindowResult.stderr);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const isOutputWritten = existsSync(outputPath);
+    if (isOutputWritten)
+      return readFileSync(outputPath, "utf8");
+    spawnSync("sleep", ["0.1"]);
+  }
+  throw new Error("the new window never wrote its output file");
+}
+
+test("test_removeSingleChatEnvironmentFromSession_keeps_the_values_out_of_a_hand_made_window", (t) => {
+  // Scenario: a session started with the single chat variables; a window opened by hand later must not get them.
+  // Step 1: start a detached session with the single chat environment flags. Kill it after the test.
+  const { pane, sessionName, outputFolder } = createEnvironmentTestSession(t, "leak");
+  // Step 2: remove the single chat variables from the session environment.
+  removeSingleChatEnvironmentFromSession(pane, buildSingleChatEnvironmentFlags("leak test", 1, "sonnet", "/tmp", ""));
+  // Step 3: open a new window with no -e flag that writes CLAUDE_TMUX_NAME to a file, or "none" when unset.
+  const writtenName = readEnvironmentNameFromNewWindow(sessionName, outputFolder, []);
+  // Step 4: check that the file holds "none".
+  assert.equal(writtenName, "none");
+});
+
+test("test_removeSingleChatEnvironmentFromSession_lets_a_window_with_its_own_flag_keep_its_value", (t) => {
+  // Scenario: after the removal, a window started with its own -e flag still gets that value.
+  // Step 1: start a detached session with the single chat environment flags. Kill it after the test.
+  const { pane, sessionName, outputFolder } = createEnvironmentTestSession(t, "own");
+  // Step 2: remove the single chat variables from the session environment.
+  removeSingleChatEnvironmentFromSession(pane, buildSingleChatEnvironmentFlags("leak test", 1, "sonnet", "/tmp", ""));
+  // Step 3: open a new window with -e CLAUDE_TMUX_NAME=own value that writes CLAUDE_TMUX_NAME to a file.
+  const writtenName = readEnvironmentNameFromNewWindow(sessionName, outputFolder, ["-e", "CLAUDE_TMUX_NAME=own value"]);
+  // Step 4: check that the file holds "own value".
+  assert.equal(writtenName, "own value");
 });

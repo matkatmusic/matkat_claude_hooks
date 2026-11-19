@@ -8,7 +8,8 @@ import { join } from "node:path";
 // import { buildClaudeCommand, computeNextHelperNumber, stripHelperSuffix } from "./tmuxHelper.ts";
 // import { computeNextHelperNumberFromChatTitles, getHelperBaseName, getHelperModel, getLastCustomTitleOfEachTranscript, stripHelperSuffix } from "./tmuxHelper.ts";
 // import { buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
-import { buildHelperSupervisorPrompt, buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
+// import { buildHelperSupervisorPrompt, buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
+import { buildHelperSupervisorPrompt, buildHelpersCreatedNotice, getHelperBaseName, getHelperModel, getHelperWorkDirectory, parseNewHelperArguments, stripHelperSuffix } from "./tmuxHelper.ts";
 
 test("test_buildHelperSupervisorPrompt_fills_dashed_handle_and_base_name", () => {
     // The template holds {supervisorHandle} and {supervisorBaseName}.
@@ -166,6 +167,18 @@ test("test_getHelperBaseName_throws_without_any_name", () => {
     assert.throws(() => getHelperBaseName(undefined, undefined));
 });
 
+test("test_getHelperWorkDirectory_uses_the_claude_tmux_work_directory", () => {
+    // The Claude tmux work directory is /project and the current directory is /project/inner.
+    // The work directory is the Claude tmux work directory.
+    assert.equal(getHelperWorkDirectory("/project", "/project/inner"), "/project");
+});
+
+test("test_getHelperWorkDirectory_uses_the_current_directory_without_a_claude_tmux_work_directory", () => {
+    // No Claude tmux work directory exists and the current directory is /project/inner.
+    // The work directory is the current directory.
+    assert.equal(getHelperWorkDirectory(undefined, "/project/inner"), "/project/inner");
+});
+
 test("test_getHelperModel_uses_default_when_no_model_is_typed", () => {
     // No model was typed.
     // The model is the default helper model.
@@ -225,6 +238,7 @@ test("test_tmuxNewHelper_throws_outside_a_git_repository", () => {
     const environment: NodeJS.ProcessEnv = { ...process.env, TMUX_PANE: "%999" };
     delete environment.CLAUDE_TMUX_SWAP_PERCENT;
     delete environment.CLAUDE_TMUX_NAME;
+    delete environment.CLAUDE_TMUX_WORK_DIRECTORY;
     const scriptResult = spawnSync("bun", [`${import.meta.dirname}/tmuxHelper.ts`], {
         encoding: "utf8",
         cwd: plainFolder,
@@ -232,6 +246,29 @@ test("test_tmuxNewHelper_throws_outside_a_git_repository", () => {
         env: environment,
     });
     // Step 4: the script fails and tells the user a git repository is needed.
+    assert.notEqual(scriptResult.status, 0);
+    assert.match(scriptResult.stderr, /inside a git repository/);
+});
+
+test("test_tmuxNewHelper_starts_in_the_claude_tmux_work_directory_not_the_payload_directory", () => {
+    // Step 1: make a git repository for the payload directory and a plain folder for the Claude tmux work directory.
+    const payloadRepository = mkdtempSync(join(tmpdir(), "tmux-helper-payload-"));
+    const initResult = spawnSync("git", ["init", payloadRepository], { encoding: "utf8" });
+    assert.equal(initResult.status, 0);
+    const claudeTmuxWorkDirectory = mkdtempSync(join(tmpdir(), "tmux-helper-work-"));
+    // Step 2: run the script with the Claude tmux work directory set, no swap or name values, and a tmux folder that holds no server.
+    const emptyTmuxFolder = mkdtempSync(join(tmpdir(), "tmux-helper-socket-"));
+    const environment: NodeJS.ProcessEnv = { ...process.env, TMUX_PANE: "%999", TMUX_TMPDIR: emptyTmuxFolder, CLAUDE_TMUX_WORK_DIRECTORY: claudeTmuxWorkDirectory };
+    delete environment.TMUX;
+    delete environment.CLAUDE_TMUX_SWAP_PERCENT;
+    delete environment.CLAUDE_TMUX_NAME;
+    const scriptResult = spawnSync("bun", [`${import.meta.dirname}/tmuxHelper.ts`], {
+        encoding: "utf8",
+        cwd: payloadRepository,
+        input: JSON.stringify({ prompt: "/tmux-new-helper", cwd: payloadRepository, session_title: "t", transcript_path: join(payloadRepository, "t.jsonl") }),
+        env: environment,
+    });
+    // Step 3: the script checks the plain Claude tmux work directory, so it fails with the git repository error.
     assert.notEqual(scriptResult.status, 0);
     assert.match(scriptResult.stderr, /inside a git repository/);
 });
