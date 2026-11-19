@@ -10,6 +10,7 @@
     "commentCombinerLogger": { "PostToolUse": false },
     "commentLengthLimiter": { "Stop": false },
     "checkTaskListId": { "SessionStart": false },
+    "checkTaskListMatch": { "PreToolUse": false },
     "nudgeTaskList": { "Stop": false },
     "unlistedItems": { "Stop": false },
     "committedTaskCheck": { "Stop": false },
@@ -313,6 +314,7 @@
   "hooks": [
     { "event": "PreToolUse", "matcher": "Bash|mcp__plugin_context-mode_context-mode__ctx_execute", "command": ["bun","../block-npm-test/blockNpmTest.ts"], "timeout": 300 },
     { "event": "PreToolUse", "matcher": "Bash", "command": ["bun", "../block-worktree-add/blockWorktreeAdd.ts"] },
+    { "event": "PreToolUse", "matcher": "TaskCreate|TaskUpdate", "command": ["bun", "../check-task-list-match/checkTaskListMatch.ts"] },
     { "event": "PreToolUse", "matcher": "Edit|Write|NotebookEdit|Bash", "command": ["bun","../block-parent-edits/blockParentEdits.ts"] },
     { "event": "PreToolUse", "matcher": "Bash", "command": ["bun","../block-bash-edits/blockBashEdits.ts"] },
     { "event": "PostToolUse", "matcher": "Write|Edit|MultiEdit|NotebookEdit", "command": ["bun","../plan-file-reminder/planFileReminder.ts"] },
