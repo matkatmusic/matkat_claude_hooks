@@ -20,6 +20,23 @@ test("findTestRun: suite forms in context", () => {
   assert.deepEqual(findRunWithoutWords('node --test "tests/**/*.test.ts"'), { file: undefined, cwd: undefined, env: {} });
 });
 
+test("test_findTestRun_blocks_run_of_test_script_for_bun_pnpm_and_yarn", () => {
+  // Scenario: bun, pnpm and yarn run a test script with `run`, like npm does.
+  // Steps:
+  // the command is the one the editor-tweaks-helper-2 chat ran without being blocked.
+  const reportedCommand = 'bun run test 2>&1 | rg "^(✖|ℹ (tests|pass|fail|cancelled|duration_ms))|^ [0-9]+ (pass|fail)$"; echo "EXIT=${PIPESTATUS[0]}"';
+  assert.equal(findTestRuns(reportedCommand).length, 1);
+  // every `run` of a test script must be found as one test run.
+  assert.equal(findTestRuns("bun run test").length, 1);
+  assert.equal(findTestRuns("bun run test:unit").length, 1);
+  assert.equal(findTestRuns("pnpm run test").length, 1);
+  assert.equal(findTestRuns("yarn run test").length, 1);
+  // test:baseline applies the known-failures filter, so it stays untouched.
+  assert.equal(findTestRuns("bun run test:baseline").length, 0);
+  // a run of a script that is not a test script must be ignored.
+  assert.equal(findTestRuns("bun run build").length, 0);
+});
+
 test("test_findTestRun_blocks_node_with_import_flags_before_test_flag", () => {
   // Scenario: node has its own flags (--import tsx) before --test, with a glob and a piped filter.
   // Steps:

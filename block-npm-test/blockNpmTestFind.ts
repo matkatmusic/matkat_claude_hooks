@@ -33,8 +33,16 @@ export function isRunner(words: string[]): boolean {
       break;
     }
   }
-  if (isYarnLikeRunner)
-    return second === "test";
+  if (isYarnLikeRunner) {
+    // return second === "test";
+    const isTestWord = second === "test";
+    const isRunWord = second === "run";
+    const isTestScript = /^test(:|$)/.test(third ?? "");
+    const isBaselineScript = third === "test:baseline";
+    const isRunOfTestScript = isRunWord && isTestScript;
+    const isRunOfUnfilteredTestScript = isRunOfTestScript && !isBaselineScript;
+    return isTestWord || isRunOfUnfilteredTestScript;
+  }
   const isNodeCommand = first === "node";
   const isTsxCommand = first === "tsx";
   const isNodeLikeCommand = isNodeCommand || isTsxCommand;
