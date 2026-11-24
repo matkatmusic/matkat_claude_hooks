@@ -16,3 +16,4 @@ dispatcher/handoff-done/
 dispatcher/handoff-path/
 dispatcher/swap-failed/
 dispatcher/claude-team-swap.log
+.claude/papercuts.md
