@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 
@@ -87,34 +87,180 @@ test("hook: a named test file runs with the runner Claude typed", () => {
   assert.match(readFileSync(logPaths[0], "utf8"), /fake jest ran: math\.test\.ts/);
 });
 
-test("hook: every test command in the line starts its own background run", () => {
-  const project = mkdtempSync(`${tmpdir()}/two-runs-`);
-  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
-  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+// test("hook: every test command in the line starts its own background run", () => {
+//   const project = mkdtempSync(`${tmpdir()}/two-runs-`);
+//   writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+//   writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+//   const hook = runHook(project, "npm test && node --test fast.test.js");
+//   const logPaths = monitorLogPaths(hook.stdout);
+//   assert.equal(logPaths.length, 2, hook.stdout);
+//   assert.notEqual(logPaths[0], logPaths[1]);
+//   assert.match(waitForLog(logPaths[0]), /exit code: 0/);
+//   assert.match(waitForLog(logPaths[1]), /exit code: 0/);
+// });
+
+test("test_two_test_commands_run_as_one_command_with_one_log", () => {
+  const project = makeNodeProject("two-runs-");
   const hook = runHook(project, "npm test && node --test fast.test.js");
   const logPaths = monitorLogPaths(hook.stdout);
-  assert.equal(logPaths.length, 2, hook.stdout);
-  assert.notEqual(logPaths[0], logPaths[1]);
+  assert.equal(logPaths.length, 1, hook.stdout);
   assert.match(waitForLog(logPaths[0]), /exit code: 0/);
-  assert.match(waitForLog(logPaths[1]), /exit code: 0/);
+  assert.equal(readFileSync(logPaths[0], "utf8").match(/pass 1/g)?.length, 2);
 });
 
-test("hook: a test command inside bash -c quotes is blocked too", () => {
-  const project = mkdtempSync(`${tmpdir()}/bash-c-`);
-  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
-  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
-  const hook = runHook(project, 'bash -c "npm test"');
+// test("hook: a test command inside bash -c quotes is blocked too", () => {
+//   const project = mkdtempSync(`${tmpdir()}/bash-c-`);
+//   writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+//   writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+//   const hook = runHook(project, 'bash -c "npm test"');
+//   const logPaths = monitorLogPaths(hook.stdout);
+//   assert.equal(logPaths.length, 1, hook.stdout);
+//   assert.match(waitForLog(logPaths[0]), /exit code: 0/);
+// });
+
+test("test_cd_with_a_home_variable_runs_the_tests", () => {
+  // The tests are in a folder under HOME, and the command names it with $HOME.
+  const home = mkdtempSync(`${tmpdir()}/fake-home-`);
+  mkdirSync(`${home}/project`);
+  writeFileSync(`${home}/project/a.test.js`, 'require("bun:test").test("a", () => {});');
+  const hook = runHook(home, 'cd "$HOME/project" && bun test', { ...HOOK_TEST_ENV, HOME: home });
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
+  assert.match(readFileSync(logPaths[0], "utf8"), /1 pass/);
+});
+
+test("test_mkdir_then_cd_then_test_runs_the_whole_command", () => {
+  // The folder after cd is made by the first step of the same command.
+  const chatFolder = mkdtempSync(`${tmpdir()}/mkdir-first-`);
+  const hook = runHook(chatFolder, `mkdir ${chatFolder}/x && cd ${chatFolder}/x && bun test`);
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  waitForLog(logPaths[0]);
+  assert.ok(existsSync(`${chatFolder}/x`));
+  assert.match(readFileSync(logPaths[0], "utf8"), /bun test/);
+});
+
+function assertDeniedWithoutRun(command: string): void {
+  const chatFolder = makeNodeProject("unsafe-");
+  const hook = runHook(chatFolder, command);
+  const output = JSON.parse(hook.stdout).hookSpecificOutput;
+  assert.equal(output.permissionDecision, "deny");
+  assert.match(output.permissionDecisionReason, /Run the tests alone/);
+  assert.doesNotMatch(output.permissionDecisionReason, /monitorTestRun/);
+  assert.equal(existsSync(`${chatFolder}/marker`), false);
+}
+
+test("test_another_command_next_to_a_test_is_denied_without_a_run", () => {
+  assertDeniedWithoutRun("touch marker && bun test");
+  assertDeniedWithoutRun("bun test; touch marker");
+  assertDeniedWithoutRun("bun test\ntouch marker");
+  assertDeniedWithoutRun("bun test & touch marker");
+  assertDeniedWithoutRun("bun test || touch marker");
+});
+
+test("test_command_substitution_is_denied_without_a_run", () => {
+  assertDeniedWithoutRun("cd $(touch marker) && bun test");
+  assertDeniedWithoutRun("bun test `touch marker`");
+});
+
+test("test_pipes_and_file_redirects_are_denied_without_a_run", () => {
+  assertDeniedWithoutRun("bun test | tee marker");
+  assertDeniedWithoutRun("bun test > marker");
+  assertDeniedWithoutRun("bun test 2>&1marker");
+});
+
+test("test_a_command_hidden_by_quotes_or_a_shell_is_denied_without_a_run", () => {
+  assertDeniedWithoutRun('A="x bun test x" touch marker; bun test');
+  assertDeniedWithoutRun("A=x bun test touch marker; bun test");
+  assertDeniedWithoutRun('bash -c "bun test"');
+});
+
+test("test_error_output_redirect_is_allowed", () => {
+  const project = makeNodeProject("error-redirect-");
+  const hook = runHook(project, "bun run test 2>&1");
   const logPaths = monitorLogPaths(hook.stdout);
   assert.equal(logPaths.length, 1, hook.stdout);
   assert.match(waitForLog(logPaths[0]), /exit code: 0/);
 });
 
-test("hook: a cd into a folder that an earlier step makes lets the command run as typed", () => {
-  const project = mkdtempSync(`${tmpdir()}/new-dir-`);
-  writeFileSync(`${project}/package.json`, "{}");
-  const hook = runHook(project, "mkdir newdir && cd newdir && npm test");
-  assert.equal(hook.status, 0);
-  assert.equal(hook.stdout, "");
+// test("hook: a cd into a folder that an earlier step makes lets the command run as typed", () => {
+//   const project = mkdtempSync(`${tmpdir()}/new-dir-`);
+//   writeFileSync(`${project}/package.json`, "{}");
+//   const hook = runHook(project, "mkdir newdir && cd newdir && npm test");
+//   assert.equal(hook.status, 0);
+//   assert.equal(hook.stdout, "");
+// });
+
+test("test_cd_into_a_missing_folder_is_denied_and_the_log_ends_with_an_error", () => {
+  // The folder after cd does not exist.
+  const chatFolder = mkdtempSync(`${tmpdir()}/missing-cd-`);
+  const hook = runHook(chatFolder, `cd ${chatFolder}/missing && bun test`);
+  // The hook denies the call and names one log.
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  // The monitor ends, with a nonzero exit code, and the log names the missing folder.
+  assert.match(waitForLog(logPaths[0]), /exit code: [1-9]/);
+  assert.match(readFileSync(logPaths[0], "utf8"), /missing/);
+});
+
+function makeNodeProject(prefix: string): string {
+  const project = mkdtempSync(`${tmpdir()}/${prefix}`);
+  writeFileSync(`${project}/package.json`, JSON.stringify({ scripts: { test: "node --test" } }));
+  writeFileSync(`${project}/fast.test.js`, 'require("node:test").test("fast", () => {});');
+  return project;
+}
+
+test("test_cd_into_a_node_project_from_a_plain_folder_is_denied", () => {
+  // The chat folder has no package.json. The folder after cd is a node project.
+  const chatFolder = mkdtempSync(`${tmpdir()}/plain-chat-`);
+  const project = makeNodeProject("cd-target-");
+  const hook = runHook(chatFolder, `cd ${project} && bun run test`);
+  // The hook denies the call and starts one background run, which finishes.
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
+});
+
+// test("test_cd_into_a_plain_folder_from_a_node_project_passes", () => {
+//   // The chat folder is a node project. The folder after cd has no package.json.
+//   const chatFolder = makeNodeProject("node-chat-");
+//   const plainFolder = mkdtempSync(`${tmpdir()}/plain-target-`);
+//   const hook = runHook(chatFolder, `cd ${plainFolder} && bun run test`);
+//   // The hook says nothing.
+//   assert.equal(hook.status, 0);
+//   assert.equal(hook.stdout, "");
+// });
+
+test("test_cd_into_a_plain_folder_from_a_node_project_is_denied", () => {
+  // The chat folder is a node project. The folder after cd has no package.json.
+  const chatFolder = makeNodeProject("node-chat-");
+  const plainFolder = mkdtempSync(`${tmpdir()}/plain-target-`);
+  const hook = runHook(chatFolder, `cd ${plainFolder} && bun run test`);
+  // The hook denies the call and starts one background run, which finishes.
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  waitForLog(logPaths[0]);
+});
+
+test("test_plain_bun_test_in_a_plain_folder_is_denied", () => {
+  // The chat folder has no package.json and the command has no cd.
+  const plainFolder = mkdtempSync(`${tmpdir()}/plain-same-`);
+  const hook = runHook(plainFolder, "bun test");
+  // The hook denies the call and starts one background run, which finishes.
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  waitForLog(logPaths[0]);
+});
+
+test("test_plain_bun_run_test_in_a_node_project_is_denied", () => {
+  // The chat folder is a node project and the command has no cd.
+  const project = makeNodeProject("same-folder-");
+  const hook = runHook(project, "bun run test");
+  // The hook denies the call and starts one background run, which finishes.
+  const logPaths = monitorLogPaths(hook.stdout);
+  assert.equal(logPaths.length, 1, hook.stdout);
+  assert.match(waitForLog(logPaths[0]), /exit code: 0/);
 });
 
 const CTX_EXECUTE_TOOL_NAME = "mcp__plugin_context-mode_context-mode__ctx_execute";

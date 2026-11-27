@@ -1,6 +1,6 @@
 # block-npm-test
 
-It blocks test commands in a node project, runs the tests in the background, and tells Claude where to read the result.
+It blocks test commands in every folder, runs the tests in the background, and tells Claude where to read the result.
 
 A test run can take a long time and can fill the context of Claude with a long log.
 
@@ -20,7 +20,7 @@ A test run can take a long time and can fill the context of Claude with a long l
 
 ## How it works
 
-The hook runs before every Bash command in a project that has a `package.json`. It finds a test command, blocks it, and starts the tests in a background script with a kill timer. The block message gives Claude a short monitor command. The monitor waits for the run to end and prints the result and the log path. A full-suite run prints only the failed tests, or the words "all passing".
+The hook runs before every Bash command, in every folder. It finds a test command and blocks it. If the command is safe, the hook runs the whole command as typed, from the folder of the chat, in a background script with a kill timer. The block message gives Claude a short monitor command. The monitor waits for the run to end and prints the exit code and the log path.
 
 ## More details
 
@@ -30,7 +30,19 @@ A test run can take a long time. A Bash call that waits for it can hang the sess
 
 ### What it needs
 
-The project needs a `package.json`.
+The folder does not need a `package.json`.
+
+### Safe commands
+
+The background run gets no approval question. So the hook runs a command only if each part is `cd`, `mkdir`, or a test command.
+
+- Join the parts with `&&`, `;`, or a new line.
+- `2>&1` is allowed. Variables such as `$HOME` are allowed.
+- All other commands, `$(...)`, backticks, brackets, pipes, `&`, `||`, backslashes, and file redirects are not allowed.
+- `bash -c` is not allowed.
+- A quoted value before a test command, such as `NAME="value" bun test`, is not allowed.
+
+If a command is not safe, the hook blocks it, runs nothing, and says: run the tests alone.
 
 ### Test commands it knows
 
@@ -38,11 +50,11 @@ It knows these test commands: `npm test`, `npm t`, `npm run test:*`, `yarn test`
 
 ### Steps
 
-1. The hook checks for a `package.json` in the folder or in a folder above it. If there is none, it does nothing.
-2. `blockNpmTestSplit.ts` cuts the Bash line into simple commands. `blockNpmTestFind.ts` finds the first test command, its file, its `cd` folder, and its `VAR=value` words.
-3. If the `cd` folder does not exist, the hook blocks the command and says so.
+1. The hook blocks test commands in every folder. It does not look for a `package.json`.
+2. `blockNpmTestSplit.ts` cuts the Bash line into simple commands. `blockNpmTestFind.ts` finds the test commands.
+3. `blockNpmTestSafe.ts` decides if the whole command is safe.
 4. The hook makes the log folder and removes old logs.
-5. `blockNpmTestScripts.ts` builds a shell script. The script runs the tests and writes `<log>.done` when the run ends. A timer kills the run if it takes too long.
+5. `blockNpmTestScripts.ts` builds a shell script. The script runs the typed command with `bash` and writes `<log>.done` when the run ends. A timer kills the run if it takes too long. One command makes one log. A missing folder shows as an error in the log.
 6. The hook starts the script in the background. It blocks the original command. Its message gives the command `monitorTestRun.ts <log>`.
 7. `monitorTestRun.ts` waits for the `.done` file. It prints the result, or it says the run is still in progress.
 
@@ -54,7 +66,7 @@ The hook reads these values from `input.settings`. The defaults are in `dispatch
 | --- | --- |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_DIR` | The folder for test logs. |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_KILL_AFTER_SECONDS` | Seconds before the timer kills a test run. |
-| `CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS` | The time limit for one test, in milliseconds. |
+| `CLAUDE_HOOKS_BLOCK_NPM_TEST_TEST_TIMEOUT_MS` | Not used. |
 | `CLAUDE_HOOKS_BLOCK_NPM_TEST_LOG_MAX_AGE_MS` | The age at which old logs are removed, in milliseconds. |
 
 The constants `MONITOR_WAIT_SECONDS` and `MONITOR_POLL_SECONDS` at the top of `monitorTestRun.ts` set the monitor wait and the check interval.
