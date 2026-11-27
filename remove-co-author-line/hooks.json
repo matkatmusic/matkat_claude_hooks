@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bun \"/path/to/claude_hooks/remove-co-author-line/removeCoAuthorLine.ts\"" }
+        ]
+      }
+    ]
+  }
+}
